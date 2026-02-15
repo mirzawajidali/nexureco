@@ -481,7 +481,7 @@ export default function AdminProductFormPage() {
   function handleFileSelect(files: FileList | null) {
     if (!files || files.length === 0) return;
     const validFiles: File[] = [];
-    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
@@ -632,7 +632,7 @@ export default function AdminProductFormPage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".jpg,.jpeg,.png,.gif,.webp"
+                      accept=".jpg,.jpeg,.png,.gif,.webp,.avif"
                       multiple
                       className="hidden"
                       onChange={(e) => { handleFileSelect(e.target.files); e.target.value = ''; }}
@@ -700,7 +700,7 @@ export default function AdminProductFormPage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".jpg,.jpeg,.png,.gif,.webp"
+                      accept=".jpg,.jpeg,.png,.gif,.webp,.avif"
                       multiple
                       className="hidden"
                       onChange={(e) => { handleFileSelect(e.target.files); e.target.value = ''; }}
@@ -739,7 +739,7 @@ export default function AdminProductFormPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".jpg,.jpeg,.png,.gif,.webp"
+                    accept=".jpg,.jpeg,.png,.gif,.webp,.avif"
                     multiple
                     className="hidden"
                     onChange={(e) => handleFileSelect(e.target.files)}
@@ -827,7 +827,7 @@ export default function AdminProductFormPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".jpg,.jpeg,.png,.gif,.webp"
+                    accept=".jpg,.jpeg,.png,.gif,.webp,.avif"
                     multiple
                     className="hidden"
                     onChange={(e) => {

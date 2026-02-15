@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -7,8 +7,10 @@ import {
   PencilIcon,
   TrashIcon,
   PhotoIcon,
+  ArrowUpTrayIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { adminBannersApi } from '@/api/admin.api';
+import { adminBannersApi, adminMediaApi } from '@/api/admin.api';
 
 // --- Types ---
 
@@ -74,6 +76,53 @@ export default function AdminBannersPage() {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [form, setForm] = useState<BannerFormData>(EMPTY_FORM);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [uploadingDesktop, setUploadingDesktop] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
+  const desktopInputRef = useRef<HTMLInputElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
+
+  const ALLOWED_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'];
+  const ACCEPT_STR = '.jpg,.jpeg,.png,.gif,.webp,.avif';
+
+  async function handleImageUpload(
+    file: File,
+    field: 'image_url' | 'mobile_image_url',
+  ) {
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!ALLOWED_EXT.includes(ext)) {
+      toast.error(`Unsupported format: ${ext}`);
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File exceeds 5MB limit');
+      return;
+    }
+
+    const setUploading = field === 'image_url' ? setUploadingDesktop : setUploadingMobile;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await adminMediaApi.upload(fd);
+      const url = (res.data as { url?: string })?.url;
+      if (url) {
+        setForm((prev) => ({ ...prev, [field]: url }));
+      }
+    } catch {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFileDrop(
+    e: React.DragEvent,
+    field: 'image_url' | 'mobile_image_url',
+  ) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleImageUpload(file, field);
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-banners'],
@@ -363,25 +412,123 @@ export default function AdminBannersPage() {
                 </div>
               </div>
 
+              {/* Desktop Image Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Image URL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Desktop image</label>
+                {form.image_url ? (
+                  <div className="relative group rounded-lg border border-gray-200 overflow-hidden">
+                    <img
+                      src={form.image_url}
+                      alt="Desktop banner"
+                      className="w-full h-32 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = ''; }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, image_url: '' })}
+                      className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full shadow hover:bg-red-50 transition-colors"
+                    >
+                      <XMarkIcon className="h-4 w-4 text-red-500" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => desktopInputRef.current?.click()}
+                      className="absolute bottom-1.5 right-1.5 px-2 py-1 bg-white/90 rounded-md shadow text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Replace
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleFileDrop(e, 'image_url')}
+                    onClick={() => desktopInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  >
+                    {uploadingDesktop ? (
+                      <div className="flex items-center justify-center gap-2 py-2">
+                        <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                        <span className="text-sm text-gray-500">Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <ArrowUpTrayIcon className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                        <p className="text-sm text-gray-500">Click or drag to upload</p>
+                        <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, AVIF, GIF (max 5MB)</p>
+                      </>
+                    )}
+                  </div>
+                )}
                 <input
-                  type="text"
-                  value={form.image_url}
-                  onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                  placeholder="https://example.com/banner.jpg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                  ref={desktopInputRef}
+                  type="file"
+                  accept={ACCEPT_STR}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file, 'image_url');
+                    e.target.value = '';
+                  }}
                 />
               </div>
 
+              {/* Mobile Image Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile image URL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile image <span className="text-gray-400 font-normal">(optional)</span></label>
+                {form.mobile_image_url ? (
+                  <div className="relative group rounded-lg border border-gray-200 overflow-hidden">
+                    <img
+                      src={form.mobile_image_url}
+                      alt="Mobile banner"
+                      className="w-full h-32 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = ''; }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, mobile_image_url: '' })}
+                      className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full shadow hover:bg-red-50 transition-colors"
+                    >
+                      <XMarkIcon className="h-4 w-4 text-red-500" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => mobileInputRef.current?.click()}
+                      className="absolute bottom-1.5 right-1.5 px-2 py-1 bg-white/90 rounded-md shadow text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Replace
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleFileDrop(e, 'mobile_image_url')}
+                    onClick={() => mobileInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  >
+                    {uploadingMobile ? (
+                      <div className="flex items-center justify-center gap-2 py-2">
+                        <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                        <span className="text-sm text-gray-500">Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <ArrowUpTrayIcon className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                        <p className="text-sm text-gray-500">Click or drag to upload</p>
+                        <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, AVIF, GIF (max 5MB)</p>
+                      </>
+                    )}
+                  </div>
+                )}
                 <input
-                  type="text"
-                  value={form.mobile_image_url}
-                  onChange={(e) => setForm({ ...form, mobile_image_url: e.target.value })}
-                  placeholder="https://example.com/banner-mobile.jpg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                  ref={mobileInputRef}
+                  type="file"
+                  accept={ACCEPT_STR}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file, 'mobile_image_url');
+                    e.target.value = '';
+                  }}
                 />
               </div>
 
@@ -444,18 +591,6 @@ export default function AdminBannersPage() {
                   Active
                 </label>
               </div>
-
-              {form.image_url && (
-                <div className="border border-gray-200 rounded-lg p-2">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Preview</p>
-                  <img
-                    src={form.image_url}
-                    alt="Preview"
-                    className="max-h-32 w-full object-cover rounded-lg"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                </div>
-              )}
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
                 <button

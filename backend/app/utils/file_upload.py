@@ -7,7 +7,7 @@ from app.config import get_settings
 
 settings = get_settings()
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
 
 MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -15,6 +15,7 @@ MIME_MAP = {
     ".png": "image/png",
     ".gif": "image/gif",
     ".webp": "image/webp",
+    ".avif": "image/avif",
 }
 
 
@@ -57,7 +58,11 @@ async def save_upload_file_with_meta(
         new_height = int(img.height * ratio)
         img = img.resize((max_width, new_height), Image.LANCZOS)
 
-    if img.mode in ("RGBA", "P"):
+    # AVIF/WebP support RGBA; others need RGB
+    if ext in (".avif", ".webp", ".png"):
+        if img.mode == "P":
+            img = img.convert("RGBA")
+    elif img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
 
     img.save(file_path, quality=85, optimize=True)
