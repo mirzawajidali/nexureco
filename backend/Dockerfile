@@ -6,15 +6,16 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies required by aiomysql and Pillow
+# Install system dependencies required by aiomysql and Pillow (incl. AVIF)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libjpeg62-turbo-dev zlib1g-dev && \
+    apt-get install -y --no-install-recommends gcc libjpeg62-turbo-dev zlib1g-dev \
+    libavif-dev libfribidi-dev libharfbuzz-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies (rebuild Pillow from source for AVIF support)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --no-binary pillow -r requirements.txt
 
 # Copy application code
 COPY . .
