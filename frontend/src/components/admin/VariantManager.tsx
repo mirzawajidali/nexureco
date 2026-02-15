@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { PlusIcon, XMarkIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 import type { ProductOption, ProductVariant } from '@/types/product';
 

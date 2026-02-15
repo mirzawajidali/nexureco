@@ -104,12 +104,6 @@ function ChangeIndicator({ value }: { value: number }) {
   );
 }
 
-function formatCompact(value: number): string {
-  if (value >= 1_000_000) return `Rs. ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `Rs. ${(value / 1_000).toFixed(1)}K`;
-  return formatPrice(value);
-}
-
 function formatChartDate(dateStr: string, period: Period): string {
   if (period === 'today') return dateStr;
   if (period === '12m') return dateStr;
@@ -156,7 +150,7 @@ export default function AdminDashboardPage() {
   });
 
   // Low stock
-  const { data: lowStockData, isLoading: lowStockLoading } = useQuery<LowStockItem[]>({
+  const { data: lowStockData } = useQuery<LowStockItem[]>({
     queryKey: ['admin', 'dashboard', 'low-stock'],
     queryFn: () => adminDashboardApi.getLowStock().then((r) => r.data),
   });
