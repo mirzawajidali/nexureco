@@ -39,3 +39,12 @@ backend/uploads/*
 # Database
 *.db
 *.sqlite3
+
+# SSL / Certbot
+certbot/
+
+# Production env
+.env.production
+
+# Script logs
+scripts/*.log
