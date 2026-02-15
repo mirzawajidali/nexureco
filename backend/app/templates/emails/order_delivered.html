@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Order Delivered - {{ order_number }}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding-bottom:8px;">
+      <h1 style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:28px;font-weight:900;color:#000000;text-transform:uppercase;letter-spacing:-1px;line-height:1.1;">
+        ORDER<br>DELIVERED
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#888888;text-transform:uppercase;letter-spacing:1px;">{{ order_number }}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Hi {{ customer_name }},
+      </p>
+      <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Your order has been delivered! We hope you love everything. If you have any questions or concerns, don't hesitate to reach out.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Status Indicator — all complete -->
+  <tr>
+    <td style="padding:24px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+                <td style="width:60px;height:3px;background-color:#000000;"></td>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+                <td style="width:60px;height:3px;background-color:#000000;"></td>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+                <td style="width:60px;height:3px;background-color:#000000;"></td>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-top:8px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="320">
+              <tr>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Placed</td>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Confirmed</td>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Shipped</td>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Delivered</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Order Summary -->
+  <tr>
+    <td style="border-top:2px solid #000000;padding-top:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:6px 0;">Items: {{ item_count }}</td>
+          <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:900;color:#000000;">Rs. {{ "%.0f"|format(total) }}</td>
+        </tr>
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:6px 0;">Payment: Cash on Delivery</td>
+          <td></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Review CTA -->
+  <tr>
+    <td style="padding-top:32px;" align="center">
+      <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#666666;">
+        Enjoyed your purchase? We'd love to hear your thoughts.
+      </p>
+    </td>
+  </tr>
+</table>
+{% endblock %}

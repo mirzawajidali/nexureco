@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}New Contact Message{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding-bottom:24px;">
+      <h1 style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:28px;font-weight:900;color:#000000;text-transform:uppercase;letter-spacing:-1px;line-height:1.1;">
+        NEW CONTACT<br>MESSAGE
+      </h1>
+    </td>
+  </tr>
+
+  <!-- Sender Info -->
+  <tr>
+    <td style="background-color:#f8f8f8;padding:20px 24px;margin-bottom:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td>
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">FROM</span>
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#000000;">{{ sender_name }}</span>
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;">{{ sender_email }}</span>
+          </td>
+        </tr>
+        {% if order_number %}
+        <tr>
+          <td style="padding-top:12px;">
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">ORDER REFERENCE</span>
+            <br><span style="font-family:'Courier New',monospace;font-size:14px;color:#000000;">{{ order_number }}</span>
+          </td>
+        </tr>
+        {% endif %}
+      </table>
+    </td>
+  </tr>
+
+  <!-- Subject -->
+  <tr>
+    <td style="padding-top:24px;padding-bottom:8px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">SUBJECT</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:16px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#000000;">{{ subject }}</span>
+    </td>
+  </tr>
+
+  <!-- Message -->
+  <tr>
+    <td style="padding-bottom:8px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">MESSAGE</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="border-left:3px solid #000000;padding-left:16px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#333333;line-height:1.7;white-space:pre-wrap;">{{ message }}</p>
+    </td>
+  </tr>
+</table>
+{% endblock %}
+
+{% block footer_text %}You received this email because you are an admin of {{ app_name }}.{% endblock %}

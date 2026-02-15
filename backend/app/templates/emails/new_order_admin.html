@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}New Order - {{ order_number }}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding-bottom:8px;">
+      <h1 style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:28px;font-weight:900;color:#000000;text-transform:uppercase;letter-spacing:-1px;line-height:1.1;">
+        NEW ORDER<br>RECEIVED
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#888888;text-transform:uppercase;letter-spacing:1px;">{{ order_number }}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        A new order has been placed and is awaiting confirmation.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Customer Info -->
+  <tr>
+    <td style="background-color:#f8f8f8;padding:20px 24px;margin-bottom:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" valign="top">
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">CUSTOMER</span>
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#333333;line-height:1.8;">{{ customer_name }}</span>
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;">{{ customer_email }}</span>
+            {% if customer_phone %}
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;">{{ customer_phone }}</span>
+            {% endif %}
+          </td>
+          <td width="50%" valign="top">
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">SHIPPING TO</span>
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;line-height:1.8;">{{ shipping_address }}</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Order Items -->
+  <tr>
+    <td style="padding-top:24px;padding-bottom:16px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">ORDER ITEMS</span>
+    </td>
+  </tr>
+  {% for item in items %}
+  <tr>
+    <td style="padding-bottom:8px;border-bottom:1px solid #f0f0f0;padding-top:8px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td>
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:#000000;">{{ item.product_name }}</span>
+            {% if item.variant_info %}<span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#888888;"> — {{ item.variant_info }}</span>{% endif %}
+            <br><span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;">Qty: {{ item.quantity }} &times; Rs. {{ "%.0f"|format(item.unit_price) }}</span>
+          </td>
+          <td align="right" valign="top">
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:#000000;">Rs. {{ "%.0f"|format(item.total_price) }}</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {% endfor %}
+
+  <!-- Totals -->
+  <tr>
+    <td style="border-top:2px solid #000000;padding-top:16px;margin-top:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:4px 0;">Subtotal</td>
+          <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;">Rs. {{ "%.0f"|format(subtotal) }}</td>
+        </tr>
+        {% if discount_amount > 0 %}
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#e53e3e;padding:4px 0;">Discount</td>
+          <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#e53e3e;">-Rs. {{ "%.0f"|format(discount_amount) }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:4px 0;">Shipping</td>
+          <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;">{% if shipping_cost > 0 %}Rs. {{ "%.0f"|format(shipping_cost) }}{% else %}FREE{% endif %}</td>
+        </tr>
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:18px;font-weight:900;color:#000000;padding:12px 0 0;border-top:1px solid #eee;">TOTAL</td>
+          <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:18px;font-weight:900;color:#000000;padding:12px 0 0;border-top:1px solid #eee;">Rs. {{ "%.0f"|format(total) }}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:4px 0;">Payment: Cash on Delivery</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{% endblock %}
+
+{% block footer_text %}You received this email because you are an admin of {{ app_name }}.{% endblock %}

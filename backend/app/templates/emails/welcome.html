@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to {{ app_name }}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding-bottom:24px;">
+      <h1 style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:28px;font-weight:900;color:#000000;text-transform:uppercase;letter-spacing:-1px;line-height:1.1;">
+        WELCOME TO<br>THE FAMILY
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Hi {{ first_name }},
+      </p>
+      <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Thanks for creating your {{ app_name }} account. You now have access to exclusive collections, order tracking, wishlists, and more.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Please verify your email to unlock the full experience. We've sent you a verification code in a separate email.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:32px;border-top:2px solid #f0f0f0;padding-top:24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding:12px 0;">
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">YOUR ACCOUNT</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#666666;">{{ email }}</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{% endblock %}

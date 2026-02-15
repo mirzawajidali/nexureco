@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Order Shipped - {{ order_number }}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding-bottom:8px;">
+      <h1 style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:28px;font-weight:900;color:#000000;text-transform:uppercase;letter-spacing:-1px;line-height:1.1;">
+        YOUR ORDER<br>IS ON ITS WAY
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#888888;text-transform:uppercase;letter-spacing:1px;">{{ order_number }}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Hi {{ customer_name }},
+      </p>
+      <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Your order has been shipped and is heading your way! Keep an eye on your doorstep.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Status Indicator -->
+  <tr>
+    <td style="padding:24px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+                <td style="width:60px;height:3px;background-color:#000000;"></td>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+                <td style="width:60px;height:3px;background-color:#000000;"></td>
+                <td style="width:12px;height:12px;background-color:#000000;border-radius:50%;"></td>
+                <td style="width:60px;height:3px;background-color:#e0e0e0;"></td>
+                <td style="width:12px;height:12px;background-color:#e0e0e0;border-radius:50%;"></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-top:8px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="320">
+              <tr>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Placed</td>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Confirmed</td>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#000000;font-weight:700;text-transform:uppercase;">Shipped</td>
+                <td width="80" align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#cccccc;text-transform:uppercase;">Delivered</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  {% if tracking_number %}
+  <!-- Tracking Info -->
+  <tr>
+    <td style="background-color:#f8f8f8;padding:20px 24px;margin-bottom:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td>
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">TRACKING NUMBER</span>
+            <br><span style="font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#000000;letter-spacing:1px;">{{ tracking_number }}</span>
+          </td>
+          {% if tracking_url %}
+          <td align="right" valign="middle">
+            <a href="{{ tracking_url }}" style="display:inline-block;background-color:#000000;color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:10px 24px;text-decoration:none;">TRACK</a>
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {% endif %}
+
+  <!-- Order Summary -->
+  <tr>
+    <td style="border-top:2px solid #000000;padding-top:16px;margin-top:16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:6px 0;">Items: {{ item_count }}</td>
+          <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:900;color:#000000;">Rs. {{ "%.0f"|format(total) }}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{% endblock %}
