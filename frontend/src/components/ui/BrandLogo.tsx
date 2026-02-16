@@ -18,6 +18,8 @@ export default function BrandLogo({ size = 'md', variant = 'dark', linkTo = '/' 
     <img
       src={logoSrc}
       alt="nexure"
+      width={203}
+      height={40}
       className={`${sizeClasses[size]} w-auto flex-shrink-0`}
       style={variant === 'light' ? { filter: 'invert(1)' } : undefined}
     />

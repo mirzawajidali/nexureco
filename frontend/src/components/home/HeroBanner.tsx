@@ -49,7 +49,7 @@ const defaultSlides: HeroBannerSlide[] = [
   },
 ];
 
-function SlideMedia({ slide }: { slide: HeroBannerSlide }) {
+function SlideMedia({ slide, isFirst }: { slide: HeroBannerSlide; isFirst: boolean }) {
   if (slide.videoUrl) {
     return (
       <video
@@ -74,6 +74,8 @@ function SlideMedia({ slide }: { slide: HeroBannerSlide }) {
           slide.mobileImageUrl ? 'hidden md:block' : ''
         }`}
         loading="eager"
+        fetchPriority={isFirst ? 'high' : undefined}
+        sizes="100vw"
       />
       {/* Mobile image (if provided) */}
       {slide.mobileImageUrl && (
@@ -82,6 +84,8 @@ function SlideMedia({ slide }: { slide: HeroBannerSlide }) {
           alt=""
           className="absolute inset-0 w-full h-full object-cover md:hidden"
           loading="eager"
+          fetchPriority={isFirst ? 'high' : undefined}
+          sizes="100vw"
         />
       )}
     </>
@@ -185,7 +189,7 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
         {slides.map((slide, index) => (
           <SwiperSlide key={slide.id} className="relative">
             {/* Media (Video or Image) */}
-            <SlideMedia slide={slide} />
+            <SlideMedia slide={slide} isFirst={index === 0} />
 
             {/* Gradient overlay — bottom-heavy like Adidas */}
             <div className="absolute inset-0 hero-gradient" />

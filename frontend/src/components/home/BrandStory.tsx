@@ -11,6 +11,7 @@ export default function BrandStory() {
             alt="Our Story"
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
+            sizes="(max-width: 1024px) 100vw, 50vw"
           />
           {/* Subtle fade into the black panel on desktop */}
           <div className="hidden lg:block absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-brand-black to-transparent" />

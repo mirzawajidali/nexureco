@@ -50,6 +50,7 @@ export default function ProductCard({
             alt={name}
             className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
             loading="lazy"
+            sizes="(max-width: 640px) 50vw, 25vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -95,6 +96,7 @@ export default function ProductCard({
                     src={vImg}
                     alt=""
                     className="w-12 h-14 object-cover bg-[#eceff1]"
+                    loading="lazy"
                   />
                   {/* Active indicator line */}
                   <div

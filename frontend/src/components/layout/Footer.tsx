@@ -96,6 +96,7 @@ export default function Footer() {
             <p className="text-gray-400 text-sm mb-6">
               Subscribe to get special offers, free giveaways, and new arrivals.
             </p>
+            <div className="min-h-[48px]">
             {subscribed ? (
               <p className="text-sm text-green-400 font-medium">
                 Thanks for subscribing! You'll hear from us soon.
@@ -130,6 +131,7 @@ export default function Footer() {
                 {(subscribeMutation.error as any)?.response?.data?.detail ?? 'Something went wrong. Please try again.'}
               </p>
             )}
+            </div>
           </div>
         </div>
       </div>

@@ -35,6 +35,8 @@ export default function TrendingProducts() {
                   src={product.image}
                   alt={product.name}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  sizes="(max-width: 1024px) 50vw, 25vw"
                 />
               </div>
               <h3 className="font-heading font-bold text-sm uppercase tracking-wider group-hover:text-gray-600 transition-colors">

@@ -65,7 +65,9 @@ async def save_upload_file_with_meta(
     elif img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
 
-    img.save(file_path, quality=85, optimize=True)
+    # AVIF is more efficient — quality 50 gives similar visual quality to JPEG 85
+    save_quality = 50 if ext == ".avif" else 85
+    img.save(file_path, quality=save_quality, optimize=True)
 
     # Get saved file size
     saved_size = os.path.getsize(file_path)

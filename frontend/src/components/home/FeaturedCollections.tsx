@@ -61,6 +61,7 @@ export default function FeaturedCollections() {
                   alt={tile.name}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   loading="lazy"
+                  sizes="(max-width: 640px) 100vw, 50vw"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
