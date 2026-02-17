@@ -21,49 +21,55 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: create tables if they don't exist
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        logger.warning(f"DDL create_all skipped (concurrent worker): {e}")
 
     # Add new columns to existing tables (safe: skips if column already exists)
-    async with engine.begin() as conn:
-        def _add_columns_if_missing(sync_conn):
-            insp = inspect(sync_conn)
+    try:
+        async with engine.begin() as conn:
+            def _add_columns_if_missing(sync_conn):
+                insp = inspect(sync_conn)
 
-            # Products table migrations
-            existing = {c["name"] for c in insp.get_columns("products")}
-            new_cols = {
-                "size_and_fit": "JSON NULL",
-                "care_instructions": "JSON NULL",
-                "material_info": "JSON NULL",
-            }
-            for col_name, col_def in new_cols.items():
-                if col_name not in existing:
-                    sync_conn.execute(text(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}"))
+                # Products table migrations
+                existing = {c["name"] for c in insp.get_columns("products")}
+                new_cols = {
+                    "size_and_fit": "JSON NULL",
+                    "care_instructions": "JSON NULL",
+                    "material_info": "JSON NULL",
+                }
+                for col_name, col_def in new_cols.items():
+                    if col_name not in existing:
+                        sync_conn.execute(text(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}"))
 
-            # Users table: add 'staff' to role enum and add role_id FK
-            if insp.has_table("users"):
-                user_cols = {c["name"] for c in insp.get_columns("users")}
-                # Extend role enum to include 'staff'
-                try:
-                    sync_conn.execute(text(
-                        "ALTER TABLE users MODIFY COLUMN role ENUM('customer','admin','staff') DEFAULT 'customer'"
-                    ))
-                except Exception:
-                    pass  # Already updated or non-MySQL
-                # Add role_id column
-                if "role_id" not in user_cols:
-                    sync_conn.execute(text(
-                        "ALTER TABLE users ADD COLUMN role_id INT NULL"
-                    ))
+                # Users table: add 'staff' to role enum and add role_id FK
+                if insp.has_table("users"):
+                    user_cols = {c["name"] for c in insp.get_columns("users")}
+                    # Extend role enum to include 'staff'
                     try:
                         sync_conn.execute(text(
-                            "ALTER TABLE users ADD CONSTRAINT fk_users_role_id "
-                            "FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL"
+                            "ALTER TABLE users MODIFY COLUMN role ENUM('customer','admin','staff') DEFAULT 'customer'"
                         ))
                     except Exception:
-                        pass  # FK may already exist
+                        pass  # Already updated or non-MySQL
+                    # Add role_id column
+                    if "role_id" not in user_cols:
+                        sync_conn.execute(text(
+                            "ALTER TABLE users ADD COLUMN role_id INT NULL"
+                        ))
+                        try:
+                            sync_conn.execute(text(
+                                "ALTER TABLE users ADD CONSTRAINT fk_users_role_id "
+                                "FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL"
+                            ))
+                        except Exception:
+                            pass  # FK may already exist
 
-        await conn.run_sync(_add_columns_if_missing)
+            await conn.run_sync(_add_columns_if_missing)
+    except Exception as e:
+        logger.warning(f"DDL migrations skipped (concurrent worker): {e}")
 
     # Seed default menus if none exist
     async with AsyncSessionLocal() as session:
@@ -84,17 +90,21 @@ async def lifespan(app: FastAPI):
             if not exists:
                 try:
                     await es.indices.create(index=PRODUCTS_INDEX, body=PRODUCTS_SETTINGS)
-                    logger.info(f"Created ES index '{PRODUCTS_INDEX}'")
+                    print(f"[ES] Created index '{PRODUCTS_INDEX}'")
                 except Exception:
                     pass  # Race condition: another worker created it first
             # Bulk index if index is empty or nearly empty
             count_resp = await es.count(index=PRODUCTS_INDEX)
-            if count_resp.get("count", 0) < 5:
+            doc_count = count_resp.get("count", 0) if isinstance(count_resp, dict) else count_resp.body.get("count", 0)
+            print(f"[ES] Current doc count: {doc_count}")
+            if doc_count < 5:
                 async with AsyncSessionLocal() as session:
                     count = await bulk_index_all_products(session)
-                    logger.info(f"ES bulk index: {count} products indexed")
+                    print(f"[ES] Bulk indexed {count} products")
         except Exception as e:
-            logger.warning(f"ES index setup failed: {e}")
+            print(f"[ES] Index setup failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     yield
     # Shutdown
