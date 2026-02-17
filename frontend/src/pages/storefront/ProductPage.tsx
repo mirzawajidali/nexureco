@@ -168,7 +168,7 @@ export default function ProductPage() {
       quantity,
       name: product.name,
       price: currentPrice,
-      image: product.images?.[0]?.url || '',
+      image: selectedVariant?.image_url || product.images?.[0]?.url || '',
       variantInfo: variantInfo || undefined,
     });
     toast.success('Added to bag');
