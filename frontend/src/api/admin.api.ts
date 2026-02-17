@@ -28,6 +28,8 @@ export const adminProductsApi = {
     client.put(`/admin/products/${productId}/images/${imageId}/primary`),
   deleteImage: (productId: number, imageId: number) =>
     client.delete(`/admin/products/${productId}/images/${imageId}`),
+  reorderImages: (productId: number, imageIds: number[]) =>
+    client.put(`/admin/products/${productId}/images/reorder`, { image_ids: imageIds }),
 };
 
 // Categories

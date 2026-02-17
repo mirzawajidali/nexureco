@@ -387,6 +387,17 @@ async def set_primary_image(db: AsyncSession, product_id: int, image_id: int) ->
     return image
 
 
+async def reorder_product_images(db: AsyncSession, product_id: int, image_ids: list[int]) -> None:
+    result = await db.execute(
+        select(ProductImage).where(ProductImage.product_id == product_id)
+    )
+    images = {img.id: img for img in result.scalars().all()}
+    for order, img_id in enumerate(image_ids):
+        if img_id in images:
+            images[img_id].display_order = order
+    await db.flush()
+
+
 async def delete_product_image(db: AsyncSession, product_id: int, image_id: int) -> None:
     result = await db.execute(
         select(ProductImage).where(ProductImage.id == image_id, ProductImage.product_id == product_id)

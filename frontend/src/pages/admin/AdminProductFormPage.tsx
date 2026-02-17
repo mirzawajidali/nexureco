@@ -388,6 +388,17 @@ export default function AdminProductFormPage() {
     onError: () => toast.error('Failed to delete image'),
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: (imageIds: number[]) =>
+      adminProductsApi.reorderImages(productId!, imageIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'product', productId] });
+      queryClient.invalidateQueries({ queryKey: ['product'] });
+    },
+  });
+
+  const [dragImageId, setDragImageId] = useState<number | null>(null);
+
   // --- Handlers ---
 
   const onSubmit = (formData: ProductFormData) => {
@@ -525,9 +536,44 @@ export default function AdminProductFormPage() {
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
-  const images: ProductImage[] = product?.images ?? [];
-  const primaryImage = images.find((img) => img.is_primary) ?? images[0];
-  const otherImages = images.filter((img) => img.id !== primaryImage?.id);
+  const images: ProductImage[] = [...(product?.images ?? [])].sort(
+    (a, b) => a.display_order - b.display_order
+  );
+
+  function handleImageDragStart(imageId: number) {
+    setDragImageId(imageId);
+  }
+
+  function handleImageDragOver(e: React.DragEvent, targetId: number) {
+    e.preventDefault();
+    if (dragImageId === null || dragImageId === targetId) return;
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleImageDrop(targetId: number) {
+    if (dragImageId === null || dragImageId === targetId) {
+      setDragImageId(null);
+      return;
+    }
+    const fromIdx = images.findIndex((img) => img.id === dragImageId);
+    const toIdx = images.findIndex((img) => img.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) { setDragImageId(null); return; }
+
+    const reordered = [...images];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const newIds = reordered.map((img) => img.id);
+
+    // If the primary image changed position (first image became different), update primary too
+    const newFirst = reordered[0];
+    const wasPrimary = images.find((img) => img.is_primary);
+    if (newFirst && wasPrimary && newFirst.id !== wasPrimary.id) {
+      setPrimaryMutation.mutate(newFirst.id);
+    }
+
+    reorderMutation.mutate(newIds);
+    setDragImageId(null);
+  }
 
   // --- Loading ---
 
@@ -747,63 +793,67 @@ export default function AdminProductFormPage() {
                 </div>
               ) : (
                 <div
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!dragImageId) setIsDragging(true);
+                  }}
+                  onDragLeave={() => { if (!dragImageId) setIsDragging(false); }}
+                  onDrop={(e) => { if (!dragImageId) handleDrop(e); }}
                 >
                   <div className="grid grid-cols-4 gap-2">
-                    {/* Primary image (large, spans 2x2) */}
-                    {primaryImage && (
-                      <div className="col-span-2 row-span-2 relative group aspect-square bg-gray-100 border border-gray-200 rounded-lg overflow-hidden">
-                        <img
-                          src={primaryImage.url}
-                          alt={primaryImage.alt_text ?? 'Primary image'}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                          <button
-                            type="button"
-                            onClick={() => deleteImageMutation.mutate(primaryImage.id)}
-                            className="p-2 bg-white rounded-lg text-red-600 hover:bg-red-50 transition-colors shadow-sm"
-                            title="Delete"
-                          >
-                            <XMarkIcon className="h-4 w-4" />
-                          </button>
+                    {images.map((img, idx) => {
+                      const isFirst = idx === 0;
+                      const isPrimary = img.is_primary;
+                      return (
+                        <div
+                          key={img.id}
+                          draggable
+                          onDragStart={() => handleImageDragStart(img.id)}
+                          onDragOver={(e) => handleImageDragOver(e, img.id)}
+                          onDrop={() => handleImageDrop(img.id)}
+                          onDragEnd={() => setDragImageId(null)}
+                          className={clsx(
+                            'relative group aspect-square bg-gray-100 border rounded-lg overflow-hidden cursor-grab active:cursor-grabbing transition-all',
+                            isFirst && 'col-span-2 row-span-2',
+                            dragImageId === img.id ? 'opacity-40 border-gray-400 scale-95' : 'border-gray-200',
+                            dragImageId && dragImageId !== img.id && 'ring-0 hover:ring-2 hover:ring-blue-400',
+                          )}
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.alt_text ?? 'Product image'}
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                          {/* Primary badge */}
+                          {isPrimary && (
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-bold uppercase tracking-wider rounded">
+                              Primary
+                            </span>
+                          )}
+                          {/* Hover actions */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                            {!isPrimary && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setPrimaryMutation.mutate(img.id); }}
+                                className="p-1.5 bg-white rounded-lg text-gray-800 hover:bg-yellow-50 transition-colors shadow-sm"
+                                title="Set as primary"
+                              >
+                                <StarIcon className={isFirst ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); deleteImageMutation.mutate(img.id); }}
+                              className="p-1.5 bg-white rounded-lg text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+                              title="Delete"
+                            >
+                              <XMarkIcon className={isFirst ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Other images */}
-                    {otherImages.map((img) => (
-                      <div
-                        key={img.id}
-                        className="relative group aspect-square bg-gray-100 border border-gray-200 rounded-lg overflow-hidden"
-                      >
-                        <img
-                          src={img.url}
-                          alt={img.alt_text ?? 'Product image'}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                          <button
-                            type="button"
-                            onClick={() => setPrimaryMutation.mutate(img.id)}
-                            className="p-1.5 bg-white rounded-lg text-gray-800 hover:bg-yellow-50 transition-colors shadow-sm"
-                            title="Set as primary"
-                          >
-                            <StarIcon className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteImageMutation.mutate(img.id)}
-                            className="p-1.5 bg-white rounded-lg text-red-600 hover:bg-red-50 transition-colors shadow-sm"
-                            title="Delete"
-                          >
-                            <XMarkIcon className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Add more */}
                     <div
@@ -823,6 +873,8 @@ export default function AdminProductFormPage() {
                       )}
                     </div>
                   </div>
+
+                  <p className="text-[10px] text-gray-400 mt-2">Drag images to reorder</p>
 
                   <input
                     ref={fileInputRef}

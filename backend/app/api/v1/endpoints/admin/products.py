@@ -196,6 +196,18 @@ async def set_primary_image(
     return image
 
 
+@router.put("/{product_id}/images/reorder")
+async def reorder_product_images(
+    product_id: int,
+    body: dict,
+    admin: User = require_module("products"),
+    db: AsyncSession = Depends(get_db),
+):
+    image_ids = body.get("image_ids", [])
+    await product_service.reorder_product_images(db, product_id, image_ids)
+    return {"message": "Image order updated"}
+
+
 @router.delete("/{product_id}/images/{image_id}", response_model=MessageResponse)
 async def delete_product_image(
     product_id: int,
