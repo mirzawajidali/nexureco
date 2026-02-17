@@ -6,6 +6,7 @@ interface CartItemLocal {
   variantId: number | null;
   quantity: number;
   name: string;
+  slug: string;
   price: number;
   image: string;
   variantInfo?: string;

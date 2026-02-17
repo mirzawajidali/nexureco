@@ -239,6 +239,7 @@ export default function WishlistPage() {
       variantId: null,
       quantity: 1,
       name: product.name,
+      slug: product.slug,
       price: product.base_price,
       image: product.primary_image || '',
     });

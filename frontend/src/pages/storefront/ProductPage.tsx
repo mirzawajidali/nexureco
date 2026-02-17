@@ -167,6 +167,7 @@ export default function ProductPage() {
       variantId: selectedVariant?.id || null,
       quantity,
       name: product.name,
+      slug: product.slug,
       price: currentPrice,
       image: selectedVariant?.image_url || product.images?.[0]?.url || '',
       variantInfo: variantInfo || undefined,

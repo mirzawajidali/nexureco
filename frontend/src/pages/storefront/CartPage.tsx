@@ -22,7 +22,7 @@ function CartItem({
   onRemove,
   onUpdateQty,
 }: {
-  item: { productId: number; variantId: number | null; quantity: number; name: string; price: number; image: string; variantInfo?: string };
+  item: { productId: number; variantId: number | null; quantity: number; name: string; slug: string; price: number; image: string; variantInfo?: string };
   onRemove: () => void;
   onUpdateQty: (qty: number) => void;
 }) {
@@ -30,7 +30,7 @@ function CartItem({
     <div className="flex gap-4 sm:gap-6 py-6">
       {/* Image */}
       <Link
-        to={`/product/${item.productId}`}
+        to={`/product/${item.slug}`}
         className="w-[100px] h-[130px] sm:w-[120px] sm:h-[156px] bg-[#eceff1] flex-shrink-0 overflow-hidden"
       >
         {item.image ? (
