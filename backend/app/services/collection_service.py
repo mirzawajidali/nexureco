@@ -23,10 +23,18 @@ async def get_collections(db: AsyncSession, active_only: bool = True, featured_o
         .group_by(CollectionProduct.collection_id)
     )
     counts = dict(count_result.all())
-    for col in collections:
-        col.product_count = counts.get(col.id, 0)
 
-    return collections
+    return [
+        {
+            "id": col.id, "name": col.name, "slug": col.slug,
+            "description": col.description, "image_url": col.image_url,
+            "type": col.type, "is_featured": col.is_featured,
+            "is_active": col.is_active, "display_order": col.display_order,
+            "product_count": counts.get(col.id, 0),
+            "created_at": col.created_at.isoformat() if col.created_at else None,
+        }
+        for col in collections
+    ]
 
 
 async def get_collection_by_slug(db: AsyncSession, slug: str) -> Collection:

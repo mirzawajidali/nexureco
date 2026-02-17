@@ -51,11 +51,32 @@ def _build_list_item(product: Product) -> dict:
         "variant_count": variant_count,
         "variant_images": variant_images,
         "tags": product.tags,
-        "created_at": product.created_at,
+        "created_at": product.created_at.isoformat() if product.created_at else None,
     }
 
 
 def _build_detail(product: Product) -> dict:
+    images = [
+        {"id": img.id, "url": img.url, "alt_text": img.alt_text,
+         "display_order": img.display_order, "is_primary": img.is_primary}
+        for img in (product.images or [])
+    ]
+    options = [
+        {"id": opt.id, "name": opt.name, "display_order": opt.display_order,
+         "values": [{"id": v.id, "value": v.value, "display_order": v.display_order}
+                    for v in (opt.values or [])]}
+        for opt in (product.options or [])
+    ]
+    variants = [
+        {"id": v.id, "sku": v.sku, "price": float(v.price) if v.price else None,
+         "compare_at_price": float(v.compare_at_price) if v.compare_at_price else None,
+         "cost_price": float(v.cost_price) if v.cost_price else None,
+         "stock_quantity": v.stock_quantity, "low_stock_threshold": v.low_stock_threshold,
+         "is_active": v.is_active, "image_url": v.image_url,
+         "option_values": [{"option_value_id": ov.option_value_id}
+                           for ov in (v.option_values or [])]}
+        for v in (product.variants or [])
+    ]
     return {
         "id": product.id,
         "category_id": product.category_id,
@@ -78,13 +99,13 @@ def _build_detail(product: Product) -> dict:
         "avg_rating": float(product.avg_rating),
         "review_count": product.review_count,
         "total_sold": product.total_sold,
-        "images": product.images,
-        "options": product.options,
-        "variants": product.variants,
+        "images": images,
+        "options": options,
+        "variants": variants,
         "category_name": product.category.name if product.category else None,
         "category_slug": product.category.slug if product.category else None,
-        "created_at": product.created_at,
-        "updated_at": product.updated_at,
+        "created_at": product.created_at.isoformat() if product.created_at else None,
+        "updated_at": product.updated_at.isoformat() if product.updated_at else None,
     }
 
 
