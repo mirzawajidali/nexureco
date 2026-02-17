@@ -90,21 +90,18 @@ async def lifespan(app: FastAPI):
             if not exists:
                 try:
                     await es.indices.create(index=PRODUCTS_INDEX, body=PRODUCTS_SETTINGS)
-                    print(f"[ES] Created index '{PRODUCTS_INDEX}'")
+                    logger.info(f"Created ES index '{PRODUCTS_INDEX}'")
                 except Exception:
                     pass  # Race condition: another worker created it first
             # Bulk index if index is empty or nearly empty
             count_resp = await es.count(index=PRODUCTS_INDEX)
             doc_count = count_resp.get("count", 0) if isinstance(count_resp, dict) else count_resp.body.get("count", 0)
-            print(f"[ES] Current doc count: {doc_count}")
             if doc_count < 5:
                 async with AsyncSessionLocal() as session:
                     count = await bulk_index_all_products(session)
-                    print(f"[ES] Bulk indexed {count} products")
+                    logger.info(f"ES bulk index: {count} products indexed")
         except Exception as e:
-            print(f"[ES] Index setup failed: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.warning(f"ES index setup failed: {e}")
 
     yield
     # Shutdown
