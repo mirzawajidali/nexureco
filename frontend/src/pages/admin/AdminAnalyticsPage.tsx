@@ -32,12 +32,8 @@ import { adminAnalyticsApi } from '@/api/admin.api';
 import { formatPrice } from '@/utils/formatters';
 import { APP_NAME } from '@/utils/constants';
 import Spinner from '@/components/ui/Spinner';
-import {
-  generateSalesReport,
-  generateProductReport,
-  generateFinancialReport,
-  generateCustomerReport,
-} from '@/utils/reportPdf';
+// Lazy-load heavy PDF library (jsPDF + autoTable) — only downloaded when user clicks "Download"
+const loadReportPdf = () => import('@/utils/reportPdf');
 
 // --- Types ---
 
@@ -267,6 +263,7 @@ export default function AdminAnalyticsPage() {
 
   async function handleDownloadPdf(type: ReportType) {
     if (!analytics) return;
+    const { generateSalesReport, generateProductReport, generateFinancialReport, generateCustomerReport } = await loadReportPdf();
     switch (type) {
       case 'sales':
         await generateSalesReport(analytics.sales_over_time, analytics.metrics, analytics.sales_breakdown.net_sales, periodLabel);
