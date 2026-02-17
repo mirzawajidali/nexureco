@@ -12,6 +12,7 @@ from app.services import product_service
 from app.utils.file_upload import save_upload_file_with_meta, delete_upload_file
 from app.models.user import User
 from app.models.media import MediaFile
+from app.db.redis import CacheService
 
 router = APIRouter(prefix="/admin/products", tags=["Admin Products"])
 
@@ -37,7 +38,9 @@ async def create_product(
     admin: User = require_module("products"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await product_service.create_product(db, data)
+    result = await product_service.create_product(db, data)
+    await CacheService.invalidate_product()
+    return result
 
 
 @router.get("/export")
@@ -105,6 +108,8 @@ async def import_products(
             created += 1
         except Exception as e:
             errors.append(f"Row {i}: {str(e)}")
+    if created > 0:
+        await CacheService.invalidate_product()
     return {"created": created, "errors": errors}
 
 
@@ -125,6 +130,8 @@ async def bulk_delete_products(
             deleted += 1
         except Exception:
             pass
+    if deleted > 0:
+        await CacheService.invalidate_product()
     return {"deleted": deleted}
 
 
@@ -145,7 +152,9 @@ async def update_product(
     admin: User = require_module("products"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await product_service.update_product(db, product_id, data)
+    result = await product_service.update_product(db, product_id, data)
+    await CacheService.invalidate_product(slug=result.get("slug"))
+    return result
 
 
 @router.delete("/{product_id}", response_model=MessageResponse)
@@ -155,6 +164,7 @@ async def delete_product(
     db: AsyncSession = Depends(get_db),
 ):
     await product_service.delete_product(db, product_id)
+    await CacheService.invalidate_product()
     return {"message": "Product deleted successfully"}
 
 
@@ -182,6 +192,7 @@ async def upload_product_image(
     db.add(media_file)
 
     image = await product_service.add_product_image(db, product_id, meta["url"], alt_text, is_primary)
+    await CacheService.invalidate_product()
     return image
 
 
@@ -193,6 +204,7 @@ async def set_primary_image(
     db: AsyncSession = Depends(get_db),
 ):
     image = await product_service.set_primary_image(db, product_id, image_id)
+    await CacheService.invalidate_product()
     return image
 
 
@@ -205,6 +217,7 @@ async def reorder_product_images(
 ):
     image_ids = body.get("image_ids", [])
     await product_service.reorder_product_images(db, product_id, image_ids)
+    await CacheService.invalidate_product()
     return {"message": "Image order updated"}
 
 
@@ -216,4 +229,5 @@ async def delete_product_image(
     db: AsyncSession = Depends(get_db),
 ):
     await product_service.delete_product_image(db, product_id, image_id)
+    await CacheService.invalidate_product()
     return {"message": "Image deleted successfully"}

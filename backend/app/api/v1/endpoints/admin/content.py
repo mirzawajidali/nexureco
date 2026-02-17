@@ -17,6 +17,7 @@ from app.schemas.menu import (
 )
 from app.services import menu_service
 from app.utils.slug import generate_unique_slug
+from app.db.redis import CacheService
 
 router = APIRouter(prefix="/admin/content", tags=["Admin Content"])
 
@@ -57,6 +58,7 @@ async def create_banner(
     db.add(banner)
     await db.flush()
     await db.refresh(banner)
+    await CacheService.invalidate_banners()
     return banner
 
 
@@ -78,6 +80,7 @@ async def update_banner(
 
     await db.flush()
     await db.refresh(banner)
+    await CacheService.invalidate_banners()
     return banner
 
 
@@ -94,6 +97,7 @@ async def delete_banner(
 
     await db.delete(banner)
     await db.flush()
+    await CacheService.invalidate_banners()
     return {"message": "Banner deleted successfully"}
 
 

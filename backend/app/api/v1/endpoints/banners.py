@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
+from app.db.redis import CacheService
 from app.models.banner import Banner
 
 router = APIRouter(prefix="/banners", tags=["Banners"])
@@ -13,6 +14,11 @@ async def get_active_banners(
     db: AsyncSession = Depends(get_db),
 ):
     """Get active banners, optionally filtered by position, ordered by display_order."""
+    cache_key = CacheService.banners_key(position)
+    cached = await CacheService.get(cache_key)
+    if cached:
+        return cached
+
     query = select(Banner).where(Banner.is_active == True)
 
     if position:
@@ -23,7 +29,7 @@ async def get_active_banners(
     result = await db.execute(query)
     banners = result.scalars().all()
 
-    return [
+    data = [
         {
             "id": b.id,
             "title": b.title,
@@ -39,3 +45,6 @@ async def get_active_banners(
         }
         for b in banners
     ]
+
+    await CacheService.set(cache_key, data, CacheService.TTL_BANNERS)
+    return data

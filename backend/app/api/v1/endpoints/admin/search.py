@@ -6,6 +6,7 @@ from app.core.dependencies import require_module
 from app.models.user import User
 from app.models.product import Product, ProductImage, ProductVariant
 from app.models.order import Order
+from app.services import es_search_service
 
 router = APIRouter(prefix="/admin/search", tags=["Admin Search"])
 
@@ -23,63 +24,66 @@ async def admin_search(
 
     like = f"%{q}%"
 
-    # --- Products (limit 5, count total) ---
-    product_where = or_(
-        Product.name.ilike(like),
-        Product.sku.ilike(like),
-    )
-    products_count = (await db.execute(
-        select(func.count()).select_from(Product).where(product_where)
-    )).scalar() or 0
-
-    products_result = await db.execute(
-        select(Product)
-        .where(product_where)
-        .order_by(Product.created_at.desc())
-        .limit(5)
-    )
-    products = products_result.scalars().all()
-
-    # Get primary images for products
-    product_ids = [p.id for p in products]
-    images_map: dict[int, str | None] = {}
-    if product_ids:
-        images_result = await db.execute(
-            select(ProductImage)
-            .where(
-                ProductImage.product_id.in_(product_ids),
-                ProductImage.is_primary == True,
-            )
+    # --- Products (limit 5, count total) — try ES first ---
+    es_result = await es_search_service.es_admin_search_products(q, limit=5)
+    if es_result is not None:
+        products_data, products_count = es_result
+    else:
+        # Fallback to MySQL
+        product_where = or_(
+            Product.name.ilike(like),
+            Product.sku.ilike(like),
         )
-        for img in images_result.scalars().all():
-            images_map[img.product_id] = img.url
+        products_count = (await db.execute(
+            select(func.count()).select_from(Product).where(product_where)
+        )).scalar() or 0
 
-    # Get variant counts for products
-    variant_counts: dict[int, int] = {}
-    if product_ids:
-        vc_result = await db.execute(
-            select(
-                ProductVariant.product_id,
-                func.count(ProductVariant.id).label("cnt"),
-            )
-            .where(ProductVariant.product_id.in_(product_ids))
-            .group_by(ProductVariant.product_id)
+        products_result = await db.execute(
+            select(Product)
+            .where(product_where)
+            .order_by(Product.created_at.desc())
+            .limit(5)
         )
-        for row in vc_result.all():
-            variant_counts[row[0]] = row[1]
+        products = products_result.scalars().all()
 
-    products_data = [
-        {
-            "id": p.id,
-            "name": p.name,
-            "slug": p.slug,
-            "base_price": float(p.base_price),
-            "status": p.status,
-            "image_url": images_map.get(p.id),
-            "variant_count": variant_counts.get(p.id, 0),
-        }
-        for p in products
-    ]
+        product_ids = [p.id for p in products]
+        images_map: dict[int, str | None] = {}
+        if product_ids:
+            images_result = await db.execute(
+                select(ProductImage)
+                .where(
+                    ProductImage.product_id.in_(product_ids),
+                    ProductImage.is_primary == True,
+                )
+            )
+            for img in images_result.scalars().all():
+                images_map[img.product_id] = img.url
+
+        variant_counts: dict[int, int] = {}
+        if product_ids:
+            vc_result = await db.execute(
+                select(
+                    ProductVariant.product_id,
+                    func.count(ProductVariant.id).label("cnt"),
+                )
+                .where(ProductVariant.product_id.in_(product_ids))
+                .group_by(ProductVariant.product_id)
+            )
+            for row in vc_result.all():
+                variant_counts[row[0]] = row[1]
+
+        products_data = [
+            {
+                "id": p.id,
+                "name": p.name,
+                "slug": p.slug,
+                "base_price": float(p.base_price),
+                "status": p.status,
+                "image_url": images_map.get(p.id),
+                "variant_count": variant_counts.get(p.id, 0),
+            }
+            for p in products
+        ]
 
     # --- Orders (limit 5, count total) ---
     order_where = or_(

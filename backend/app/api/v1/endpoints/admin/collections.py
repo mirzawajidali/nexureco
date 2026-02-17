@@ -7,6 +7,7 @@ from app.schemas.collection import CollectionCreate, CollectionUpdate, Collectio
 from app.schemas.common import MessageResponse
 from app.services import collection_service
 from app.models.user import User
+from app.db.redis import CacheService
 
 router = APIRouter(prefix="/admin/collections", tags=["Admin Collections"])
 
@@ -38,7 +39,9 @@ async def create_collection(
     admin: User = require_module("collections"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await collection_service.create_collection(db, data)
+    result = await collection_service.create_collection(db, data)
+    await CacheService.invalidate_collections()
+    return result
 
 
 @router.put("/{collection_id}", response_model=CollectionOut)
@@ -48,7 +51,9 @@ async def update_collection(
     admin: User = require_module("collections"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await collection_service.update_collection(db, collection_id, data)
+    result = await collection_service.update_collection(db, collection_id, data)
+    await CacheService.invalidate_collections()
+    return result
 
 
 @router.delete("/{collection_id}", response_model=MessageResponse)
@@ -58,6 +63,7 @@ async def delete_collection(
     db: AsyncSession = Depends(get_db),
 ):
     await collection_service.delete_collection(db, collection_id)
+    await CacheService.invalidate_collections()
     return {"message": "Collection deleted successfully"}
 
 
@@ -69,6 +75,7 @@ async def add_products(
     db: AsyncSession = Depends(get_db),
 ):
     await collection_service.add_products_to_collection(db, collection_id, data.product_ids)
+    await CacheService.invalidate_collections()
     return {"message": "Products added to collection"}
 
 
@@ -80,4 +87,5 @@ async def remove_product(
     db: AsyncSession = Depends(get_db),
 ):
     await collection_service.remove_product_from_collection(db, collection_id, product_id)
+    await CacheService.invalidate_collections()
     return {"message": "Product removed from collection"}

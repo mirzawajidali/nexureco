@@ -237,6 +237,11 @@ async def create_product(db: AsyncSession, data: ProductCreate) -> dict:
 
     # Reload with relationships
     product = await get_product_by_id(db, product.id)
+
+    # Index in Elasticsearch
+    from app.services.es_indexing_service import index_product
+    await index_product(product)
+
     return _build_detail(product)
 
 
@@ -317,6 +322,11 @@ async def update_product(db: AsyncSession, product_id: int, data: ProductUpdate)
                 await db.flush()
 
     product = await get_product_by_id(db, product_id)
+
+    # Update Elasticsearch index
+    from app.services.es_indexing_service import index_product
+    await index_product(product)
+
     return _build_detail(product)
 
 
@@ -324,6 +334,10 @@ async def delete_product(db: AsyncSession, product_id: int) -> None:
     product = await get_product_by_id(db, product_id)
     await db.delete(product)
     await db.flush()
+
+    # Remove from Elasticsearch index
+    from app.services.es_indexing_service import delete_product_from_index
+    await delete_product_from_index(product_id)
 
 
 async def add_product_image(

@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -5,10 +6,15 @@ from app.config import get_settings
 from app.core.middleware import setup_middleware
 from app.api.v1.router import api_router
 from app.db.database import engine, Base, AsyncSessionLocal
+from app.db.redis import init_redis, close_redis
+from app.db.elasticsearch import init_elasticsearch, close_elasticsearch
+from app.services.es_index_service import PRODUCTS_INDEX, PRODUCTS_SETTINGS
+from app.services.es_indexing_service import bulk_index_all_products
 from sqlalchemy import text, inspect
 from app.services.menu_service import seed_default_menus
 import os
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -67,8 +73,28 @@ async def lifespan(app: FastAPI):
         except Exception:
             await session.rollback()
 
+    # Initialize Redis
+    await init_redis()
+
+    # Initialize Elasticsearch and ensure index exists
+    es = await init_elasticsearch()
+    if es:
+        try:
+            exists = await es.indices.exists(index=PRODUCTS_INDEX)
+            if not exists:
+                await es.indices.create(index=PRODUCTS_INDEX, body=PRODUCTS_SETTINGS)
+                logger.info(f"Created ES index '{PRODUCTS_INDEX}'")
+                # Bulk index all products on first run
+                async with AsyncSessionLocal() as session:
+                    count = await bulk_index_all_products(session)
+                    logger.info(f"Initial ES bulk index: {count} products")
+        except Exception as e:
+            logger.warning(f"ES index setup failed: {e}")
+
     yield
     # Shutdown
+    await close_redis()
+    await close_elasticsearch()
     await engine.dispose()
 
 

@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     # Trusted Hosts
     TRUSTED_HOSTS: str = "*"
 
+    # Elasticsearch
+    ELASTICSEARCH_URL: str = "http://localhost:9200"
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]

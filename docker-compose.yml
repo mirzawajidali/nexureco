@@ -18,6 +18,44 @@ services:
       retries: 5
       start_period: 30s
 
+  elasticsearch:
+    image: elasticsearch:8.12.2
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms256m -Xmx512m
+      - cluster.name=mybrand-es
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -25,6 +63,10 @@ services:
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       DATABASE_URL: mysql+aiomysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
@@ -45,6 +87,8 @@ services:
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-5242880}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-100}
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - uploads_data:/app/uploads
     ports:
@@ -63,3 +107,5 @@ services:
 volumes:
   mysql_data:
   uploads_data:
+  es_data:
+  redis_data:
