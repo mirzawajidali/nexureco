@@ -19,7 +19,7 @@ const FALLBACK_FOOTER_LINKS = {
     { label: 'Track Order', href: '/track-order' },
     { label: 'Shipping Info', href: '/page/shipping' },
     { label: 'Returns & Exchange', href: '/page/returns' },
-    { label: 'Size Guide', href: '/page/size-guide' },
+    { label: 'Size Guide', href: '/size-guide' },
   ],
   'COMPANY': [
     { label: 'About Us', href: '/page/about' },

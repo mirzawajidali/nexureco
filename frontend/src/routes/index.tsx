@@ -48,6 +48,7 @@ const OrderConfirmationPage = lazy(() => import('@/pages/storefront/OrderConfirm
 const OrderTrackingPage = lazy(() => import('@/pages/storefront/OrderTrackingPage'));
 const AccountPage = lazy(() => import('@/pages/storefront/AccountPage'));
 const ContactPage = lazy(() => import('@/pages/storefront/ContactPage'));
+const SizeGuidePage = lazy(() => import('@/pages/storefront/SizeGuidePage'));
 const ContentPage = lazy(() => import('@/pages/storefront/ContentPage'));
 const NotFoundPage = lazy(() => import('@/pages/storefront/NotFoundPage'));
 
@@ -108,8 +109,9 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute><Lazy component={AccountPage} /></ProtectedRoute>,
       },
 
-      // Contact & CMS Pages
+      // Contact, Size Guide & CMS Pages
       { path: '/contact', element: <Lazy component={ContactPage} /> },
+      { path: '/size-guide', element: <Lazy component={SizeGuidePage} /> },
       { path: '/page/:slug', element: <Lazy component={ContentPage} /> },
 
       { path: '*', element: <Lazy component={NotFoundPage} /> },

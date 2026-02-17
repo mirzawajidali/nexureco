@@ -42,7 +42,7 @@ const HELP_TOPICS = [
     icon: ShieldCheckIcon,
     title: 'Product & Sizing',
     description: 'Size guides, product care instructions, and authenticity.',
-    link: '/page/size-guide',
+    link: '/size-guide',
   },
 ];
 
