@@ -164,11 +164,44 @@ async def list_customers(
 
     result = await paginate(db, query, page=page, page_size=page_size)
 
-    # Enrich each customer with order stats and location
+    # Batch-load stats and locations for all customers (3 queries instead of 2N+1)
+    users = result["items"]
+    user_ids = [u.id for u in users]
+
+    # Batch order stats
+    stats_map = {}
+    if user_ids:
+        stats_result = await db.execute(
+            select(
+                Order.user_id,
+                func.count(Order.id).label("orders_count"),
+                func.coalesce(func.sum(Order.total), 0).label("total_spent"),
+            )
+            .where(Order.user_id.in_(user_ids), Order.status.notin_(["cancelled", "returned"]))
+            .group_by(Order.user_id)
+        )
+        for row in stats_result.all():
+            stats_map[row.user_id] = {
+                "orders_count": row.orders_count or 0,
+                "total_spent": float(row.total_spent or 0),
+            }
+
+    # Batch default locations (first address per user, sorted by is_default/created_at)
+    location_map = {}
+    if user_ids:
+        addr_result = await db.execute(
+            select(Address.user_id, Address.city, Address.country)
+            .where(Address.user_id.in_(user_ids))
+            .order_by(Address.user_id, Address.is_default.desc(), Address.created_at.desc())
+        )
+        for row in addr_result.all():
+            if row.user_id not in location_map:
+                location_map[row.user_id] = {"city": row.city, "country": row.country}
+
     enriched = []
-    for user in result["items"]:
-        stats = await _get_customer_stats(db, user.id)
-        location = await _get_default_location(db, user.id)
+    for user in users:
+        stats = stats_map.get(user.id, {"orders_count": 0, "total_spent": 0})
+        location = location_map.get(user.id, {"city": None, "country": None})
         enriched.append(CustomerListItem(
             id=user.id,
             email=user.email,

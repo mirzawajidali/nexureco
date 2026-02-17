@@ -2,17 +2,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from app.models.cart import CartItem
-from app.models.product import Product, ProductVariant, ProductImage, ProductOption, ProductOptionValue
+from app.models.product import Product, ProductVariant, VariantOptionValue, ProductOptionValue
 from app.models.user import User
 from app.core.exceptions import NotFoundException, BadRequestException
 
 
-async def _build_cart_item_out(item: CartItem, db: AsyncSession) -> dict:
-    """Build cart item response with product/variant details."""
-    result = await db.execute(
-        select(Product).options(selectinload(Product.images)).where(Product.id == item.product_id)
-    )
-    product = result.scalar_one_or_none()
+def _build_cart_item_out(item: CartItem) -> dict:
+    """Build cart item response from eagerly-loaded relationships (zero queries)."""
+    product = item.product
     if not product:
         raise NotFoundException("Product not found")
 
@@ -24,39 +21,21 @@ async def _build_cart_item_out(item: CartItem, db: AsyncSession) -> dict:
     variant_info = None
     stock_available = None
 
-    if item.variant_id:
-        var_result = await db.execute(
-            select(ProductVariant).where(ProductVariant.id == item.variant_id)
-        )
-        variant = var_result.scalar_one_or_none()
-        if variant:
-            if variant.price is not None:
-                unit_price = float(variant.price)
-            stock_available = variant.stock_quantity
-            if variant.image_url:
-                primary_img = variant.image_url
+    variant = item.variant
+    if variant:
+        if variant.price is not None:
+            unit_price = float(variant.price)
+        stock_available = variant.stock_quantity
+        if variant.image_url:
+            primary_img = variant.image_url
 
-            # Build variant info string
-            from sqlalchemy.orm import selectinload as sl
-            from app.models.product import VariantOptionValue
-            vov_result = await db.execute(
-                select(VariantOptionValue).where(VariantOptionValue.variant_id == variant.id)
-            )
-            vov_rows = vov_result.scalars().all()
-            parts = []
-            for vov in vov_rows:
-                ov_res = await db.execute(
-                    select(ProductOptionValue).where(ProductOptionValue.id == vov.option_value_id)
-                )
-                ov = ov_res.scalar_one_or_none()
-                if ov:
-                    opt_res = await db.execute(
-                        select(ProductOption).where(ProductOption.id == ov.option_id)
-                    )
-                    opt = opt_res.scalar_one_or_none()
-                    if opt:
-                        parts.append(f"{opt.name}: {ov.value}")
-            variant_info = ", ".join(parts) if parts else None
+        # Build variant info from eagerly-loaded relationships
+        parts = []
+        for vov in variant.option_values:
+            ov = vov.option_value
+            if ov and ov.option:
+                parts.append(f"{ov.option.name}: {ov.value}")
+        variant_info = ", ".join(parts) if parts else None
 
     return {
         "id": item.id,
@@ -73,16 +52,30 @@ async def _build_cart_item_out(item: CartItem, db: AsyncSession) -> dict:
     }
 
 
+def _cart_eager_options():
+    """Eager loading options to load the full cart item graph in 1 query."""
+    return [
+        selectinload(CartItem.product).selectinload(Product.images),
+        selectinload(CartItem.variant)
+            .selectinload(ProductVariant.option_values)
+            .selectinload(VariantOptionValue.option_value)
+            .selectinload(ProductOptionValue.option),
+    ]
+
+
 async def get_cart(db: AsyncSession, user: User) -> dict:
     result = await db.execute(
-        select(CartItem).where(CartItem.user_id == user.id).order_by(CartItem.created_at)
+        select(CartItem)
+        .options(*_cart_eager_options())
+        .where(CartItem.user_id == user.id)
+        .order_by(CartItem.created_at)
     )
     items = result.scalars().all()
 
     cart_items = []
     subtotal = 0
     for item in items:
-        item_out = await _build_cart_item_out(item, db)
+        item_out = _build_cart_item_out(item)
         cart_items.append(item_out)
         subtotal += item_out["total_price"]
 

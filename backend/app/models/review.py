@@ -34,7 +34,7 @@ class ReviewImage(Base):
     __tablename__ = "review_images"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    review_id = Column(Integer, ForeignKey("reviews.id", ondelete="CASCADE"), nullable=False)
+    review_id = Column(Integer, ForeignKey("reviews.id", ondelete="CASCADE"), nullable=False, index=True)
     url = Column(String(500), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

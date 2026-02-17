@@ -53,11 +53,19 @@ async def get_product_reviews(
     )
     result = await paginate(db, query, page, page_size)
 
-    items = []
-    for review in result["items"]:
-        user = await db.get(User, review.user_id)
-        items.append(_build_review_out(review, user))
-    result["items"] = items
+    # Batch-load all users in one query instead of N individual queries
+    reviews = result["items"]
+    user_ids = list({r.user_id for r in reviews})
+    if user_ids:
+        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        user_map = {u.id: u for u in users_result.scalars()}
+    else:
+        user_map = {}
+
+    result["items"] = [
+        _build_review_out(review, user_map.get(review.user_id))
+        for review in reviews
+    ]
     return result
 
 
@@ -73,17 +81,14 @@ async def get_review_summary(db: AsyncSession, product_id: int) -> dict:
     avg_rating = float(row[0]) if row[0] else 0
     total_reviews = row[1]
 
-    # Rating breakdown
-    breakdown = {}
-    for i in range(1, 6):
-        count_result = await db.execute(
-            select(func.count(Review.id)).where(
-                Review.product_id == product_id,
-                Review.is_approved == True,
-                Review.rating == i,
-            )
-        )
-        breakdown[str(i)] = count_result.scalar() or 0
+    # Rating breakdown — single grouped query instead of 5 separate queries
+    breakdown_result = await db.execute(
+        select(Review.rating, func.count(Review.id))
+        .where(Review.product_id == product_id, Review.is_approved == True)
+        .group_by(Review.rating)
+    )
+    breakdown_map = dict(breakdown_result.all())
+    breakdown = {str(i): breakdown_map.get(i, 0) for i in range(1, 6)}
 
     return {
         "avg_rating": round(avg_rating, 1),

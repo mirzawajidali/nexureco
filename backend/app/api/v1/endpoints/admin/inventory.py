@@ -9,7 +9,7 @@ from app.core.exceptions import NotFoundException, BadRequestException
 from app.models.user import User
 from app.models.product import (
     ProductVariant, Product, ProductImage,
-    VariantOptionValue, ProductOptionValue, ProductOption,
+    VariantOptionValue, ProductOptionValue,
 )
 from app.models.media import InventoryLog
 from app.schemas.common import PaginatedResponse, MessageResponse
@@ -59,7 +59,12 @@ async def list_inventory(
     query = (
         select(ProductVariant)
         .join(Product, ProductVariant.product_id == Product.id)
-        .options(selectinload(ProductVariant.option_values))
+        .options(
+            selectinload(ProductVariant.option_values)
+                .selectinload(VariantOptionValue.option_value),
+            selectinload(ProductVariant.product)
+                .selectinload(Product.images),
+        )
         .order_by(Product.name.asc(), ProductVariant.id.asc())
     )
 
@@ -71,38 +76,26 @@ async def list_inventory(
 
     result = await paginate(db, query, page=page, page_size=page_size)
 
-    # Build response items with product name, variant title, image
+    # Build response from eagerly-loaded relationships (zero extra queries)
     items = []
     for variant in result["items"]:
-        product = await db.get(Product, variant.product_id)
+        product = variant.product
         product_name = product.name if product else "Unknown"
 
-        # Get variant option values as title (e.g., "Black", "S / Red")
+        # Build variant title from loaded option values
         variant_title = None
         if variant.option_values:
-            ov_ids = [ov.option_value_id for ov in variant.option_values]
-            if ov_ids:
-                ov_result = await db.execute(
-                    select(ProductOptionValue.value)
-                    .where(ProductOptionValue.id.in_(ov_ids))
-                    .order_by(ProductOptionValue.id)
-                )
-                values = [row[0] for row in ov_result.all()]
-                if values:
-                    variant_title = " / ".join(values)
+            values = [vov.option_value.value for vov in variant.option_values if vov.option_value]
+            if values:
+                variant_title = " / ".join(values)
 
-        # Get primary image
+        # Get primary image from loaded product images
         primary_image = None
-        if product:
-            img_result = await db.execute(
-                select(ProductImage.url)
-                .where(ProductImage.product_id == product.id)
-                .order_by(ProductImage.is_primary.desc(), ProductImage.display_order.asc())
-                .limit(1)
+        if product and product.images:
+            primary_image = next(
+                (img.url for img in product.images if img.is_primary),
+                product.images[0].url if product.images else None,
             )
-            img_row = img_result.first()
-            if img_row:
-                primary_image = img_row[0]
 
         items.append(
             InventoryItem(
@@ -110,7 +103,7 @@ async def list_inventory(
                 product_id=variant.product_id,
                 product_name=product_name,
                 variant_title=variant_title,
-                primary_image=primary_image if variant.image_url is None else variant.image_url,
+                primary_image=variant.image_url or primary_image,
                 sku=variant.sku,
                 stock_quantity=variant.stock_quantity,
                 low_stock_threshold=variant.low_stock_threshold,

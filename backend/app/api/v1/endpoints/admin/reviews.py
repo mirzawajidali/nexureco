@@ -39,24 +39,26 @@ async def list_reviews(
     admin: User = require_module("reviews"),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Review).order_by(Review.created_at.desc())
+    query = (
+        select(Review)
+        .options(selectinload(Review.product), selectinload(Review.user))
+        .order_by(Review.created_at.desc())
+    )
     if is_approved is not None:
         query = query.where(Review.is_approved == is_approved)
 
     result = await paginate(db, query, page=page, page_size=page_size)
 
-    # Build items with product name and user name
+    # Build items from eagerly-loaded relationships (zero extra queries)
     items = []
     for review in result["items"]:
-        product = await db.get(Product, review.product_id)
-        user = await db.get(User, review.user_id)
         items.append(
             AdminReviewItem(
                 id=review.id,
                 product_id=review.product_id,
-                product_name=product.name if product else "Unknown",
+                product_name=review.product.name if review.product else "Unknown",
                 user_id=review.user_id,
-                user_name=user.first_name if user else "Unknown",
+                user_name=review.user.first_name if review.user else "Unknown",
                 rating=review.rating,
                 title=review.title,
                 comment=review.comment,

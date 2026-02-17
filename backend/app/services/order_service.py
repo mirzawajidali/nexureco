@@ -6,8 +6,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.models.cart import CartItem
-from app.models.product import Product, ProductVariant, ProductImage, ProductOption, ProductOptionValue
-from app.models.product import VariantOptionValue
+from app.models.product import Product, ProductVariant, ProductImage
+from app.services.variant_helpers import build_variant_info
 from app.models.media import InventoryLog
 from app.models.user import User
 from app.schemas.order import CheckoutRequest, TrackOrderRequest
@@ -159,24 +159,8 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
             if variant.image_url:
                 image_url = variant.image_url
 
-            # Build variant info
-            vov_result = await db.execute(
-                select(VariantOptionValue).where(VariantOptionValue.variant_id == variant.id)
-            )
-            parts = []
-            for vov in vov_result.scalars().all():
-                ov_res = await db.execute(
-                    select(ProductOptionValue).where(ProductOptionValue.id == vov.option_value_id)
-                )
-                ov = ov_res.scalar_one_or_none()
-                if ov:
-                    opt_res = await db.execute(
-                        select(ProductOption).where(ProductOption.id == ov.option_id)
-                    )
-                    opt = opt_res.scalar_one_or_none()
-                    if opt:
-                        parts.append(f"{opt.name}: {ov.value}")
-            variant_info = ", ".join(parts) if parts else None
+            # Build variant info (single JOIN query instead of nested loops)
+            variant_info = await build_variant_info(db, variant.id)
 
             # Deduct inventory
             variant.stock_quantity -= cart_item.quantity

@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from app.models.wishlist import Wishlist
-from app.models.product import Product, ProductImage
+from app.models.product import Product
 from app.core.exceptions import NotFoundException, ConflictException
 
 
@@ -13,15 +13,21 @@ async def get_wishlist(db: AsyncSession, user_id: int) -> list[dict]:
         .order_by(Wishlist.created_at.desc())
     )
     items = result.scalars().all()
+    if not items:
+        return []
+
+    # Batch-load all products in one query
+    product_ids = [item.product_id for item in items]
+    products_result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.images))
+        .where(Product.id.in_(product_ids))
+    )
+    product_map = {p.id: p for p in products_result.scalars()}
 
     wishlist_items = []
     for item in items:
-        prod_result = await db.execute(
-            select(Product)
-            .options(selectinload(Product.images))
-            .where(Product.id == item.product_id)
-        )
-        product = prod_result.scalar_one_or_none()
+        product = product_map.get(item.product_id)
         if not product:
             continue
 

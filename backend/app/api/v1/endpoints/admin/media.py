@@ -35,17 +35,23 @@ async def list_media(
 
     result = await paginate(db, query, page, page_size)
 
-    # For each file, find linked products via ProductImage.url match
-    items_out = []
-    for mf in result["items"]:
+    # Batch-load all linked products in one query (instead of N separate queries)
+    media_files = result["items"]
+    urls = [mf.url for mf in media_files]
+    link_map: dict[str, list[dict]] = {url: [] for url in urls}
+    if urls:
         linked = await db.execute(
-            select(Product.id, Product.name)
-            .join(ProductImage, ProductImage.product_id == Product.id)
-            .where(ProductImage.url == mf.url)
+            select(ProductImage.url, Product.id, Product.name)
+            .join(Product, ProductImage.product_id == Product.id)
+            .where(ProductImage.url.in_(urls))
             .distinct()
         )
-        products = [{"id": r.id, "name": r.name} for r in linked.all()]
+        for row in linked.all():
+            if row.url in link_map:
+                link_map[row.url].append({"id": row.id, "name": row.name})
 
+    items_out = []
+    for mf in media_files:
         items_out.append({
             "id": mf.id,
             "url": mf.url,
@@ -56,7 +62,7 @@ async def list_media(
             "height": mf.height,
             "alt_text": mf.alt_text,
             "created_at": mf.created_at,
-            "linked_products": products,
+            "linked_products": link_map.get(mf.url, []),
         })
 
     result["items"] = items_out

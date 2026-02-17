@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.collection import Collection, CollectionProduct
+from sqlalchemy.orm import selectinload
 from app.models.product import Product, ProductImage
 from app.schemas.collection import CollectionCreate, CollectionUpdate
 from app.utils.slug import generate_unique_slug
@@ -54,26 +55,22 @@ async def get_collection_detail(db: AsyncSession, collection_id: int) -> dict:
     )
     product_count = count_result.scalar() or 0
 
-    # Get products in this collection
+    # Get products with images eagerly loaded (single query instead of N+1)
     products_result = await db.execute(
         select(Product)
+        .options(selectinload(Product.images))
         .join(CollectionProduct, CollectionProduct.product_id == Product.id)
         .where(CollectionProduct.collection_id == collection_id)
         .order_by(CollectionProduct.display_order, Product.name)
     )
     products = products_result.scalars().all()
 
-    # Get first image for each product
     product_items = []
     for p in products:
-        img_result = await db.execute(
-            select(ProductImage.url)
-            .where(ProductImage.product_id == p.id)
-            .order_by(ProductImage.display_order)
-            .limit(1)
+        img_url = next(
+            (img.url for img in (p.images or []) if img.is_primary),
+            p.images[0].url if p.images else None,
         )
-        img_url = img_result.scalar_one_or_none()
-
         product_items.append({
             "id": p.id,
             "name": p.name,

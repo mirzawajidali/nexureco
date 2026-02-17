@@ -64,8 +64,8 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
-    variant_id = Column(Integer, ForeignKey("product_variants.id", ondelete="SET NULL"), nullable=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+    variant_id = Column(Integer, ForeignKey("product_variants.id", ondelete="SET NULL"), nullable=True, index=True)
     product_name = Column(String(300), nullable=False)
     variant_info = Column(String(200), nullable=True)
     sku = Column(String(100), nullable=True)

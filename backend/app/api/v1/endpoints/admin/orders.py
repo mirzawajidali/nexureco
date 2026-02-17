@@ -14,8 +14,8 @@ from app.core.dependencies import require_module
 from app.core.exceptions import NotFoundException, BadRequestException
 from app.models.user import User
 from app.models.order import Order, OrderItem, OrderStatusHistory
-from app.models.product import Product, ProductVariant, ProductImage, ProductOption, ProductOptionValue
-from app.models.product import VariantOptionValue
+from app.models.product import Product, ProductVariant, ProductImage
+from app.services.variant_helpers import build_variant_info
 from app.models.media import InventoryLog
 from app.schemas.order import OrderOut, OrderListItem
 from app.schemas.common import PaginatedResponse, MessageResponse
@@ -125,24 +125,8 @@ async def admin_create_order(
                 if variant.image_url:
                     image_url = variant.image_url
 
-                # Build variant info
-                vov_result = await db.execute(
-                    select(VariantOptionValue).where(VariantOptionValue.variant_id == variant.id)
-                )
-                parts = []
-                for vov in vov_result.scalars().all():
-                    ov_res = await db.execute(
-                        select(ProductOptionValue).where(ProductOptionValue.id == vov.option_value_id)
-                    )
-                    ov = ov_res.scalar_one_or_none()
-                    if ov:
-                        opt_res = await db.execute(
-                            select(ProductOption).where(ProductOption.id == ov.option_id)
-                        )
-                        opt = opt_res.scalar_one_or_none()
-                        if opt:
-                            parts.append(f"{opt.name}: {ov.value}")
-                variant_info = ", ".join(parts) if parts else None
+                # Build variant info (single JOIN query instead of nested loops)
+                variant_info = await build_variant_info(db, variant.id)
 
                 # Deduct inventory
                 variant.stock_quantity -= item_data.quantity
@@ -381,13 +365,20 @@ async def list_orders(
 
     result = await paginate(db, query, page=page, page_size=page_size)
 
-    # Build list items with enriched data
-    items = []
-    for order in result["items"]:
-        count_result = await db.execute(
-            select(func.count()).select_from(OrderItem).where(OrderItem.order_id == order.id)
+    # Batch-load item counts for all orders (1 query instead of N)
+    orders = result["items"]
+    order_ids = [o.id for o in orders]
+    count_map = {}
+    if order_ids:
+        counts = await db.execute(
+            select(OrderItem.order_id, func.count(OrderItem.id))
+            .where(OrderItem.order_id.in_(order_ids))
+            .group_by(OrderItem.order_id)
         )
-        item_count = count_result.scalar() or 0
+        count_map = dict(counts.all())
+
+    items = []
+    for order in orders:
         items.append(
             OrderListItem(
                 id=order.id,
@@ -395,7 +386,7 @@ async def list_orders(
                 status=order.status,
                 payment_status=order.payment_status,
                 total=float(order.total),
-                item_count=item_count,
+                item_count=count_map.get(order.id, 0),
                 customer_name=_build_customer_name(order),
                 delivery_method="Standard",
                 created_at=order.created_at,

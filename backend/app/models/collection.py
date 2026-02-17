@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON,
+    Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -33,6 +33,10 @@ class CollectionProduct(Base):
     collection_id = Column(Integer, ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True)
     display_order = Column(Integer, default=0)
+
+    __table_args__ = (
+        Index("ix_collection_products_product_id", "product_id"),
+    )
 
     collection = relationship("Collection", back_populates="products")
     product = relationship("Product", back_populates="collections")
