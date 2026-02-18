@@ -45,7 +45,7 @@ export default function BrandStory() {
 
             {/* CTA */}
             <Link
-              to="/page/about"
+              to="/about"
               className="inline-flex items-center gap-3 group"
             >
               <span className="text-xs font-heading font-bold uppercase tracking-[0.15em] text-white group-hover:text-gray-300 transition-colors">

@@ -22,7 +22,7 @@ const FALLBACK_FOOTER_LINKS = {
     { label: 'Size Guide', href: '/size-guide' },
   ],
   'COMPANY': [
-    { label: 'About Us', href: '/page/about' },
+    { label: 'About Us', href: '/about' },
     { label: 'Contact Us', href: '/contact' },
     { label: 'Careers', href: '/page/careers' },
     { label: 'Privacy Policy', href: '/page/privacy' },
