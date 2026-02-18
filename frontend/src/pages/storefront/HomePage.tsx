@@ -52,11 +52,11 @@ export default function HomePage() {
       </Helmet>
 
       <HeroBanner slides={heroSlides} />
-      <FeaturedCollections />
       <ShopByCollection />
       <TrendingProducts />
       <StillInterested />
       <BrandStory />
+      <FeaturedCollections />
       <NewsletterSection />
     </>
   );

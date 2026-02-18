@@ -22,7 +22,7 @@ function CollectionTile({
     <Link
       to={`/collections/${col.slug}`}
       className={`group relative overflow-hidden bg-[#eceff1] block ${
-        featured ? 'aspect-[4/5] sm:aspect-auto sm:h-full' : 'aspect-[4/5]'
+        featured ? 'aspect-[3/4] sm:aspect-auto sm:h-full sm:min-h-[600px]' : 'aspect-[3/4]'
       }`}
     >
       {/* Image */}
