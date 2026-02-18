@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.core.middleware import setup_middleware
 from app.api.v1.router import api_router
+from app.api.v1.endpoints.sitemaps import router as seo_router
 from app.db.database import engine, Base, AsyncSessionLocal
 from app.db.redis import init_redis, close_redis
 from app.db.elasticsearch import init_elasticsearch, close_elasticsearch
@@ -126,6 +127,9 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 
 # API Routes
 app.include_router(api_router)
+
+# SEO Routes (sitemap.xml, robots.txt at root level)
+app.include_router(seo_router)
 
 
 @app.get("/")

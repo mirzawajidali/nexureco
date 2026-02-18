@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Trusted Hosts
     TRUSTED_HOSTS: str = "*"
 
+    # Site URL (used for sitemaps, emails, etc.)
+    SITE_URL: str = "http://localhost:5173"
+
     # Elasticsearch
     ELASTICSEARCH_URL: str = "http://localhost:9200"
 
