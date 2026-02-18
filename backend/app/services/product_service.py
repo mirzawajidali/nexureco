@@ -27,11 +27,11 @@ def _build_list_item(product: Product) -> dict:
     if not primary_img and product.images:
         primary_img = product.images[0].url
     total_stock = sum(v.stock_quantity for v in (product.variants or []))
-    variant_count = len(product.variants or [])
     # Collect unique variant images for hover thumbnails
     variant_images = list(dict.fromkeys(
         v.image_url for v in (product.variants or []) if v.image_url
     ))
+    variant_count = len(variant_images)
     return {
         "id": product.id,
         "name": product.name,
