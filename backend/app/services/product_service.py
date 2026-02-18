@@ -446,13 +446,32 @@ async def delete_product_image(db: AsyncSession, product_id: int, image_id: int)
 
 async def search_suggestions(db: AsyncSession, q: str, limit: int = 8) -> list[dict]:
     search_term = f"%{q}%"
+    primary_img = (
+        select(ProductImage.url)
+        .where(ProductImage.product_id == Product.id, ProductImage.is_primary == True)
+        .correlate(Product)
+        .limit(1)
+        .scalar_subquery()
+    )
+    first_img = (
+        select(ProductImage.url)
+        .where(ProductImage.product_id == Product.id)
+        .correlate(Product)
+        .order_by(ProductImage.display_order)
+        .limit(1)
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(Product.name, Product.slug)
+        select(
+            Product.name,
+            Product.slug,
+            func.coalesce(primary_img, first_img).label("image"),
+        )
         .where(Product.status == "active", Product.name.ilike(search_term))
         .order_by(Product.total_sold.desc())
         .limit(limit)
     )
-    return [{"name": row.name, "slug": row.slug} for row in result.all()]
+    return [{"name": row.name, "slug": row.slug, "image": row.image} for row in result.all()]
 
 
 async def get_products_by_category(

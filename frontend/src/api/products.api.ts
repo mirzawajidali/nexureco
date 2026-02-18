@@ -46,7 +46,7 @@ export const searchApi = {
     apiClient.get<PaginatedResponse<ProductListItem>>('/search', { params }),
 
   suggestions: (q: string) =>
-    apiClient.get<{ name: string; slug: string }[]>('/search/suggestions', { params: { q } }),
+    apiClient.get<{ name: string; slug: string; image: string | null }[]>('/search/suggestions', { params: { q } }),
 };
 
 export const categoriesApi = {

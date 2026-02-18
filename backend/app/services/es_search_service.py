@@ -157,11 +157,11 @@ async def es_search_suggestions(q: str, limit: int = 8) -> list[dict] | None:
                 },
                 "sort": ["_score", {"total_sold": "desc"}],
                 "size": limit,
-                "_source": ["name", "slug"],
+                "_source": ["name", "slug", "primary_image"],
             },
         )
         return [
-            {"name": hit["_source"]["name"], "slug": hit["_source"]["slug"]}
+            {"name": hit["_source"]["name"], "slug": hit["_source"]["slug"], "image": hit["_source"].get("primary_image")}
             for hit in response["hits"]["hits"]
         ]
     except Exception as e:

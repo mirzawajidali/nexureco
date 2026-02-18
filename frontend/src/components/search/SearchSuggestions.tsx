@@ -10,7 +10,7 @@ interface SearchSuggestionsProps {
 
 export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<{ name: string; slug: string }[]>([]);
+  const [suggestions, setSuggestions] = useState<{ name: string; slug: string; image: string | null }[]>([]);
   const debouncedQuery = useDebounce(query, 300);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -68,9 +68,18 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
                 navigate(`/product/${s.slug}`);
                 onClose();
               }}
-              className="block w-full text-left px-4 py-3 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
+              className="flex items-center gap-3 w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
             >
-              {s.name}
+              <div className="w-10 h-10 bg-gray-100 flex-shrink-0 overflow-hidden">
+                {s.image ? (
+                  <img src={s.image} alt={s.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                    <MagnifyingGlassIcon className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
+              <span className="text-sm truncate">{s.name}</span>
             </button>
           ))}
         </div>
