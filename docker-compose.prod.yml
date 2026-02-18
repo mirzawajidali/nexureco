@@ -104,26 +104,15 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - certbot_conf:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
+      - ./ssl:/etc/ssl/origin:ro
+      - ./nginx-origin-ssl.conf:/etc/nginx/conf.d/default.conf:ro
+    entrypoint: ["nginx", "-g", "daemon off;"]
     networks:
       - app-network
-
-  # Certbot — only used when DOMAIN is set
-  # Run manually: docker compose -f docker-compose.prod.yml run --rm certbot
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    profiles:
-      - ssl
 
 volumes:
   mysql_data:
   uploads_data:
-  certbot_conf:
-  certbot_www:
   es_data:
   redis_data:
 
