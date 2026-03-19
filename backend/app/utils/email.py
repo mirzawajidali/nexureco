@@ -27,7 +27,8 @@ _pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="email")
 
 def _render(template_name: str, context: dict) -> str:
     tpl = _env.get_template(template_name)
-    return tpl.render(app_name=settings.APP_NAME, year=datetime.now().year, **context)
+    logo_url = f"{settings.SITE_URL}/static/images/logo.png"
+    return tpl.render(app_name=settings.APP_NAME, year=datetime.now().year, logo_url=logo_url, **context)
 
 
 def _send_sync(to: str, subject: str, html_body: str) -> None:

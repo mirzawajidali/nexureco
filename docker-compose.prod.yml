@@ -86,6 +86,7 @@ services:
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-100}
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SITE_URL: ${SITE_URL:-http://localhost}
       ELASTICSEARCH_URL: http://elasticsearch:9200
       REDIS_URL: redis://redis:6379/0
     volumes:

@@ -87,6 +87,7 @@ services:
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-5242880}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-100}
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
+      SITE_URL: ${SITE_URL:-http://localhost}
       ELASTICSEARCH_URL: http://elasticsearch:9200
       REDIS_URL: redis://redis:6379/0
     volumes:

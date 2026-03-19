@@ -123,6 +123,7 @@ setup_middleware(app)
 
 # Static files for uploads
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # API Routes
