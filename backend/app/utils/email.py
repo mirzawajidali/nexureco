@@ -43,8 +43,13 @@ def _send_sync(to: str, subject: str, html_body: str) -> None:
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.starttls()
+        if settings.SMTP_PORT == 465:
+            server_cls = smtplib.SMTP_SSL
+        else:
+            server_cls = smtplib.SMTP
+        with server_cls(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            if settings.SMTP_PORT != 465:
+                server.starttls()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
         logger.info("Email sent to %s: %s", to, subject)
