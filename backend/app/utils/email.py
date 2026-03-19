@@ -1,4 +1,5 @@
 import logging
+import random
 import smtplib
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -28,7 +29,15 @@ _pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="email")
 def _render(template_name: str, context: dict) -> str:
     tpl = _env.get_template(template_name)
     logo_url = "https://nexureco.com/assets/logo-rD11QX8g.png"
-    return tpl.render(app_name=settings.APP_NAME, year=datetime.now().year, logo_url=logo_url, **context)
+    taglines = [
+        "Wear the Future",
+        "Style Without Limits",
+        "Redefine Your Edge",
+        "Born to Stand Out",
+        "Where Style Meets Street",
+    ]
+    tagline = random.choice(taglines)
+    return tpl.render(app_name=settings.APP_NAME, year=datetime.now().year, logo_url=logo_url, tagline=tagline, **context)
 
 
 def _send_sync(to: str, subject: str, html_body: str) -> None:
