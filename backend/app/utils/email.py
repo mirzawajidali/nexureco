@@ -57,12 +57,15 @@ async def _fetch_recommended_products(limit: int = 4) -> list[dict]:
                 primary_img = next((img.url for img in p.images if img.is_primary), None)
                 if not primary_img and p.images:
                     primary_img = p.images[0].url
+                # Image URLs are stored as /uploads/..., prepend domain
+                assets_base = "https://nexureco.com"
+                full_image_url = f"{assets_base}{primary_img}" if primary_img else ""
                 items.append({
                     "name": p.name,
                     "price": f"Rs. {p.base_price:,.0f}",
                     "compare_at_price": f"Rs. {p.compare_at_price:,.0f}" if p.compare_at_price else None,
-                    "image_url": primary_img or "",
-                    "product_url": f"{settings.SITE_URL}/product/{p.slug}",
+                    "image_url": full_image_url,
+                    "product_url": f"{assets_base}/product/{p.slug}",
                 })
             return items
     except Exception:
@@ -80,7 +83,7 @@ def _render(template_name: str, context: dict, recommended_products: list[dict] 
         logo_url=logo_url,
         tagline=tagline,
         recommended_products=recommended_products or [],
-        site_url=settings.SITE_URL,
+        site_url="https://nexureco.com",
         **context,
     )
 
