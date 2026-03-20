@@ -1,8 +1,8 @@
 export const APP_NAME = 'nexure';
 export const APP_DESCRIPTION = 'Premium Fashion & Apparel';
 export const STORE_EMAIL = 'support@nexure.com';
-export const STORE_PHONE = '+92 300 1234567';
-export const STORE_ADDRESS = '123 Fashion Street, Lahore, Pakistan';
+export const STORE_PHONE = '+92 316 7936302';
+export const STORE_ADDRESS = 'Nexure Co, Ferozepur Road, Ichhra, Lahore';
 export const STORE_HOURS = 'Mon - Sat, 10am - 8pm PKT';
 export const FREE_SHIPPING_THRESHOLD = 5000;
 export const STANDARD_SHIPPING_COST = 200;
