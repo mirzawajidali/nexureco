@@ -28,6 +28,48 @@
     </td>
   </tr>
 
+  <!-- You May Also Like -->
+  {% if recommended_products %}
+  <tr>
+    <td style="background-color:#f8f8f8;padding:32px 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center" style="padding-bottom:20px;">
+            <span style="font-family:Helvetica,Arial,sans-serif;font-size:18px;font-weight:900;color:#000000;text-transform:uppercase;letter-spacing:1px;">You May Also Like</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                {% for product in recommended_products %}
+                <td width="{% if recommended_products|length == 4 %}25{% elif recommended_products|length == 3 %}33{% else %}50{% endif %}%" valign="top" style="padding:0 6px;text-align:center;">
+                  <a href="{{ product.product_url }}" style="text-decoration:none;color:#000000;">
+                    {% if product.image_url %}
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}" width="120" style="display:block;margin:0 auto 8px;width:100%;max-width:120px;height:auto;border:1px solid #eee;" />
+                    {% endif %}
+                    <span style="font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;display:block;line-height:1.3;margin-bottom:4px;">{{ product.name }}</span>
+                    {% if product.compare_at_price %}
+                    <span style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#999999;text-decoration:line-through;">{{ product.compare_at_price }}</span>
+                    {% endif %}
+                    <span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;color:#000000;">{{ product.price }}</span>
+                  </a>
+                </td>
+                {% endfor %}
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-top:20px;">
+            <a href="{{ site_url }}" style="display:inline-block;background-color:#000000;color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-decoration:none;padding:12px 32px;">Shop Now</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {% endif %}
+
   <!-- Footer -->
   <tr>
     <td style="background-color:#000000;padding:30px 40px;">

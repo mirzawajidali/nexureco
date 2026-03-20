@@ -450,7 +450,7 @@ async def update_order_status(
     await db.flush()
 
     # Send status update email to customer
-    _send_order_status_email(order, data.status, data.note)
+    await _send_order_status_email(order, data.status, data.note)
 
     # Refresh to include the new history entry
     await db.refresh(order, attribute_names=["status_history", "items"])

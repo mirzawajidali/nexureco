@@ -35,7 +35,7 @@ async def create_message(db: AsyncSession, data: ContactCreate) -> dict:
 
     # Send admin alert email
     sender_name = f"{data.first_name} {data.last_name}".strip()
-    send_email_background(
+    await send_email_background(
         to=_settings.EMAIL_FROM,
         subject=f"New Contact Message — {data.subject}",
         template_name="contact_alert_admin.html",

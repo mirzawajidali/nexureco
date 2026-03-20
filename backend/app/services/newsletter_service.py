@@ -27,7 +27,7 @@ async def subscribe(db: AsyncSession, email: str) -> dict:
     await db.flush()
 
     # Send welcome email
-    send_email_background(
+    await send_email_background(
         to=email,
         subject=f"Welcome to the {_settings.APP_NAME} Newsletter",
         template_name="newsletter_welcome.html",

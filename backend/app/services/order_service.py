@@ -49,10 +49,10 @@ def _build_order_email_context(order: Order, order_items: list[dict]) -> dict:
     }
 
 
-def _send_order_confirmation(order: Order, order_items: list[dict], customer_email: str) -> None:
+async def _send_order_confirmation(order: Order, order_items: list[dict], customer_email: str) -> None:
     ctx = _build_order_email_context(order, order_items)
     # Customer confirmation
-    send_email_background(
+    await send_email_background(
         to=customer_email,
         subject=f"Order Confirmed — {order.order_number}",
         template_name="order_confirmation.html",
@@ -61,7 +61,7 @@ def _send_order_confirmation(order: Order, order_items: list[dict], customer_ema
     # Admin new-order alert
     ctx["customer_email"] = customer_email
     ctx["customer_phone"] = order.shipping_phone or ""
-    send_email_background(
+    await send_email_background(
         to=_settings.EMAIL_FROM,
         subject=f"New Order — {order.order_number} (Rs. {float(order.total):.0f})",
         template_name="new_order_admin.html",
@@ -79,7 +79,7 @@ def _get_order_customer_email(order: Order) -> str | None:
     return order.guest_email
 
 
-def _send_order_status_email(
+async def _send_order_status_email(
     order: Order,
     status: str,
     note: str | None = None,
@@ -115,7 +115,7 @@ def _send_order_status_email(
         ctx["tracking_number"] = tracking_number or order.tracking_number
         ctx["tracking_url"] = tracking_url or order.tracking_url
 
-    send_email_background(to=email, subject=subject, template_name=template, context=ctx)
+    await send_email_background(to=email, subject=subject, template_name=template, context=ctx)
 
 
 async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest) -> Order:
@@ -254,7 +254,7 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
     # Send order confirmation + admin alert emails
     customer_email = user.email if user else data.guest_email
     if customer_email:
-        _send_order_confirmation(order, order_items, customer_email)
+        await _send_order_confirmation(order, order_items, customer_email)
 
     # Reload with relationships
     return await get_order_by_id(db, order.id)
@@ -341,7 +341,7 @@ async def cancel_order(db: AsyncSession, order_number: str, user_id: int) -> Ord
     await db.flush()
 
     # Send cancellation email
-    _send_order_status_email(order, "cancelled", "Cancelled by customer")
+    await _send_order_status_email(order, "cancelled", "Cancelled by customer")
 
     return await get_order_by_id(db, order.id)
 

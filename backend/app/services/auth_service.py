@@ -34,7 +34,7 @@ async def _create_and_send_otp(db: AsyncSession, user: User) -> None:
     db.add(otp)
     await db.flush()
 
-    send_email_background(
+    await send_email_background(
         to=user.email,
         subject=f"Your Verification Code — {settings.APP_NAME}",
         template_name="verify_otp.html",
@@ -66,7 +66,7 @@ async def register_user(
     await db.refresh(user)
 
     # Send welcome email
-    send_email_background(
+    await send_email_background(
         to=user.email,
         subject=f"Welcome to {settings.APP_NAME}",
         template_name="welcome.html",
@@ -227,7 +227,7 @@ async def create_password_reset_token(db: AsyncSession, email: str) -> str | Non
     await db.flush()
 
     # Send password reset email
-    send_email_background(
+    await send_email_background(
         to=user.email,
         subject=f"Reset Your Password — {settings.APP_NAME}",
         template_name="password_reset.html",
