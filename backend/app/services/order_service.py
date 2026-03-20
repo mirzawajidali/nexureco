@@ -375,7 +375,7 @@ async def cancel_order(db: AsyncSession, order_number: str, user_id: int) -> Ord
 
 
 async def track_order(db: AsyncSession, data: TrackOrderRequest) -> Order:
-    """Public order tracking — verifies email matches the order owner."""
+    """Public order tracking — verifies email if provided."""
     query = (
         select(Order)
         .options(
@@ -388,16 +388,17 @@ async def track_order(db: AsyncSession, data: TrackOrderRequest) -> Order:
     result = await db.execute(query)
     order = result.scalar_one_or_none()
     if not order:
-        raise NotFoundException("No order found with this order number and email")
+        raise NotFoundException("No order found with this order number")
 
-    # Verify email matches either the registered user's email or guest_email
-    email_lower = data.email.lower()
-    owner_email = None
-    if order.user:
-        owner_email = order.user.email.lower() if order.user.email else None
-    guest_email = order.guest_email.lower() if order.guest_email else None
+    # Verify email if provided
+    if data.email:
+        email_lower = data.email.lower()
+        owner_email = None
+        if order.user:
+            owner_email = order.user.email.lower() if order.user.email else None
+        guest_email = order.guest_email.lower() if order.guest_email else None
 
-    if email_lower != owner_email and email_lower != guest_email:
-        raise NotFoundException("No order found with this order number and email")
+        if email_lower != owner_email and email_lower != guest_email:
+            raise NotFoundException("No order found with this order number and email")
 
     return order

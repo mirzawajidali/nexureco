@@ -62,9 +62,9 @@ function TrackingLookupForm({
   });
 
   const mutation = useMutation({
-    mutationFn: (data: TrackFormData) => orderApi.track(data.order_number, data.email),
+    mutationFn: (data: TrackFormData) => orderApi.track(data.order_number, data.email || undefined),
     onSuccess: (res) => onResult(res.data),
-    onError: () => toast.error('No order found. Please check your order number and email.'),
+    onError: () => toast.error('No order found. Please check your order number.'),
   });
 
   return (
@@ -84,11 +84,11 @@ function TrackingLookupForm({
       </div>
       <div>
         <label className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 mb-2 block">
-          Email Address
+          Email Address <span className="text-gray-400 font-normal normal-case">(optional)</span>
         </label>
         <input
           type="email"
-          {...register('email', { required: 'Email is required' })}
+          {...register('email')}
           placeholder="Email used when placing the order"
           className="w-full border border-gray-300 px-4 py-3.5 text-sm focus:outline-none focus:border-brand-black transition-colors"
         />

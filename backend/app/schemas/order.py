@@ -4,7 +4,7 @@ from datetime import datetime
 
 class TrackOrderRequest(BaseModel):
     order_number: str = Field(min_length=1, max_length=30)
-    email: EmailStr
+    email: EmailStr | None = None
 
 
 class CheckoutItem(BaseModel):

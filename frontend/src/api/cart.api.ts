@@ -30,8 +30,8 @@ export const orderApi = {
   list: (page = 1) => client.get('/orders/', { params: { page } }),
   get: (orderNumber: string) => client.get(`/orders/${orderNumber}`),
   cancel: (orderNumber: string) => client.post(`/orders/${orderNumber}/cancel`),
-  track: (orderNumber: string, email: string) =>
-    client.post('/orders/track', { order_number: orderNumber, email }),
+  track: (orderNumber: string, email?: string) =>
+    client.post('/orders/track', { order_number: orderNumber, ...(email ? { email } : {}) }),
 };
 
 export const chatApi = {
