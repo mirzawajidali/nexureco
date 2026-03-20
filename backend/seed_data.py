@@ -915,7 +915,7 @@ async def seed_pages(session) -> list[Page]:
                 "<p>We offer nationwide delivery across Pakistan.</p>"
                 "<ul>"
                 "<li><strong>Standard Delivery:</strong> 3-5 business days - Rs. 200</li>"
-                "<li><strong>Free Shipping:</strong> On all orders above Rs. 3,000</li>"
+                "<li><strong>Free Shipping:</strong> On all orders above Rs. 5,000</li>"
                 "<li><strong>Same-Day Delivery:</strong> Available in Karachi, Lahore and Islamabad "
                 "for orders placed before 12 PM - Rs. 500</li>"
                 "</ul>"

@@ -318,7 +318,7 @@ export default function CartPage() {
                     <div className="flex items-center gap-3">
                       <ArrowPathIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="text-xs text-gray-500">
-                        30-day free returns
+                        7-day free returns
                       </span>
                     </div>
                     <div className="flex items-center gap-3">

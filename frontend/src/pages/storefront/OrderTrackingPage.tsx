@@ -514,7 +514,7 @@ export default function OrderTrackingPage() {
                     <ArrowPathIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-xs font-bold text-brand-black">Free Returns</p>
-                      <p className="text-xs text-gray-500">Within 30 days of delivery</p>
+                      <p className="text-xs text-gray-500">Within 7 days of delivery</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
