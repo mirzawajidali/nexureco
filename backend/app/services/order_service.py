@@ -36,10 +36,19 @@ def _build_shipping_address(order: Order) -> str:
 
 def _build_order_email_context(order: Order, order_items: list[dict]) -> dict:
     customer_name = f"{order.shipping_first_name or ''} {order.shipping_last_name or ''}".strip()
+    assets_base = "https://nexureco.com"
+    # Build email-friendly items with full image URLs
+    email_items = []
+    for item in order_items:
+        img = item.get("image_url") or ""
+        email_items.append({
+            **item,
+            "image_url": f"{assets_base}{img}" if img and img.startswith("/") else img,
+        })
     return {
         "order_number": order.order_number,
         "customer_name": customer_name or "Customer",
-        "items": order_items,
+        "items": email_items,
         "subtotal": float(order.subtotal),
         "shipping_cost": float(order.shipping_cost),
         "discount_amount": float(order.discount_amount),
@@ -91,11 +100,30 @@ async def _send_order_status_email(
         return
 
     customer_name = f"{order.shipping_first_name or ''} {order.shipping_last_name or ''}".strip() or "Customer"
+    assets_base = "https://nexureco.com"
+    email_items = []
+    if order.items:
+        for item in order.items:
+            img = item.image_url or ""
+            email_items.append({
+                "product_name": item.product_name,
+                "variant_info": item.variant_info,
+                "sku": item.sku,
+                "quantity": item.quantity,
+                "unit_price": float(item.unit_price),
+                "total_price": float(item.total_price),
+                "image_url": f"{assets_base}{img}" if img and img.startswith("/") else img,
+            })
     ctx = {
         "order_number": order.order_number,
         "customer_name": customer_name,
         "total": float(order.total),
-        "item_count": sum(1 for _ in order.items) if order.items else 0,
+        "subtotal": float(order.subtotal),
+        "shipping_cost": float(order.shipping_cost),
+        "discount_amount": float(order.discount_amount),
+        "item_count": len(email_items),
+        "items": email_items,
+        "shipping_address": _build_shipping_address(order),
         "reason": note,
     }
 

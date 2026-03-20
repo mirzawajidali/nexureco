@@ -115,8 +115,11 @@ def _send_sync(to: str, subject: str, html_body: str) -> None:
         logger.exception("Failed to send email to %s: %s", to, subject)
 
 
+_NO_RECOMMENDATIONS = {"password_reset.html", "verify_otp.html", "contact_alert_admin.html"}
+
+
 async def send_email_background(to: str, subject: str, template_name: str, context: dict) -> None:
     """Fetch recommended products (async), render, then send in background thread."""
-    recommended = await _fetch_recommended_products(4)
+    recommended = [] if template_name in _NO_RECOMMENDATIONS else await _fetch_recommended_products(4)
     html = _render(template_name, context, recommended_products=recommended)
     _pool.submit(_send_sync, to, subject, html)
