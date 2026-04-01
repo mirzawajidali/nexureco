@@ -94,7 +94,11 @@ export default function ProductPage() {
 
   const currentPrice = selectedVariant?.price ?? product?.base_price ?? 0;
   const currentComparePrice = selectedVariant?.compare_at_price ?? product?.compare_at_price;
-  const inStock = selectedVariant ? selectedVariant.stock_quantity > 0 : true;
+  const hasOptions = (product?.options?.length ?? 0) > 0;
+  const allOptionsSelected = hasOptions
+    ? Object.keys(selectedOptions).length === product!.options.length
+    : true;
+  const inStock = selectedVariant ? selectedVariant.stock_quantity > 0 : !hasOptions;
 
   // Identify color option for thumbnail swatches
   const colorOption = useMemo(() => {
@@ -152,8 +156,21 @@ export default function ProductPage() {
     };
   }, [lightboxOpen, goToPrev, goToNext]);
 
+  const [attemptedAdd, setAttemptedAdd] = useState(false);
+
   const handleAddToCart = () => {
     if (!product) return;
+
+    // Validate all options are selected for products with variants
+    if (hasOptions && !allOptionsSelected) {
+      setAttemptedAdd(true);
+      const missing = product.options
+        .filter((opt) => !selectedOptions[opt.id])
+        .map((opt) => opt.name);
+      toast.error(`Please select ${missing.join(', ')}`);
+      return;
+    }
+
     const variantInfo = product.options
       .map((opt) => {
         const val = opt.values.find((v) => v.id === selectedOptions[opt.id]);
@@ -181,11 +198,13 @@ export default function ProductPage() {
     const isColor = colorOption?.id === option.id;
     const selectedValueId = selectedOptions[option.id];
     const selectedLabel = option.values.find((v) => v.id === selectedValueId)?.value;
+    const showError = attemptedAdd && !selectedValueId;
 
     return (
       <div key={option.id} className="mb-8">
-        <h3 className="text-sm font-bold text-brand-black mb-4">
+        <h3 className={clsx('text-sm font-bold mb-4', showError ? 'text-error' : 'text-brand-black')}>
           {isColor ? 'Colors' : option.name}
+          {showError && <span className="font-normal ml-1">— Please select</span>}
         </h3>
 
         {isColor ? (
@@ -194,14 +213,17 @@ export default function ProductPage() {
               {colorVariantImages.map((cv) => (
                 <button
                   key={cv.valueId}
-                  onClick={() =>
-                    setSelectedOptions((prev) => ({ ...prev, [option.id]: cv.valueId }))
-                  }
+                  onClick={() => {
+                    setSelectedOptions((prev) => ({ ...prev, [option.id]: cv.valueId }));
+                    setAttemptedAdd(false);
+                  }}
                   className={clsx(
                     'w-[120px] aspect-[3/4] overflow-hidden transition-all',
                     selectedValueId === cv.valueId
                       ? 'border-b-[4px] border-brand-black'
-                      : 'border-b-[4px] border-transparent hover:border-gray-300'
+                      : showError
+                        ? 'border-b-[4px] border-error'
+                        : 'border-b-[4px] border-transparent hover:border-gray-300'
                   )}
                 >
                   {cv.image ? (
@@ -223,14 +245,17 @@ export default function ProductPage() {
             {option.values.map((val) => (
               <button
                 key={val.id}
-                onClick={() =>
-                  setSelectedOptions((prev) => ({ ...prev, [option.id]: val.id }))
-                }
+                onClick={() => {
+                  setSelectedOptions((prev) => ({ ...prev, [option.id]: val.id }));
+                  setAttemptedAdd(false);
+                }}
                 className={clsx(
                   'h-12 text-sm font-medium transition-colors text-center',
                   selectedValueId === val.id
                     ? 'border border-brand-black bg-white text-brand-black'
-                    : 'border border-transparent bg-[#eceff1] hover:border-brand-black text-brand-black'
+                    : showError
+                      ? 'border border-error bg-[#eceff1] text-brand-black'
+                      : 'border border-transparent bg-[#eceff1] hover:border-brand-black text-brand-black'
                 )}
               >
                 {val.value}
@@ -622,16 +647,16 @@ export default function ProductPage() {
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={!inStock}
+                  disabled={!inStock && allOptionsSelected}
                   className={clsx(
                     'flex-1 flex items-center justify-between px-6 h-[52px] text-sm font-bold uppercase tracking-wider transition-colors',
-                    inStock
-                      ? 'bg-brand-black text-white hover:bg-gray-800'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    !inStock && allOptionsSelected
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-brand-black text-white hover:bg-gray-800'
                   )}
                 >
-                  <span>{inStock ? 'Add to bag' : 'Out of Stock'}</span>
-                  {inStock && (
+                  <span>{!inStock && allOptionsSelected ? 'Out of Stock' : 'Add to bag'}</span>
+                  {(inStock || !allOptionsSelected) && (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
