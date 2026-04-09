@@ -10,6 +10,9 @@ build/
 venv/
 env/
 
+# Mobile App
+mobile 
+
 # Node
 node_modules/
 npm-debug.log*
