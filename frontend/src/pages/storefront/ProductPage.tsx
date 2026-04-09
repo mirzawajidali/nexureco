@@ -189,6 +189,16 @@ export default function ProductPage() {
       image: selectedVariant?.image_url || product.images?.[0]?.url || '',
       variantInfo: variantInfo || undefined,
     });
+    // TikTok Pixel: AddToCart event
+    if ((window as any).ttq) {
+      (window as any).ttq.track('AddToCart', {
+        content_id: product.id.toString(),
+        content_name: product.name,
+        content_type: 'product',
+        value: currentPrice * quantity,
+        currency: 'PKR',
+      });
+    }
     toast.success('Added to bag');
     setCartOpen(true);
   };

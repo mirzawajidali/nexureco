@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
@@ -19,6 +20,24 @@ export default function OrderConfirmationPage() {
   });
 
   const order: Order | undefined = data?.data;
+
+  // TikTok Pixel: Purchase event (fires once when order loads)
+  useEffect(() => {
+    if (order && (window as any).ttq) {
+      const orderValue = order.items.reduce(
+        (sum: number, item: { total_price: number }) => sum + item.total_price,
+        0,
+      );
+      (window as any).ttq.track('Purchase', {
+        content_id: order.order_number,
+        content_name: `Order ${order.order_number}`,
+        content_type: 'product',
+        value: orderValue,
+        currency: 'PKR',
+        num_items: order.items.length,
+      });
+    }
+  }, [order]);
 
   if (isLoading) {
     return (

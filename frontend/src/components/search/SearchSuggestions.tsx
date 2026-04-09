@@ -33,6 +33,10 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
     e.preventDefault();
     if (query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      // TikTok Pixel: Search event
+      if ((window as any).ttq) {
+        (window as any).ttq.track('Search', { query: query.trim() });
+      }
       onClose();
     }
   };

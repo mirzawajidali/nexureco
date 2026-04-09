@@ -67,6 +67,14 @@ export default function CheckoutPage() {
     setFormData(data);
     setCurrentStep(1);
     window.scrollTo(0, 0);
+    // TikTok Pixel: InitiateCheckout + AddPaymentInfo
+    if ((window as any).ttq) {
+      (window as any).ttq.track('InitiateCheckout', {
+        value: subtotal(),
+        currency: 'PKR',
+      });
+      (window as any).ttq.track('AddPaymentInfo');
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -84,6 +92,20 @@ export default function CheckoutPage() {
         })),
         coupon_code: couponCode || undefined,
       });
+      // TikTok Pixel: PlaceAnOrder + CompletePayment
+      if ((window as any).ttq) {
+        const orderValue = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        (window as any).ttq.track('PlaceAnOrder', {
+          content_type: 'product',
+          value: orderValue,
+          currency: 'PKR',
+        });
+        (window as any).ttq.track('CompletePayment', {
+          content_type: 'product',
+          value: orderValue,
+          currency: 'PKR',
+        });
+      }
       clearCart();
       navigate(`/order-confirmation/${response.data.order_number}`);
     } catch (err: unknown) {
