@@ -59,7 +59,7 @@ export default function ProductCard({
   return (
     <div className="group relative p-2 -m-2 border border-transparent hover:border-black transition-colors">
       {/* Image area — portrait ratio like Adidas cards */}
-      <Link to={`/product/${slug}`} className="block aspect-[3/4] bg-[#eceff1] overflow-hidden relative">
+      <Link to={`/product/${slug}`} className="block aspect-square bg-[#eceff1] overflow-hidden relative">
         {displayImage ? (
           <img
             src={displayImage}
