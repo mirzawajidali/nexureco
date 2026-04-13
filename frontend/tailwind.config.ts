@@ -47,7 +47,7 @@ const config: Config = {
         '120': '30rem',
       },
       maxWidth: {
-        '8xl': '88rem',
+        '8xl': '90rem',
       },
       animation: {
         'slide-in-right': 'slideInRight 0.3s ease-out',
