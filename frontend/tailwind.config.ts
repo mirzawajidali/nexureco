@@ -53,6 +53,8 @@ const config: Config = {
         'slide-in-right': 'slideInRight 0.3s ease-out',
         'slide-in-up': 'slideInUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
+        'marquee': 'marquee 30s linear infinite',
+        'marquee-fast': 'marquee 18s linear infinite',
       },
       keyframes: {
         slideInRight: {
@@ -66,6 +68,10 @@ const config: Config = {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

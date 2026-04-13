@@ -9,6 +9,8 @@ import TrendingProducts from '@/components/home/TrendingProducts';
 import BrandStory from '@/components/home/BrandStory';
 import NewsletterSection from '@/components/home/NewsletterSection';
 import StillInterested from '@/components/home/StillInterested';
+import MarqueeStrip from '@/components/home/MarqueeStrip';
+import PromoStrip from '@/components/home/PromoStrip';
 import { APP_NAME } from '@/utils/constants';
 import { bannersApi } from '@/api/pages.api';
 
@@ -52,9 +54,19 @@ export default function HomePage() {
       </Helmet>
 
       <HeroBanner slides={heroSlides} />
+      <MarqueeStrip variant="dark" />
       <ShopByCollection />
+      <PromoStrip
+        eyebrow="Members Only"
+        title="Unlock 15% Off Your First Drop"
+        subtitle="Join the club for early access, exclusive releases, and free delivery perks."
+        ctaText="Join free"
+        ctaLink="/register"
+        variant="accent"
+      />
       <TrendingProducts />
       <StillInterested />
+      <MarqueeStrip variant="light" speed="fast" />
       <BrandStory />
       <FeaturedCollections />
       <NewsletterSection />
