@@ -17,7 +17,7 @@ interface Collection {
 
 function CollectionCard({ col }: { col: Collection }) {
   return (
-    <Link to={`/collections/${col.slug}`} className="group block">
+    <Link to={`/collections/${col.slug}`} className="group block p-2 -m-2 border border-transparent hover:border-black transition-colors">
       {/* Image */}
       <div className="relative overflow-hidden bg-[#eceff1] aspect-[3/4]">
         {col.image_url ? (

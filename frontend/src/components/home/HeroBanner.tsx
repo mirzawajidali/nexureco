@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
+import { Autoplay, EffectFade } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import 'swiper/css/pagination';
@@ -165,22 +165,34 @@ function SlideContent({ slide, isActive }: { slide: HeroBannerSlide; isActive: b
 export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 5000 }: HeroBannerProps) {
   const swiperRef = useRef<SwiperType | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const onSlideChange = useCallback((swiper: SwiperType) => {
     setActiveIndex(swiper.realIndex);
   }, []);
+
+  const togglePlay = useCallback(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    if (isPlaying) {
+      swiper.autoplay?.stop();
+      setIsPlaying(false);
+    } else {
+      swiper.autoplay?.start();
+      setIsPlaying(true);
+    }
+  }, [isPlaying]);
 
   const singleSlide = slides.length <= 1;
 
   return (
     <section className="relative w-full h-[75vh] md:h-[85vh] lg:h-[92vh] bg-black overflow-hidden">
       <Swiper
-        modules={[Autoplay, Pagination, EffectFade]}
+        modules={[Autoplay, EffectFade]}
         effect="fade"
         fadeEffect={{ crossFade: true }}
         speed={800}
         autoplay={singleSlide ? false : { delay: autoplayDelay, disableOnInteraction: false, pauseOnMouseEnter: true }}
-        pagination={singleSlide ? false : { clickable: true, el: '.hero-pagination' }}
         loop={!singleSlide}
         onSwiper={(swiper) => { swiperRef.current = swiper; }}
         onSlideChange={onSlideChange}
@@ -200,33 +212,47 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
         ))}
       </Swiper>
 
-      {/* Custom pagination */}
+      {/* Slider controls — bottom right corner */}
       {!singleSlide && (
-        <div className="hero-pagination absolute bottom-6 left-0 right-0 z-20 flex justify-center gap-2" />
-      )}
-
-      {/* Prev / Next arrows (desktop only) */}
-      {!singleSlide && (
-        <>
+        <div className="absolute bottom-5 right-5 md:bottom-6 md:right-6 lg:bottom-8 lg:right-8 z-20 flex items-center gap-2">
           <button
-            onClick={() => swiperRef.current?.slidePrev()}
-            className="hero-nav-btn left-4 lg:left-8"
-            aria-label="Previous slide"
+            type="button"
+            onClick={togglePlay}
+            aria-label={isPlaying ? 'Pause slideshow' : 'Play slideshow'}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/40 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            {isPlaying ? (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="5" width="4" height="14" rx="1" />
+                <rect x="14" y="5" width="4" height="14" rx="1" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => swiperRef.current?.slidePrev()}
+            aria-label="Previous slide"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/40 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
           <button
+            type="button"
             onClick={() => swiperRef.current?.slideNext()}
-            className="hero-nav-btn right-4 lg:right-8"
             aria-label="Next slide"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/40 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>
-        </>
+        </div>
       )}
     </section>
   );
