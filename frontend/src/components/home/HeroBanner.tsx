@@ -93,11 +93,11 @@ function SlideMedia({ slide, isFirst }: { slide: HeroBannerSlide; isFirst: boole
 }
 
 function SlideContent({ slide, isActive }: { slide: HeroBannerSlide; isActive: boolean }) {
-  const centered = slide.textAlign === 'center';
+  const centered = slide.textAlign !== 'left';
 
   return (
-    <div className="relative h-full flex items-end z-10">
-      <div className={`container-custom w-full pb-16 md:pb-20 lg:pb-24 ${centered ? 'text-center' : ''}`}>
+    <div className={`relative h-full flex z-10 ${centered ? 'items-center' : 'items-end'}`}>
+      <div className={`container-custom w-full ${centered ? 'text-center' : 'pb-16 md:pb-20 lg:pb-24'}`}>
         <div className={`${centered ? 'max-w-3xl mx-auto' : 'max-w-2xl'}`}>
           {/* Eyebrow */}
           {slide.eyebrow && (
