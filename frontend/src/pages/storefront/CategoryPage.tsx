@@ -241,22 +241,6 @@ export default function CategoryPage() {
         )}
       </div>
 
-      {/* Green Sign-Up Banner — full bleed */}
-      <section className="bg-[#0e4d3c] text-white">
-        <div className="container-custom py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="font-heading font-bold uppercase tracking-wide text-base sm:text-lg text-center sm:text-left">
-            Join {APP_NAME} & get 15% off your first order
-          </p>
-          <Link
-            to="/register"
-            className="inline-flex items-center gap-2 bg-white text-brand-black px-6 py-3 font-heading font-bold uppercase text-sm tracking-wider hover:bg-gray-100 transition-colors"
-          >
-            Sign up for free
-            <span aria-hidden>→</span>
-          </Link>
-        </div>
-      </section>
-
       {/* Mobile/Tablet Filters Overlay */}
       {showMobileFilters && (
         <div className="fixed inset-0 z-50">
