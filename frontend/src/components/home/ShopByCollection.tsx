@@ -1,5 +1,9 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import type { Swiper as SwiperType } from 'swiper';
 import { collectionsApi } from '@/api/products.api';
 import { RectangleStackIcon } from '@heroicons/react/24/outline';
 
@@ -11,68 +15,38 @@ interface Collection {
   product_count: number;
 }
 
-function CollectionTile({
-  col,
-  featured = false,
-}: {
-  col: Collection;
-  featured?: boolean;
-}) {
+function CollectionCard({ col }: { col: Collection }) {
   return (
-    <Link
-      to={`/collections/${col.slug}`}
-      className={`group relative overflow-hidden bg-[#eceff1] block ${
-        featured ? 'aspect-[3/4] sm:aspect-auto sm:h-full sm:min-h-[600px]' : 'aspect-[3/4]'
-      }`}
-    >
+    <Link to={`/collections/${col.slug}`} className="group block">
       {/* Image */}
-      {col.image_url ? (
-        <img
-          src={col.image_url}
-          alt={col.name}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          loading="lazy"
-          sizes={featured ? '(max-width: 640px) 100vw, 50vw' : '(max-width: 640px) 50vw, 25vw'}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <RectangleStackIcon className="w-16 h-16 text-gray-300" />
-        </div>
-      )}
+      <div className="relative overflow-hidden bg-[#eceff1] aspect-[3/4]">
+        {col.image_url ? (
+          <img
+            src={col.image_url}
+            alt={col.name}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            loading="lazy"
+            sizes="(max-width: 640px) 80vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <RectangleStackIcon className="w-16 h-16 text-gray-300" />
+          </div>
+        )}
+      </div>
 
-      {/* Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent group-hover:from-black/80 transition-all duration-300" />
-
-      {/* Content */}
-      <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-8">
+      {/* Text content below image */}
+      <div className="pt-5">
+        <h3 className="font-heading font-black uppercase text-base sm:text-lg tracking-tight text-black">
+          {col.name}
+        </h3>
         {col.description && (
-          <p className="text-xs text-white/70 mb-2 line-clamp-2 max-w-[280px] leading-relaxed">
+          <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2">
             {col.description}
           </p>
         )}
-        <h3
-          className="text-white font-heading font-black uppercase leading-[0.95] tracking-tight"
-          style={{
-            fontSize: featured
-              ? 'clamp(1.75rem, 3.5vw, 3.25rem)'
-              : 'clamp(1.25rem, 2.5vw, 2rem)',
-          }}
-        >
-          {col.name}
-        </h3>
-        <span className="inline-flex items-center gap-1.5 mt-3 text-xs font-heading font-bold uppercase tracking-wider text-white">
-          <span className="border-b-2 border-white pb-0.5 group-hover:border-white/60 transition-colors">
-            Shop Collection
-          </span>
-          <svg
-            className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2.5}
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-          </svg>
+        <span className="inline-block mt-4 text-xs font-heading font-bold uppercase tracking-wider text-black border-b-2 border-black pb-0.5 group-hover:border-gray-400 transition-colors">
+          Shop Now
         </span>
       </div>
     </Link>
@@ -80,50 +54,79 @@ function CollectionTile({
 }
 
 export default function ShopByCollection() {
+  const swiperRef = useRef<SwiperType | null>(null);
+
   const { data } = useQuery({
     queryKey: ['collections-featured'],
     queryFn: () => collectionsApi.featured().then((res) => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
-  const collections: Collection[] = (data ?? []).slice(0, 5);
+  const collections: Collection[] = data ?? [];
 
   if (collections.length === 0) return null;
-
-  const [hero, ...rest] = collections;
 
   return (
     <section className="section-padding">
       <div className="container-custom">
         {/* Header */}
-        <div className="mb-8">
-          <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-3 block">
-            Curated For You
-          </span>
-          <h2 className="text-heading-xl font-heading uppercase">
-            Collections
-          </h2>
+        <div className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-3 block">
+              Curated For You
+            </span>
+            <h2 className="text-heading-xl font-heading uppercase">Collections</h2>
+          </div>
+
+          {/* Nav buttons */}
+          <div className="hidden sm:flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous collection"
+              onClick={() => swiperRef.current?.slidePrev()}
+              className="w-11 h-11 flex items-center justify-center border-2 border-black text-black hover:bg-black hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Next collection"
+              onClick={() => swiperRef.current?.slideNext()}
+              className="w-11 h-11 flex items-center justify-center border-2 border-black text-black hover:bg-black hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Layout: hero left + stacked right */}
-        {rest.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-            {/* Featured (tall, spans full left column) */}
-            <CollectionTile col={hero} featured />
+        {/* Slider */}
+        <Swiper
+          modules={[Navigation, Pagination, Autoplay]}
+          onSwiper={(s) => (swiperRef.current = s)}
+          spaceBetween={12}
+          slidesPerView={1.25}
+          breakpoints={{
+            640: { slidesPerView: 2, spaceBetween: 16 },
+            1024: { slidesPerView: 3, spaceBetween: 20 },
+            1280: { slidesPerView: 4, spaceBetween: 24 },
+          }}
+          loop={collections.length > 4}
+          autoplay={{ delay: 4500, disableOnInteraction: false, pauseOnMouseEnter: true }}
+          pagination={{ clickable: true, el: '.collections-pagination' }}
+          className="!overflow-visible sm:!overflow-hidden"
+        >
+          {collections.map((col) => (
+            <SwiperSlide key={col.slug} className="h-auto">
+              <CollectionCard col={col} />
+            </SwiperSlide>
+          ))}
+        </Swiper>
 
-            {/* Right column: stacked grid */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              {rest.map((col) => (
-                <CollectionTile key={col.slug} col={col} />
-              ))}
-            </div>
-          </div>
-        ) : (
-          /* Single collection — full width banner */
-          <div className="aspect-[21/9]">
-            <CollectionTile col={hero} featured />
-          </div>
-        )}
+        <div className="collections-pagination flex justify-center gap-2 mt-6 sm:hidden" />
       </div>
     </section>
   );
