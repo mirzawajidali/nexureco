@@ -57,12 +57,23 @@ export default function CategoryPage() {
   const children = cat?.children?.filter((c: { is_active: boolean }) => c.is_active) || [];
 
   // Build breadcrumb trail
+  type Cat = { id: number; name: string; slug: string; parent_id: number | null };
   const findParent = (pid: number | null | undefined) => {
     if (!pid || !allCategories?.data) return null;
-    return (allCategories.data as { id: number; name: string; slug: string; parent_id: number | null }[])
-      .find((c) => c.id === pid);
+    return (allCategories.data as Cat[]).find((c) => c.id === pid);
   };
   const parent = findParent(parentId);
+
+  // Build SEO link groups — sibling top-level categories, each with their children
+  const allCatList = (allCategories?.data as Cat[] | undefined) || [];
+  const rootId = parent?.parent_id ? findParent(parent.parent_id)?.id ?? parent.id : parent?.id ?? cat?.id;
+  const linkGroups = allCatList
+    .filter((c) => c.parent_id === (rootId ?? null) || (!rootId && c.parent_id === null))
+    .slice(0, 5)
+    .map((grp) => ({
+      ...grp,
+      items: allCatList.filter((c) => c.parent_id === grp.id).slice(0, 8),
+    }));
 
   const updateFilters = (filters: Record<string, unknown>) => {
     const params = new URLSearchParams(searchParams);
@@ -179,7 +190,72 @@ export default function CategoryPage() {
 
         {/* Recently Viewed */}
         <RecentlyViewedSection excludeIds={productIds} />
+
+        {/* SEO Category Links Grid */}
+        {linkGroups.length > 0 && (
+          <section className="mt-16 pt-12 border-t border-gray-200">
+            <h2 className="font-heading font-black uppercase tracking-tight mb-8"
+              style={{ fontSize: 'clamp(1.25rem, 2vw, 1.75rem)' }}
+            >
+              {(parent?.name || categoryName) + "'s Clothing And Shoe Categories"}
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-1">
+              {linkGroups.map((grp) => (
+                <div key={grp.id} className="mb-6">
+                  <Link
+                    to={`/category/${grp.slug}`}
+                    className="block text-sm font-bold text-brand-black mb-3 hover:underline"
+                  >
+                    {grp.name}
+                  </Link>
+                  <ul className="space-y-2">
+                    {grp.items.map((it) => (
+                      <li key={it.id}>
+                        <Link
+                          to={`/category/${it.slug}`}
+                          className="text-xs text-gray-600 hover:text-brand-black hover:underline"
+                        >
+                          {it.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* SEO Long-form Content */}
+        {cat?.description && (
+          <section className="mt-12 pt-12 border-t border-gray-200">
+            <h2 className="font-heading font-black uppercase tracking-tight mb-4"
+              style={{ fontSize: 'clamp(1.25rem, 2vw, 1.75rem)' }}
+            >
+              {APP_NAME} {categoryName}
+            </h2>
+            <div className="text-sm text-gray-600 leading-relaxed max-w-4xl whitespace-pre-line">
+              {cat.description}
+            </div>
+          </section>
+        )}
       </div>
+
+      {/* Green Sign-Up Banner — full bleed */}
+      <section className="bg-[#0e4d3c] text-white">
+        <div className="container-custom py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="font-heading font-bold uppercase tracking-wide text-base sm:text-lg text-center sm:text-left">
+            Join {APP_NAME} & get 15% off your first order
+          </p>
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 bg-white text-brand-black px-6 py-3 font-heading font-bold uppercase text-sm tracking-wider hover:bg-gray-100 transition-colors"
+          >
+            Sign up for free
+            <span aria-hidden>→</span>
+          </Link>
+        </div>
+      </section>
 
       {/* Mobile/Tablet Filters Overlay */}
       {showMobileFilters && (

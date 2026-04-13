@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HeartIcon } from '@heroicons/react/24/outline';
+import { HeartIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice } from '@/utils/formatters';
@@ -36,9 +36,25 @@ export default function ProductCard({
   const wishlisted = isInWishlist(id);
   const hasDiscount = compareAtPrice && compareAtPrice > price;
   const [hoveredVariant, setHoveredVariant] = useState<number | null>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
-  // Determine which image to show (hovered variant or primary)
   const displayImage = hoveredVariant !== null ? variantImages[hoveredVariant] : image;
+  const hasVariantStrip = variantImages.length > 1;
+
+  const updateScrollState = () => {
+    const el = stripRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  };
+
+  const scrollStrip = (dir: 1 | -1) => {
+    const el = stripRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
+  };
 
   return (
     <div className="group relative">
@@ -76,40 +92,76 @@ export default function ProductCard({
             <HeartIcon className="h-7 w-7 text-brand-black/80 hover:text-brand-black transition-colors drop-shadow-sm" />
           )}
         </button>
-
-        {/* Variant color thumbnails — appear on hover at bottom of image */}
-        {variantImages.length > 1 && (
-          <div className="absolute bottom-0 left-0 right-0 translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-            <div className="flex justify-center gap-1 px-2 pb-2 pt-1">
-              {variantImages.slice(0, 7).map((vImg, idx) => (
-                <button
-                  key={idx}
-                  onMouseEnter={(e) => {
-                    e.preventDefault();
-                    setHoveredVariant(idx);
-                  }}
-                  onMouseLeave={() => setHoveredVariant(null)}
-                  onClick={(e) => e.preventDefault()}
-                  className="relative flex-shrink-0"
-                >
-                  <img
-                    src={vImg}
-                    alt=""
-                    className="w-12 h-14 object-cover bg-[#eceff1]"
-                    loading="lazy"
-                  />
-                  {/* Active indicator line */}
-                  <div
-                    className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4/5 h-[2px] transition-colors duration-150 ${
-                      hoveredVariant === idx ? 'bg-brand-black' : 'bg-transparent'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </Link>
+
+      {/* Variant thumbnail strip — appears on hover, below image */}
+      {hasVariantStrip && (
+        <div
+          className="relative overflow-hidden max-h-0 group-hover:max-h-24 transition-all duration-300"
+          onMouseEnter={updateScrollState}
+        >
+          <div
+            ref={stripRef}
+            onScroll={updateScrollState}
+            className="flex gap-1 overflow-x-auto scrollbar-hide scroll-smooth pt-1"
+          >
+            {variantImages.map((vImg, idx) => (
+              <Link
+                key={idx}
+                to={`/product/${slug}`}
+                onMouseEnter={() => setHoveredVariant(idx)}
+                onMouseLeave={() => setHoveredVariant(null)}
+                className="relative flex-shrink-0 group/thumb"
+              >
+                <img
+                  src={vImg}
+                  alt=""
+                  className="w-14 h-16 object-cover bg-[#eceff1]"
+                  loading="lazy"
+                />
+                {/* Active indicator line */}
+                <div
+                  className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4/5 h-[2px] transition-colors duration-150 ${
+                    hoveredVariant === idx ? 'bg-brand-black' : 'bg-transparent'
+                  }`}
+                />
+                {/* Tooltip on hover — shows product name */}
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-brand-black text-white text-[11px] font-medium px-2 py-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-20">
+                  {name}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Scroll arrows */}
+          {canScrollLeft && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                scrollStrip(-1);
+              }}
+              aria-label="Scroll variants left"
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-7 h-16 bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </button>
+          )}
+          {canScrollRight && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                scrollStrip(1);
+              }}
+              aria-label="Scroll variants right"
+              className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-16 bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Product info */}
       <Link to={`/product/${slug}`} className="block pt-3 space-y-0.5">
