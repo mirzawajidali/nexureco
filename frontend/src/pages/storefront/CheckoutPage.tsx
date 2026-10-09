@@ -13,6 +13,14 @@ import { APP_NAME, FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/uti
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import { useTrackOnce } from '@/hooks/useAnalytics';
+import {
+  cartLineToItem,
+  trackAddPaymentInfo,
+  trackAddShippingInfo,
+  trackBeginCheckout,
+  trackPurchase,
+} from '@/utils/analytics';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 
@@ -58,6 +66,10 @@ export default function CheckoutPage() {
     },
   });
 
+  // GA4 checkout funnel: begin_checkout → add_shipping_info → add_payment_info → purchase
+  const analyticsItems = () => items.map((item) => cartLineToItem(item));
+  useTrackOnce(items.length ? 'begin_checkout' : '', () => trackBeginCheckout(analyticsItems(), couponCode));
+
   const handleShippingSubmit = (data: CheckoutFormData) => {
     // Guest must provide email
     if (!isAuthenticated && (!data.guest_email || data.guest_email.trim() === '')) {
@@ -67,6 +79,7 @@ export default function CheckoutPage() {
     setFormData(data);
     setCurrentStep(1);
     window.scrollTo(0, 0);
+    trackAddShippingInfo(analyticsItems(), shipping === 0 ? 'Free Shipping' : 'Standard Shipping', couponCode);
     // TikTok Pixel: InitiateCheckout + AddPaymentInfo
     if ((window as any).ttq) {
       (window as any).ttq.track('InitiateCheckout', {
@@ -80,6 +93,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (!formData) return;
 
+    trackAddPaymentInfo(analyticsItems(), 'Cash on Delivery', couponCode);
     setIsSubmitting(true);
     try {
       const response = await orderApi.checkout({
@@ -106,6 +120,8 @@ export default function CheckoutPage() {
           currency: 'PKR',
         });
       }
+      // GA4 purchase uses the server's order (real totals, discount, order number as transaction_id)
+      trackPurchase(response.data);
       clearCart();
       navigate(`/order-confirmation/${response.data.order_number}`);
     } catch (err: unknown) {

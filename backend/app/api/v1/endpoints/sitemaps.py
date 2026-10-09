@@ -1,3 +1,4 @@
+from xml.sax.saxutils import escape
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +18,7 @@ def _format_date(dt) -> str:
 
 
 def _build_url_entry(loc: str, lastmod=None, changefreq: str = "weekly", priority: str = "0.5") -> str:
-    parts = [f"  <url>\n    <loc>{loc}</loc>"]
+    parts = [f"  <url>\n    <loc>{escape(loc)}</loc>"]
     if lastmod:
         parts.append(f"    <lastmod>{_format_date(lastmod)}</lastmod>")
     parts.append(f"    <changefreq>{changefreq}</changefreq>")
@@ -34,9 +35,9 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
 
     urls = []
 
-    # Static pages
+    # Static pages (/search is disallowed in robots.txt, so it's not listed)
     urls.append(_build_url_entry(f"{base_url}/", changefreq="daily", priority="1.0"))
-    urls.append(_build_url_entry(f"{base_url}/search", changefreq="daily", priority="0.6"))
+    urls.append(_build_url_entry(f"{base_url}/about", changefreq="monthly", priority="0.4"))
     urls.append(_build_url_entry(f"{base_url}/contact", changefreq="monthly", priority="0.4"))
     urls.append(_build_url_entry(f"{base_url}/size-guide", changefreq="monthly", priority="0.3"))
 
@@ -82,23 +83,3 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
     xml_content += "\n</urlset>\n"
 
     return Response(content=xml_content, media_type="application/xml")
-
-
-@router.get("/robots.txt", response_class=Response)
-async def robots_txt():
-    """Serve robots.txt with sitemap reference."""
-    base_url = settings.SITE_URL.rstrip("/")
-    content = (
-        "User-agent: *\n"
-        "Allow: /\n"
-        "\n"
-        "# Disallow private/admin areas\n"
-        "Disallow: /account/\n"
-        "Disallow: /checkout\n"
-        "Disallow: /cart\n"
-        "Disallow: /admin/\n"
-        "Disallow: /api/\n"
-        "\n"
-        f"Sitemap: {base_url}/sitemap.xml\n"
-    )
-    return Response(content=content, media_type="text/plain")

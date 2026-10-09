@@ -6,13 +6,23 @@ import Footer from './Footer';
 import MobileMenu from './MobileMenu';
 import CartDrawer from '@/components/cart/CartDrawer';
 import Chatbot from '@/components/chatbot/Chatbot';
+import { useAuthStore } from '@/store/authStore';
+import { usePageViews } from '@/hooks/useAnalytics';
+import { setAnalyticsUserId } from '@/utils/analytics';
 
 export default function Layout() {
   const { pathname } = useLocation();
+  const userId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  // GA4: storefront page views + signed-in user id (admin routes use AdminLayout, so aren't tracked)
+  usePageViews();
+  useEffect(() => {
+    setAnalyticsUserId(userId);
+  }, [userId]);
 
   return (
     <div className="min-h-screen flex flex-col">

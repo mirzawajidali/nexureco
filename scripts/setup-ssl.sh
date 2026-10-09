@@ -61,6 +61,13 @@ fi
 # Update ALLOWED_ORIGINS to use HTTPS
 sed -i "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=https://$DOMAIN|" .env.production
 
+# SITE_URL is used for absolute URLs in sitemap.xml and emails
+if grep -q "^SITE_URL=" .env.production; then
+    sed -i "s|^SITE_URL=.*|SITE_URL=https://$DOMAIN|" .env.production
+else
+    echo "SITE_URL=https://$DOMAIN" >> .env.production
+fi
+
 echo "Updated DOMAIN=$DOMAIN in .env.production"
 
 # ── 4. Restart frontend to pick up SSL ──

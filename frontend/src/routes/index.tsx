@@ -7,9 +7,11 @@ import AdminRoute from './AdminRoute';
 import ModuleRoute from './ModuleRoute';
 import Spinner from '@/components/ui/Spinner';
 
+// Full viewport height so the footer stays below the fold while a page chunk loads —
+// otherwise it renders on screen and gets pushed down (layout shift) when the page arrives.
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="flex items-center justify-center min-h-screen">
       <Spinner size="lg" />
     </div>
   );

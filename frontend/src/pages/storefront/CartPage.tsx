@@ -14,6 +14,8 @@ import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatters';
 import { APP_NAME, FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import { useTrackOnce } from '@/hooks/useAnalytics';
+import { cartLineToItem, trackEvent, trackRemoveFromCart, trackViewCart } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
 /* ── Single cart item row ── */
@@ -113,14 +115,19 @@ export default function CartPage() {
   const shipping = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
   const grandTotal = total + shipping;
 
+  useTrackOnce(items.length ? 'view_cart' : '', () => trackViewCart(items.map((i) => cartLineToItem(i))));
+
   const handleApplyCoupon = () => {
     if (couponInput.trim()) {
-      setCoupon(couponInput.trim().toUpperCase());
+      const code = couponInput.trim().toUpperCase();
+      setCoupon(code);
+      trackEvent('apply_coupon', { coupon: code });
       toast.success('Coupon applied');
     }
   };
 
   const handleRemoveCoupon = () => {
+    trackEvent('remove_coupon', { coupon: couponCode });
     setCoupon(null);
     setCouponInput('');
     toast.success('Coupon removed');
@@ -217,6 +224,7 @@ export default function CartPage() {
                 </Link>
                 <button
                   onClick={() => {
+                    trackRemoveFromCart(items.map((i) => cartLineToItem(i)));
                     clearCart();
                     toast.success('Bag cleared');
                   }}

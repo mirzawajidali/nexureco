@@ -21,6 +21,7 @@ import { formatPrice, formatDate, formatDateTime } from '@/utils/formatters';
 import { APP_NAME } from '@/utils/constants';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Spinner from '@/components/ui/Spinner';
+import { trackEvent } from '@/utils/analytics';
 import { clsx } from 'clsx';
 import type { Order, OrderStatus } from '@/types/order';
 import { useAuthStore } from '@/store/authStore';
@@ -63,7 +64,10 @@ function TrackingLookupForm({
 
   const mutation = useMutation({
     mutationFn: (data: TrackFormData) => orderApi.track(data.order_number, data.email || undefined),
-    onSuccess: (res) => onResult(res.data),
+    onSuccess: (res) => {
+      trackEvent('track_order');
+      onResult(res.data);
+    },
     onError: () => toast.error('No order found. Please check your order number.'),
   });
 

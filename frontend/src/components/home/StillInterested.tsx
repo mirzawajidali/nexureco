@@ -2,6 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { productsApi } from '@/api/products.api';
 import ProductCard from '@/components/product/ProductCard';
+import { useViewItemList } from '@/hooks/useAnalytics';
+
+const STILL_INTERESTED_LIST = { id: 'still_interested_home', name: 'Still Interested (Home)' };
 
 export default function StillInterested() {
   const recentIds = useRecentlyViewedStore((s) => s.productIds);
@@ -13,7 +16,8 @@ export default function StillInterested() {
     enabled: recentIds.length > 0,
   });
 
-  const products = data?.data?.items ?? [];
+  const products = (data?.data?.items ?? []).slice(0, 4);
+  useViewItemList(products, STILL_INTERESTED_LIST);
 
   if (products.length === 0) return null;
 
@@ -24,9 +28,11 @@ export default function StillInterested() {
           Still interested?
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
-          {products.slice(0, 4).map((p) => (
+          {products.map((p, index) => (
             <ProductCard
               key={p.id}
+              list={STILL_INTERESTED_LIST}
+              index={index}
               id={p.id}
               name={p.name}
               slug={p.slug}

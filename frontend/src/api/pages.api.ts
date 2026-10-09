@@ -45,3 +45,18 @@ export const bannersApi = {
   getActive: (position?: string) =>
     client.get<BannerData[]>('/banners/active', { params: position ? { position } : undefined }),
 };
+
+declare global {
+  interface Window {
+    /** Hero banners request started by an inline script in index.html on the homepage */
+    __heroBanners?: Promise<BannerData[]>;
+  }
+}
+
+/** Hero banners, reusing the request index.html started early (once), otherwise fetching normally. */
+export function getHeroBanners(): Promise<BannerData[]> {
+  const fetchBanners = () => bannersApi.getActive('hero').then((res) => res.data);
+  const early = window.__heroBanners;
+  window.__heroBanners = undefined;
+  return early ? early.catch(fetchBanners) : fetchBanners();
+}

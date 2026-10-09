@@ -9,6 +9,7 @@ import FilterSidebar from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
 import { APP_NAME } from '@/utils/constants';
+import { trackFilters } from '@/utils/analytics';
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -45,8 +46,10 @@ export default function CollectionPage() {
   const total = productsData?.data?.total || 0;
   const col = collection?.data;
   const collectionName = col?.name || slug?.replace(/-/g, ' ') || '';
+  const analyticsList = { id: `collection_${slug}`, name: `Collection: ${collectionName}` };
 
   const updateFilters = (filters: Record<string, unknown>) => {
+    trackFilters(filters, analyticsList);
     const params = new URLSearchParams(searchParams);
     Object.entries(filters).forEach(([key, value]) => {
       if (value === undefined || value === null) {
@@ -128,7 +131,7 @@ export default function CollectionPage() {
 
         {/* Products */}
         <div>
-          <ProductGrid products={products} isLoading={isLoading} />
+          <ProductGrid products={products} isLoading={isLoading} list={analyticsList} />
           <Pagination
             currentPage={page}
             totalPages={totalPages}

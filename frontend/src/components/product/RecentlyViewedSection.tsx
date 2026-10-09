@@ -2,6 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { productsApi } from '@/api/products.api';
 import ProductCard from './ProductCard';
+import { useViewItemList } from '@/hooks/useAnalytics';
+
+const RECENTLY_VIEWED_LIST = { id: 'recently_viewed', name: 'Recently Viewed' };
 
 interface Props {
   excludeIds?: number[];
@@ -19,7 +22,8 @@ export default function RecentlyViewedSection({ excludeIds = [], limit = 8 }: Pr
     enabled: filteredIds.length > 0,
   });
 
-  const products = data?.data?.items ?? [];
+  const products = (data?.data?.items ?? []).slice(0, limit);
+  useViewItemList(products, RECENTLY_VIEWED_LIST);
 
   if (products.length === 0) return null;
 
@@ -29,9 +33,11 @@ export default function RecentlyViewedSection({ excludeIds = [], limit = 8 }: Pr
         Recently Viewed
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
-        {products.slice(0, limit).map((p) => (
+        {products.map((p, index) => (
           <ProductCard
             key={p.id}
+            list={RECENTLY_VIEWED_LIST}
+            index={index}
             id={p.id}
             name={p.name}
             slug={p.slug}

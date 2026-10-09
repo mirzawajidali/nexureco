@@ -31,7 +31,7 @@ export default function PromoStrip({
       <div className="container-custom py-10 md:py-14 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div className="max-w-2xl">
           {eyebrow && (
-            <span className="inline-block text-[11px] md:text-xs font-heading font-bold uppercase tracking-[0.25em] opacity-80 mb-2">
+            <span className="inline-block text-[11px] md:text-xs font-heading font-bold uppercase tracking-[0.25em] mb-2">
               {eyebrow}
             </span>
           )}
@@ -41,7 +41,7 @@ export default function PromoStrip({
             {title}
           </h3>
           {subtitle && (
-            <p className="mt-3 text-sm md:text-base opacity-85 max-w-xl leading-relaxed">
+            <p className="mt-3 text-sm md:text-base max-w-xl leading-relaxed">
               {subtitle}
             </p>
           )}

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.core.middleware import setup_middleware
+from app.api.uploads import router as uploads_router, ImmutableStaticFiles
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.sitemaps import router as seo_router
 from app.db.database import engine, Base, AsyncSessionLocal
@@ -124,12 +125,14 @@ setup_middleware(app)
 # Static files for uploads
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# Resized-image route must be registered before the /uploads mount, which would otherwise catch it
+app.include_router(uploads_router)
+app.mount("/uploads", ImmutableStaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # API Routes
 app.include_router(api_router)
 
-# SEO Routes (sitemap.xml, robots.txt at root level)
+# SEO Routes (sitemap.xml at root level; robots.txt is a static file in frontend/public)
 app.include_router(seo_router)
 
 

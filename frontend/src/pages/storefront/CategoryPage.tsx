@@ -9,6 +9,7 @@ import FilterSidebar from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
 import { APP_NAME } from '@/utils/constants';
+import { trackFilters } from '@/utils/analytics';
 import { clsx } from 'clsx';
 
 export default function CategoryPage() {
@@ -54,6 +55,7 @@ export default function CategoryPage() {
   const total = productsData?.data?.total || 0;
   const cat = category?.data;
   const categoryName = cat?.name || slug?.replace(/-/g, ' ') || '';
+  const analyticsList = { id: `category_${slug}`, name: `Category: ${categoryName}` };
   const children = cat?.children?.filter((c: { is_active: boolean }) => c.is_active) || [];
 
   // Build breadcrumb trail
@@ -76,6 +78,7 @@ export default function CategoryPage() {
     }));
 
   const updateFilters = (filters: Record<string, unknown>) => {
+    trackFilters(filters, analyticsList);
     const params = new URLSearchParams(searchParams);
     Object.entries(filters).forEach(([key, value]) => {
       if (value === undefined || value === null) {
@@ -180,7 +183,7 @@ export default function CategoryPage() {
 
         {/* Products */}
         <div>
-          <ProductGrid products={products} isLoading={isLoading} />
+          <ProductGrid products={products} isLoading={isLoading} list={analyticsList} />
           <Pagination
             currentPage={page}
             totalPages={totalPages}

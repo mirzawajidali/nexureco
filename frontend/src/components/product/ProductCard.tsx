@@ -4,6 +4,14 @@ import { HeartIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/2
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice } from '@/utils/formatters';
+import { imageSrcSet, resizedImage } from '@/utils/image';
+import {
+  productToItem,
+  trackAddToWishlist,
+  trackRemoveFromWishlist,
+  trackSelectItem,
+  type ItemList,
+} from '@/utils/analytics';
 
 interface ProductCardProps {
   id: number;
@@ -17,6 +25,9 @@ interface ProductCardProps {
   variantImages?: string[];
   isNew?: boolean;
   isBestSeller?: boolean;
+  /** GA4 list this card is shown in, and its position — reported on select_item */
+  list?: ItemList;
+  index?: number;
 }
 
 export default function ProductCard({
@@ -31,9 +42,14 @@ export default function ProductCard({
   variantImages = [],
   isNew = false,
   isBestSeller = false,
+  list,
+  index,
 }: ProductCardProps) {
   const { isInWishlist, toggleWishlist } = useWishlistStore();
   const wishlisted = isInWishlist(id);
+  const analyticsItem = () =>
+    productToItem({ id, name, base_price: price, category_name: categoryName }, { index });
+  const handleSelect = () => trackSelectItem(analyticsItem(), list);
   const hasDiscount = compareAtPrice && compareAtPrice > price;
   const [hoveredVariant, setHoveredVariant] = useState<number | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -59,10 +75,11 @@ export default function ProductCard({
   return (
     <div className="group relative p-2 -m-2 border border-transparent hover:border-black transition-colors">
       {/* Image area — portrait ratio like Adidas cards */}
-      <Link to={`/product/${slug}`} className="block aspect-square bg-[#eceff1] overflow-hidden relative">
+      <Link to={`/product/${slug}`} onClick={handleSelect} className="block aspect-square bg-[#eceff1] overflow-hidden relative">
         {displayImage ? (
           <img
             src={displayImage}
+            srcSet={imageSrcSet(displayImage, [320, 480, 640, 960, 1280])}
             alt={name}
             className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
             loading="lazy"
@@ -81,6 +98,7 @@ export default function ProductCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            (wishlisted ? trackRemoveFromWishlist : trackAddToWishlist)([analyticsItem()]);
             toggleWishlist(id);
           }}
           className="absolute top-3 right-3 z-10"
@@ -109,12 +127,13 @@ export default function ProductCard({
               <Link
                 key={idx}
                 to={`/product/${slug}`}
+                onClick={handleSelect}
                 onMouseEnter={() => setHoveredVariant(idx)}
                 onMouseLeave={() => setHoveredVariant(null)}
                 className="relative flex-shrink-0 group/thumb"
               >
                 <img
-                  src={vImg}
+                  src={resizedImage(vImg, 160)}
                   alt=""
                   className="w-14 h-16 object-cover bg-[#eceff1]"
                   loading="lazy"
@@ -164,12 +183,12 @@ export default function ProductCard({
       )}
 
       {/* Product info */}
-      <Link to={`/product/${slug}`} className="block pt-3 space-y-0.5">
+      <Link to={`/product/${slug}`} onClick={handleSelect} className="block pt-3 space-y-0.5">
         {/* Price */}
         <div className="flex items-center gap-2">
           <span className="text-base font-bold text-brand-black">{formatPrice(price)}</span>
           {hasDiscount && (
-            <span className="text-sm text-gray-400 line-through">
+            <span className="text-sm text-gray-600 line-through">
               {formatPrice(compareAtPrice)}
             </span>
           )}
@@ -182,12 +201,12 @@ export default function ProductCard({
 
         {/* Category */}
         {categoryName && (
-          <p className="text-xs text-gray-500">{categoryName}</p>
+          <p className="text-xs text-gray-600">{categoryName}</p>
         )}
 
         {/* Colors count */}
         {variantCount > 1 && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-600">
             {variantCount} color{variantCount !== 1 ? 's' : ''}
           </p>
         )}

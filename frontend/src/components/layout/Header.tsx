@@ -16,6 +16,7 @@ import { useUIStore } from '@/store/uiStore';
 import SearchSuggestions from '@/components/search/SearchSuggestions';
 import BrandLogo from '@/components/ui/BrandLogo';
 import { menusApi, type MenuItemData } from '@/api/pages.api';
+import { cartLineToItem, trackViewCart } from '@/utils/analytics';
 
 interface NavLink {
   label: string;
@@ -101,6 +102,7 @@ export default function Header() {
           <button
             onClick={toggleMobileMenu}
             className="lg:hidden p-2 -ml-2 hover:bg-gray-100"
+            aria-label="Open menu"
           >
             <Bars3Icon className="h-6 w-6" />
           </button>
@@ -187,7 +189,13 @@ export default function Header() {
 
             {/* Cart */}
             <button
-              onClick={() => useCartStore.getState().toggleCart()}
+              onClick={() => {
+                const cart = useCartStore.getState();
+                if (!cart.isCartOpen && cart.items.length) {
+                  trackViewCart(cart.items.map((i) => cartLineToItem(i)));
+                }
+                cart.toggleCart();
+              }}
               className="p-2 hover:bg-gray-100 transition-colors relative"
               aria-label="Cart"
             >

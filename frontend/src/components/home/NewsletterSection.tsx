@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { newsletterApi } from '@/api/user.api';
 import Button from '@/components/ui/Button';
+import { trackGenerateLead } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
 export default function NewsletterSection() {
@@ -15,6 +16,7 @@ export default function NewsletterSection() {
     setLoading(true);
     try {
       await newsletterApi.subscribe(email.trim());
+      trackGenerateLead('newsletter');
       setSubmitted(true);
       setEmail('');
     } catch {

@@ -6,6 +6,7 @@ import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import { collectionsApi } from '@/api/products.api';
 import { RectangleStackIcon } from '@heroicons/react/24/outline';
+import { imageSrcSet } from '@/utils/image';
 
 interface Collection {
   name: string;
@@ -23,6 +24,7 @@ function CollectionCard({ col }: { col: Collection }) {
         {col.image_url ? (
           <img
             src={col.image_url}
+            srcSet={imageSrcSet(col.image_url)}
             alt={col.name}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
@@ -56,13 +58,39 @@ function CollectionCard({ col }: { col: Collection }) {
 export default function ShopByCollection() {
   const swiperRef = useRef<SwiperType | null>(null);
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['collections-featured'],
     queryFn: () => collectionsApi.featured().then((res) => res.data),
     staleTime: 5 * 60 * 1000,
   });
 
   const collections: Collection[] = data ?? [];
+
+  // Reserve the section's space while loading so the content below doesn't jump
+  if (isLoading) {
+    return (
+      <section className="section-padding" aria-hidden>
+        <div className="container-custom">
+          <div className="mb-8">
+            <div className="h-3 w-28 bg-gray-200 mb-3" />
+            <div className="h-9 w-48 bg-gray-200" />
+          </div>
+          <div className="grid grid-cols-[repeat(1,80%)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 xl:gap-6 overflow-hidden animate-pulse">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className={i === 0 ? '' : i === 1 ? 'hidden sm:block' : i === 2 ? 'hidden lg:block' : 'hidden xl:block'}>
+                <div className="aspect-[3/4] bg-gray-200" />
+                <div className="pt-5 space-y-3">
+                  <div className="h-5 w-2/3 bg-gray-200" />
+                  <div className="h-4 w-full bg-gray-200" />
+                  <div className="h-3 w-20 bg-gray-200 mt-4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (collections.length === 0) return null;
 
@@ -72,7 +100,7 @@ export default function ShopByCollection() {
         {/* Header */}
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-3 block">
+            <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-600 mb-3 block">
               Curated For You
             </span>
             <h2 className="text-heading-xl font-heading uppercase">Collections</h2>

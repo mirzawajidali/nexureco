@@ -1,6 +1,7 @@
 import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { useChatStore } from '@/store/chatStore';
 import ChatPanel from './ChatPanel';
+import { trackEvent } from '@/utils/analytics';
 
 export default function Chatbot() {
   const { isOpen, toggleChat } = useChatStore();
@@ -11,9 +12,12 @@ export default function Chatbot() {
 
       {/* Floating Action Button */}
       <button
-        onClick={toggleChat}
+        onClick={() => {
+          if (!isOpen) trackEvent('open_chat');
+          toggleChat();
+        }}
         className="fixed bottom-6 right-6 z-[60] group flex items-center gap-0 max-sm:bottom-4 max-sm:right-4"
-        aria-label={isOpen ? 'Close chat' : 'Open chat'}
+        aria-label={isOpen ? 'Close chat' : 'Chat with us'}
       >
         {/* Label pill — visible when chat is closed */}
         {!isOpen && (

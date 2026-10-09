@@ -2,6 +2,9 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '@/api/products.api';
 import ProductCard from '@/components/product/ProductCard';
+import { useViewItemList } from '@/hooks/useAnalytics';
+
+const TRENDING_LIST = { id: 'trending', name: 'Trending Now' };
 
 export default function TrendingProducts() {
   const { data, isLoading } = useQuery({
@@ -11,6 +14,7 @@ export default function TrendingProducts() {
   });
 
   const products = data?.data ?? [];
+  useViewItemList(products, TRENDING_LIST);
 
   if (!isLoading && products.length === 0) return null;
 
@@ -36,9 +40,11 @@ export default function TrendingProducts() {
                   <div className="h-4 bg-gray-200 rounded w-1/4" />
                 </div>
               ))
-            : products.map((p) => (
+            : products.map((p, index) => (
                 <ProductCard
                   key={p.id}
+                  list={TRENDING_LIST}
+                  index={index}
                   id={p.id}
                   name={p.name}
                   slug={p.slug}

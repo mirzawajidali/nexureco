@@ -1,14 +1,20 @@
 import ProductCard from './ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 import type { ProductListItem } from '@/api/products.api';
+import { useViewItemList } from '@/hooks/useAnalytics';
+import type { ItemList } from '@/utils/analytics';
 
 interface ProductGridProps {
   products: ProductListItem[];
   isLoading?: boolean;
   columns?: 2 | 3 | 4;
+  /** GA4 list (view_item_list / select_item) these products belong to */
+  list?: ItemList;
 }
 
-export default function ProductGrid({ products, isLoading = false, columns = 4 }: ProductGridProps) {
+export default function ProductGrid({ products, isLoading = false, columns = 4, list }: ProductGridProps) {
+  useViewItemList(products, list);
+
   const gridCols = {
     2: 'grid-cols-2',
     3: 'grid-cols-2 lg:grid-cols-3',
@@ -36,9 +42,11 @@ export default function ProductGrid({ products, isLoading = false, columns = 4 }
 
   return (
     <div className={`grid ${gridCols[columns]} gap-4 lg:gap-6`}>
-      {products.map((product) => (
+      {products.map((product, index) => (
         <ProductCard
           key={product.id}
+          list={list}
+          index={index}
           id={product.id}
           name={product.name}
           slug={product.slug}

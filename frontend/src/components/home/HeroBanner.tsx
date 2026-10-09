@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
@@ -6,6 +6,8 @@ import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
+import { imageSrcSet } from '@/utils/image';
+import { trackSelectPromotion, trackViewPromotion } from '@/utils/analytics';
 
 export interface HeroBannerSlide {
   id: string | number;
@@ -49,7 +51,7 @@ const defaultSlides: HeroBannerSlide[] = [
   },
 ];
 
-function SlideMedia({ slide, isFirst }: { slide: HeroBannerSlide; isFirst: boolean }) {
+function SlideMedia({ slide, isFirst, onLoad }: { slide: HeroBannerSlide; isFirst: boolean; onLoad?: () => void }) {
   if (slide.videoUrl) {
     return (
       <video
@@ -64,35 +66,50 @@ function SlideMedia({ slide, isFirst }: { slide: HeroBannerSlide; isFirst: boole
     );
   }
 
+  const src = slide.imageUrl ?? slide.mobileImageUrl;
+  if (!src) return null;
+
+  // <picture> so only one of the desktop/mobile images is downloaded.
+  // Keep in sync with the hero preload in index.html (same srcset, sizes and breakpoint).
   return (
-    <>
-      {/* Desktop image */}
-      <img
-        src={slide.imageUrl}
-        alt=""
-        className={`absolute inset-0 w-full h-full object-cover ${
-          slide.mobileImageUrl ? 'hidden md:block' : ''
-        }`}
-        loading="eager"
-        fetchPriority={isFirst ? 'high' : undefined}
-        sizes="100vw"
-      />
-      {/* Mobile image (if provided) */}
+    <picture>
       {slide.mobileImageUrl && (
-        <img
-          src={slide.mobileImageUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover md:hidden"
-          loading="eager"
-          fetchPriority={isFirst ? 'high' : undefined}
+        <source
+          media="(max-width: 767px)"
+          srcSet={imageSrcSet(slide.mobileImageUrl) ?? slide.mobileImageUrl}
           sizes="100vw"
         />
       )}
-    </>
+      <img
+        src={src}
+        srcSet={imageSrcSet(src)}
+        sizes="100vw"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+        fetchPriority={isFirst ? 'high' : undefined}
+        onLoad={onLoad}
+        onError={onLoad}
+      />
+    </picture>
   );
 }
 
-function SlideContent({ slide, isActive }: { slide: HeroBannerSlide; isActive: boolean }) {
+/** GA4 promotion payload for a hero slide */
+const toPromotion = (slide: HeroBannerSlide, index: number) => ({
+  promotion_id: String(slide.id),
+  promotion_name: slide.title.replace(/\s+/g, ' ').trim(),
+  creative_slot: `hero_${index + 1}`,
+});
+
+function SlideContent({
+  slide,
+  isActive,
+  onSelect,
+}: {
+  slide: HeroBannerSlide;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
   const centered = slide.textAlign !== 'left';
 
   return (
@@ -137,7 +154,7 @@ function SlideContent({ slide, isActive }: { slide: HeroBannerSlide; isActive: b
               isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
           >
-            <Link to={slide.linkUrl} className="hero-btn hero-btn-primary group">
+            <Link to={slide.linkUrl} onClick={onSelect} className="hero-btn hero-btn-primary group">
               {slide.buttonText}
               <svg
                 className="w-4 h-4 ml-2 transition-transform duration-200 group-hover:translate-x-1"
@@ -151,7 +168,7 @@ function SlideContent({ slide, isActive }: { slide: HeroBannerSlide; isActive: b
             </Link>
 
             {slide.secondaryButtonText && slide.secondaryLinkUrl && (
-              <Link to={slide.secondaryLinkUrl} className="hero-btn hero-btn-outline group">
+              <Link to={slide.secondaryLinkUrl} onClick={onSelect} className="hero-btn hero-btn-outline group">
                 {slide.secondaryButtonText}
               </Link>
             )}
@@ -166,10 +183,28 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
   const swiperRef = useRef<SwiperType | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  // With the fade effect every slide sits in the viewport, so lazy-loading can't hold back
+  // slides 2+. Render their media only once the first slide's image is done.
+  const [firstImageDone, setFirstImageDone] = useState(false);
+  const firstHasImage = !!(slides[0]?.imageUrl || slides[0]?.mobileImageUrl) && !slides[0]?.videoUrl;
+  const showAllMedia = firstImageDone || !firstHasImage;
 
   const onSlideChange = useCallback((swiper: SwiperType) => {
     setActiveIndex(swiper.realIndex);
   }, []);
+
+  // GA4 view_promotion: once per slide, after it has been on screen for 1s
+  // (skips the fallback slide that flashes while banners load, and autoplay re-loops)
+  const viewedSlides = useRef(new Set<string | number>());
+  useEffect(() => {
+    const slide = slides[activeIndex];
+    if (!slide || viewedSlides.current.has(slide.id)) return;
+    const timer = window.setTimeout(() => {
+      viewedSlides.current.add(slide.id);
+      trackViewPromotion(toPromotion(slide, activeIndex));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [slides, activeIndex]);
 
   const togglePlay = useCallback(() => {
     const swiper = swiperRef.current;
@@ -201,13 +236,23 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
         {slides.map((slide, index) => (
           <SwiperSlide key={slide.id} className="relative">
             {/* Media (Video or Image) */}
-            <SlideMedia slide={slide} isFirst={index === 0} />
+            {(index === 0 || showAllMedia) && (
+              <SlideMedia
+                slide={slide}
+                isFirst={index === 0}
+                onLoad={index === 0 ? () => setFirstImageDone(true) : undefined}
+              />
+            )}
 
             {/* Gradient overlay — bottom-heavy like Adidas */}
             <div className="absolute inset-0 hero-gradient" />
 
             {/* Content */}
-            <SlideContent slide={slide} isActive={index === activeIndex} />
+            <SlideContent
+              slide={slide}
+              isActive={index === activeIndex}
+              onSelect={() => trackSelectPromotion(toPromotion(slide, index))}
+            />
           </SwiperSlide>
         ))}
       </Swiper>

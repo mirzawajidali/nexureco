@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/api/auth.api';
+import { trackLogin, trackSignUp } from '@/utils/analytics';
 
 export function useAuth() {
   const { user, isAuthenticated, isLoading, setUser, setTokens, logout, setLoading } = useAuthStore();
@@ -27,6 +28,7 @@ export function useAuth() {
     setTokens(data.access_token, data.refresh_token);
     const { data: userData } = await authApi.getMe();
     setUser(userData);
+    trackLogin();
     return userData;
   };
 
@@ -47,6 +49,7 @@ export function useAuth() {
     setTokens(data.access_token, data.refresh_token);
     const { data: userData } = await authApi.getMe();
     setUser(userData);
+    trackSignUp();
     return userData;
   };
 

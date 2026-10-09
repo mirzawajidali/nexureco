@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import storyImage1000 from '@/assets/images/brand-story-1000.avif';
+import storyImage1600 from '@/assets/images/brand-story-1600.avif';
 
 export default function BrandStory() {
   return (
@@ -7,7 +9,8 @@ export default function BrandStory() {
         {/* Image side */}
         <div className="relative h-[360px] lg:h-auto overflow-hidden">
           <img
-            src="https://images.unsplash.com/photo-1445205170230-053b83016050?w=1200&q=80"
+            src={storyImage1000}
+            srcSet={`${storyImage1000} 1000w, ${storyImage1600} 1600w`}
             alt="Our Story"
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
@@ -49,7 +52,7 @@ export default function BrandStory() {
               className="inline-flex items-center gap-3 group"
             >
               <span className="text-xs font-heading font-bold uppercase tracking-[0.15em] text-white group-hover:text-gray-300 transition-colors">
-                Learn More
+                Learn More About Us
               </span>
               <span className="flex items-center justify-center w-10 h-10 border border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-brand-black text-white transition-all duration-200">
                 <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

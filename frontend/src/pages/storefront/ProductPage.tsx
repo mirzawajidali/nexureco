@@ -23,9 +23,20 @@ import { formatPrice } from '@/utils/formatters';
 import { APP_NAME } from '@/utils/constants';
 import ReviewSection from '@/components/product/ReviewSection';
 import ProductCard from '@/components/product/ProductCard';
+import { useTrackOnce, useViewItemList } from '@/hooks/useAnalytics';
+import {
+  productToItem,
+  trackAddToWishlist,
+  trackEvent,
+  trackRemoveFromWishlist,
+  trackViewItem,
+} from '@/utils/analytics';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 import type { ProductOption } from '@/types/product';
+
+const RELATED_LIST = { id: 'related_products', name: 'You May Also Like' };
+const PDP_RECENT_LIST = { id: 'still_interested_pdp', name: 'Still Interested (Product Page)' };
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -79,6 +90,11 @@ export default function ProductPage() {
     enabled: recentIds.length > 0,
   });
   const recentlyViewedProducts = recentlyViewedData?.data?.items ?? [];
+
+  // GA4: product detail view + the two carousels below (4 cards each)
+  useTrackOnce(product ? String(product.id) : '', () => trackViewItem([productToItem(product!)]));
+  useViewItemList(relatedProducts.slice(0, 4), RELATED_LIST);
+  useViewItemList(recentlyViewedProducts.slice(0, 4), PDP_RECENT_LIST);
 
   // Find matching variant based on selected options
   const selectedVariant = useMemo(() => {
@@ -201,6 +217,17 @@ export default function ProductPage() {
     }
     toast.success('Added to bag');
     setCartOpen(true);
+  };
+
+  const handleToggleWishlist = () => {
+    if (!product) return;
+    (wishlisted ? trackRemoveFromWishlist : trackAddToWishlist)([productToItem(product)]);
+    toggleWishlist(product.id);
+  };
+
+  const openSizeGuide = () => {
+    setShowSizeGuide(true);
+    if (product) trackEvent('view_size_guide', { item_id: String(product.id), item_name: product.name });
   };
 
   // Render option selector — color uses thumbnail swatches, others use grid buttons
@@ -409,7 +436,7 @@ export default function ProductPage() {
                       </ul>
                     )}
                     <button
-                      onClick={() => setShowSizeGuide(true)}
+                      onClick={openSizeGuide}
                       className="text-sm font-bold underline cursor-pointer hover:text-gray-700 pt-2"
                     >
                       Size guide
@@ -575,7 +602,7 @@ export default function ProductPage() {
                 <span className="text-base font-bold">{formatPrice(currentPrice)}</span>
                 {currentComparePrice && currentComparePrice > currentPrice && (
                   <>
-                    <span className="text-sm text-gray-400 line-through">
+                    <span className="text-sm text-gray-600 line-through">
                       {formatPrice(currentComparePrice)}
                     </span>
                     <span className="badge-error text-xs">
@@ -607,7 +634,7 @@ export default function ProductPage() {
                 (opt) => ['size', 'sizes'].includes(opt.name.toLowerCase())
               ) && (
                 <button
-                  onClick={() => setShowSizeGuide(true)}
+                  onClick={openSizeGuide}
                   className="text-sm font-bold underline mb-6 cursor-pointer hover:text-gray-700"
                 >
                   Size guide
@@ -673,7 +700,7 @@ export default function ProductPage() {
                   )}
                 </button>
                 <button
-                  onClick={() => toggleWishlist(product.id)}
+                  onClick={handleToggleWishlist}
                   className="w-[52px] h-[52px] flex items-center justify-center border border-gray-300 hover:border-brand-black transition-colors flex-shrink-0"
                 >
                   {wishlisted ? (
@@ -702,9 +729,11 @@ export default function ProductPage() {
               You may also like
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
-              {relatedProducts.slice(0, 4).map((rp) => (
+              {relatedProducts.slice(0, 4).map((rp, index) => (
                 <ProductCard
                   key={rp.id}
+                  list={RELATED_LIST}
+                  index={index}
                   id={rp.id}
                   name={rp.name}
                   slug={rp.slug}
@@ -729,9 +758,11 @@ export default function ProductPage() {
               Still interested?
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
-              {recentlyViewedProducts.slice(0, 4).map((rp) => (
+              {recentlyViewedProducts.slice(0, 4).map((rp, index) => (
                 <ProductCard
                   key={rp.id}
+                  list={PDP_RECENT_LIST}
+                  index={index}
                   id={rp.id}
                   name={rp.name}
                   slug={rp.slug}

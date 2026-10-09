@@ -8,6 +8,10 @@ import ProductGrid from '@/components/product/ProductGrid';
 import FilterSidebar from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
 import { APP_NAME } from '@/utils/constants';
+import { useTrackOnce } from '@/hooks/useAnalytics';
+import { trackFilters, trackSearch } from '@/utils/analytics';
+
+const SEARCH_RESULTS_LIST = { id: 'search_results', name: 'Search Results' };
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,7 +41,10 @@ export default function SearchPage() {
   const totalPages = data?.data?.total_pages || 0;
   const total = data?.data?.total || 0;
 
+  useTrackOnce(q, () => trackSearch(q));
+
   const updateFilters = (filters: Record<string, unknown>) => {
+    trackFilters(filters, SEARCH_RESULTS_LIST);
     const params = new URLSearchParams(searchParams);
     Object.entries(filters).forEach(([key, value]) => {
       if (value === undefined || value === null) {
@@ -94,7 +101,7 @@ export default function SearchPage() {
 
             {/* Products */}
             <div className="flex-1">
-              <ProductGrid products={products} isLoading={isLoading} />
+              <ProductGrid products={products} isLoading={isLoading} list={SEARCH_RESULTS_LIST} />
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}

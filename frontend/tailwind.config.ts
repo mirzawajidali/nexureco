@@ -8,7 +8,8 @@ const config: Config = {
         brand: {
           black: '#000000',
           white: '#FFFFFF',
-          accent: '#E63946',
+          // Darkened from #E63946 to reach WCAG AA (4.5:1) for white text / text on white
+          accent: '#D62839',
           gold: '#FFD700',
         },
         gray: {

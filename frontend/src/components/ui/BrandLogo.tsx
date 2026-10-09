@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import logoSrc from '@/assets/images/logo.png';
+// 96px-tall WebP (2x the largest displayed size); logo.png is kept for the PDF reports
+import logoSrc from '@/assets/images/logo.webp';
 
 interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg';

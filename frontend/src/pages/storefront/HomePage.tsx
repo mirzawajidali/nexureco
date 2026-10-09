@@ -12,7 +12,7 @@ import StillInterested from '@/components/home/StillInterested';
 import MarqueeStrip from '@/components/home/MarqueeStrip';
 import PromoStrip from '@/components/home/PromoStrip';
 import { APP_NAME } from '@/utils/constants';
-import { bannersApi } from '@/api/pages.api';
+import { getHeroBanners } from '@/api/pages.api';
 
 const fallbackSlides: HeroBannerSlide[] = [
   {
@@ -26,14 +26,13 @@ const fallbackSlides: HeroBannerSlide[] = [
 ];
 
 export default function HomePage() {
-  const { data: bannersData } = useQuery({
+  const { data: banners } = useQuery({
     queryKey: ['banners', 'hero'],
-    queryFn: () => bannersApi.getActive('hero'),
+    queryFn: getHeroBanners,
     staleTime: 5 * 60 * 1000,
   });
 
   const heroSlides: HeroBannerSlide[] = useMemo(() => {
-    const banners = bannersData?.data;
     if (!banners || banners.length === 0) return fallbackSlides;
     return banners.map((b) => ({
       id: b.id,
@@ -44,13 +43,13 @@ export default function HomePage() {
       linkUrl: b.link_url || '/',
       buttonText: b.button_text || 'Shop Now',
     }));
-  }, [bannersData]);
+  }, [banners]);
 
   return (
     <>
       <Helmet>
         <title>{APP_NAME} | Premium Fashion & Apparel</title>
-        <meta name="description" content="Discover the latest in fashion and apparel at My Brand. Premium clothing, shoes, and accessories." />
+        <meta name="description" content="Discover the latest in fashion and apparel at Nexure CO. Premium clothing, shoes, and accessories." />
       </Helmet>
 
       <HeroBanner slides={heroSlides} />

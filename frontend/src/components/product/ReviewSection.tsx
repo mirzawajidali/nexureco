@@ -11,6 +11,7 @@ import { formatDate } from '@/utils/formatters';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import { trackEvent } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import type { Review, ReviewSummary } from '@/types/review';
@@ -69,7 +70,8 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
   const mutation = useMutation({
     mutationFn: (data: ReviewFormData) =>
       reviewApi.create({ product_id: productId, ...data }),
-    onSuccess: () => {
+    onSuccess: (_res, data) => {
+      trackEvent('submit_review', { item_id: String(productId), rating: data.rating });
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
       queryClient.invalidateQueries({ queryKey: ['review-summary', productId] });
       toast.success('Review submitted!');

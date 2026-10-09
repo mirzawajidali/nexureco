@@ -4,8 +4,82 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/nexureco-fav.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="My Brand - Premium Fashion & Apparel" />
+    <meta name="description" content="Nexure CO - premium fashion & apparel. Shop new arrivals, best sellers and everyday essentials." />
     <title>Nexure CO</title>
+
+    <!-- Homepage only: request the hero banners and preload the first slide's image while the
+         JS bundle is still downloading. HomePage reuses window.__heroBanners (getHeroBanners in
+         src/api/pages.api.ts). The srcset, sizes and 767px breakpoint must match SlideMedia in
+         src/components/home/HeroBanner.tsx, and the widths IMAGE_WIDTHS in src/utils/image.ts. -->
+    <script>
+      if (location.pathname === '/') {
+        window.__heroBanners = fetch('/api/v1/banners/active?position=hero')
+          .then(function (res) {
+            if (!res.ok) throw new Error('banners ' + res.status);
+            return res.json();
+          })
+          .then(function (banners) {
+            var first = banners[0];
+            var isMobile = matchMedia('(max-width: 767px)').matches;
+            var src = first && ((isMobile && first.mobile_image_url) || first.image_url || first.mobile_image_url);
+            if (src) {
+              var link = document.createElement('link');
+              link.rel = 'preload';
+              link.as = 'image';
+              link.setAttribute('fetchpriority', 'high');
+              if (/^\/uploads\/(?!resized\/).+\.(avif|webp|jpe?g|png)$/i.test(src)) {
+                link.setAttribute('imagesrcset', [160, 320, 480, 640, 960, 1280, 1600, 1920].map(function (w) {
+                  return '/uploads/resized/' + w + '/' + src.slice('/uploads/'.length) + ' ' + w + 'w';
+                }).join(', '));
+                link.setAttribute('imagesizes', '100vw');
+              } else {
+                link.href = src;
+              }
+              document.head.appendChild(link);
+            }
+            return banners;
+          });
+        window.__heroBanners.catch(function () {});
+      }
+    </script>
+
+    <!-- Tracking pixels are deferred: the fbq/ttq stubs below queue every call right away,
+         but the vendor scripts only download on the first user interaction or a few seconds
+         after page load, so they don't compete with the hero image or block the main thread. -->
+    <script>
+      window.__loadWhenIdle = (function () {
+        var queue = [];
+        var started = false;
+        var events = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+        function start() {
+          if (started) return;
+          started = true;
+          events.forEach(function (e) { removeEventListener(e, start); });
+          queue.forEach(function (fn) { fn(); });
+          queue = null;
+        }
+        events.forEach(function (e) { addEventListener(e, start, { once: true, passive: true }); });
+        addEventListener('load', function () { setTimeout(start, 3500); });
+        return function (fn) { started ? fn() : queue.push(fn); };
+      })();
+    </script>
+
+    <!-- Google tag (gtag.js) — GA4. Deferred like the pixels: gtag() calls queue in dataLayer until it loads.
+         send_page_view is off because this is an SPA — usePageViews (src/hooks/useAnalytics.ts) sends
+         page_view on every route change. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-0RYWPRQ1ZH', { send_page_view: false });
+      __loadWhenIdle(function () {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-0RYWPRQ1ZH';
+        document.head.appendChild(s);
+      });
+    </script>
+    <!-- End Google tag -->
 
     <!-- Meta Pixel Code -->
     <script>
@@ -13,9 +87,9 @@
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};
       if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
+      n.queue=[];__loadWhenIdle(function(){t=b.createElement(e);t.async=!0;
       t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      s.parentNode.insertBefore(t,s)})}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
       fbq('init', '1255133269889439');
       fbq('track', 'PageView');
@@ -26,8 +100,8 @@
     <script>
       !function (w, d, t) {
         w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(
-        var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script")
-        ;n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
+        var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=d.createElement("script")
+        ;n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;__loadWhenIdle(function(){var f=d.getElementsByTagName("script")[0];f.parentNode.insertBefore(n,f)})};
 
         ttq.load('D7BJQ5RC77U75VFH9NR0');
         ttq.page();

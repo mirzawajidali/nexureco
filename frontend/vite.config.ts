@@ -1,12 +1,33 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { compression } from 'vite-plugin-compression2'
 import path from 'path'
+
+// Preload the two Latin body/heading fonts. Otherwise the browser only discovers them after
+// downloading and parsing the main CSS, and text re-renders (and shifts) late.
+function preloadFonts(): Plugin {
+  return {
+    name: 'preload-fonts',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler: (_html, { bundle }) =>
+        Object.keys(bundle ?? {})
+          .filter((file) => /\/(inter|montserrat)-latin-wght-normal-[\w-]+\.woff2$/.test(file))
+          .map((file) => ({
+            tag: 'link',
+            attrs: { rel: 'preload', href: `/${file}`, as: 'font', type: 'font/woff2', crossorigin: '' },
+            injectTo: 'head' as const,
+          })),
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
     react(),
     compression(),
+    preloadFonts(),
   ],
   resolve: {
     alias: {

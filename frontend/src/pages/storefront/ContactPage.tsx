@@ -16,6 +16,7 @@ import {
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import { contactApi, type ContactFormData } from '@/api/contact.api';
 import { APP_NAME, STORE_EMAIL, STORE_PHONE, STORE_ADDRESS, STORE_HOURS } from '@/utils/constants';
+import { trackGenerateLead } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
 /* ── Help topic cards ── */
@@ -111,7 +112,10 @@ function ContactForm() {
 
   const mutation = useMutation({
     mutationFn: (data: ContactFormData) => contactApi.submit(data),
-    onSuccess: () => setSubmitted(true),
+    onSuccess: () => {
+      trackGenerateLead('contact_form');
+      setSubmitted(true);
+    },
     onError: () => toast.error('Failed to send message. Please try again.'),
   });
 

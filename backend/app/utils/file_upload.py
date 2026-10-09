@@ -4,6 +4,7 @@ import uuid
 from fastapi import UploadFile
 from PIL import Image
 from app.config import get_settings
+from app.utils.image_variants import delete_variants
 
 settings = get_settings()
 
@@ -88,3 +89,4 @@ def delete_upload_file(url: str) -> None:
         file_path = url.lstrip("/")
         if os.path.exists(file_path):
             os.remove(file_path)
+        delete_variants(url)

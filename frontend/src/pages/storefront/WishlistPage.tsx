@@ -15,16 +15,23 @@ import Button from '@/components/ui/Button';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Spinner from '@/components/ui/Spinner';
 import ProductCard from '@/components/product/ProductCard';
+import { useViewItemList } from '@/hooks/useAnalytics';
+import { productToItem, trackRemoveFromWishlist, trackSelectItem } from '@/utils/analytics';
 import toast from 'react-hot-toast';
+
+const WISHLIST_LIST = { id: 'wishlist', name: 'Wishlist' };
+const WISHLIST_RECENT_LIST = { id: 'recently_viewed_wishlist', name: 'Recently Viewed (Wishlist)' };
 
 function WishlistCard({
   product,
   onRemove,
   onMoveToBag,
+  onSelect,
 }: {
   product: ProductListItem;
   onRemove: () => void;
   onMoveToBag: () => void;
+  onSelect: () => void;
 }) {
   const [hoveredVariant, setHoveredVariant] = useState<number | null>(null);
   const hasDiscount =
@@ -39,6 +46,7 @@ function WishlistCard({
       {/* Image — portrait ratio matching ProductCard */}
       <Link
         to={`/product/${product.slug}`}
+        onClick={onSelect}
         className="block aspect-[3/4] bg-[#eceff1] overflow-hidden relative"
       >
         {displayImage ? (
@@ -123,14 +131,14 @@ function WishlistCard({
 
       {/* Product info */}
       <div className="pt-3 space-y-0.5">
-        <Link to={`/product/${product.slug}`} className="block space-y-0.5">
+        <Link to={`/product/${product.slug}`} onClick={onSelect} className="block space-y-0.5">
           {/* Price */}
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-brand-black">
               {formatPrice(product.base_price)}
             </span>
             {hasDiscount && (
-              <span className="text-sm text-gray-400 line-through">
+              <span className="text-sm text-gray-600 line-through">
                 {formatPrice(product.compare_at_price!)}
               </span>
             )}
@@ -191,6 +199,7 @@ function RecentlyViewedSection({ excludeIds }: { excludeIds: number[] }) {
   });
 
   const products = data?.data?.items ?? [];
+  useViewItemList(products, WISHLIST_RECENT_LIST);
 
   if (products.length === 0) return null;
 
@@ -201,9 +210,11 @@ function RecentlyViewedSection({ excludeIds }: { excludeIds: number[] }) {
           Recently Viewed
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
-          {products.map((p) => (
+          {products.map((p, index) => (
             <ProductCard
               key={p.id}
+              list={WISHLIST_RECENT_LIST}
+              index={index}
               id={p.id}
               name={p.name}
               slug={p.slug}
@@ -232,6 +243,7 @@ export default function WishlistPage() {
   });
 
   const products = data?.data?.items || [];
+  useViewItemList(products, WISHLIST_LIST);
 
   const handleMoveToCart = (product: ProductListItem) => {
     addItem({
@@ -286,11 +298,13 @@ export default function WishlistPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <WishlistCard
                 key={product.id}
                 product={product}
+                onSelect={() => trackSelectItem(productToItem(product, { index }), WISHLIST_LIST)}
                 onRemove={() => {
+                  trackRemoveFromWishlist([productToItem(product)]);
                   removeFromWishlist(product.id);
                   toast.success('Removed from wishlist');
                 }}

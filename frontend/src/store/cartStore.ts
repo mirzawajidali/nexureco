@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { cartLineToItem, trackAddToCart, trackRemoveFromCart } from '@/utils/analytics';
 
-interface CartItemLocal {
+export interface CartItemLocal {
   productId: number;
   variantId: number | null;
   quantity: number;
@@ -34,7 +35,10 @@ export const useCartStore = create<CartState>()(
       couponCode: null,
       isCartOpen: false,
 
-      addItem: (item) =>
+      // GA4 add/remove_from_cart are tracked here so every UI path (PDP, drawer, bag, wishlist) is covered.
+      // clearCart is deliberately untracked — it also runs after a successful order.
+      addItem: (item) => {
+        trackAddToCart([cartLineToItem(item)]);
         set((state) => {
           const existing = state.items.find(
             (i) => i.productId === item.productId && i.variantId === item.variantId
@@ -49,16 +53,24 @@ export const useCartStore = create<CartState>()(
             };
           }
           return { items: [...state.items, item] };
-        }),
+        });
+      },
 
-      removeItem: (productId, variantId) =>
+      removeItem: (productId, variantId) => {
+        const line = get().items.find((i) => i.productId === productId && i.variantId === variantId);
+        if (line) trackRemoveFromCart([cartLineToItem(line)]);
         set((state) => ({
           items: state.items.filter(
             (i) => !(i.productId === productId && i.variantId === variantId)
           ),
-        })),
+        }));
+      },
 
-      updateQuantity: (productId, variantId, quantity) =>
+      updateQuantity: (productId, variantId, quantity) => {
+        const line = get().items.find((i) => i.productId === productId && i.variantId === variantId);
+        const delta = line ? Math.max(quantity, 0) - line.quantity : 0;
+        if (line && delta > 0) trackAddToCart([cartLineToItem(line, delta)]);
+        if (line && delta < 0) trackRemoveFromCart([cartLineToItem(line, -delta)]);
         set((state) => ({
           items:
             quantity <= 0
@@ -70,7 +82,8 @@ export const useCartStore = create<CartState>()(
                     ? { ...i, quantity }
                     : i
                 ),
-        })),
+        }));
+      },
 
       clearCart: () => set({ items: [], couponCode: null }),
 
