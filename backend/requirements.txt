@@ -2,6 +2,9 @@ fastapi==0.115.6
 uvicorn[standard]==0.34.0
 sqlalchemy[asyncio]==2.0.36
 aiomysql==0.2.0
+# aiomysql doesn't cap PyMySQL; 1.2.x breaks SQLAlchemy 2.0.36's pool pre-ping
+# ("AsyncAdapt_aiomysql_connection.ping() missing 1 required positional argument: 'reconnect'")
+PyMySQL==1.1.2
 alembic==1.14.0
 pydantic[email]==2.10.3
 pydantic-settings==2.7.0

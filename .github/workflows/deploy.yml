@@ -94,6 +94,14 @@ jobs:
             # Restart only backend & frontend (infra services rarely change)
             docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps backend frontend
 
+            # The frontend nginx also proxies cloud.nexureco.com, whose containers are on edge-net.
+            # A recreated container loses that connection and nginx exits ("host not found in upstream
+            # cloud-backend"), so reattach it. It must be stopped first: a crash-looping container has
+            # no network sandbox to connect to.
+            docker stop mybrand-frontend-1
+            docker network connect edge-net mybrand-frontend-1 2>/dev/null || true
+            docker start mybrand-frontend-1
+
             # Reload nginx to pick up new backend container IP
             sleep 3
             docker exec mybrand-frontend-1 nginx -s reload || true
