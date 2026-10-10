@@ -18,7 +18,7 @@ export const RETURN_WINDOW_DAYS = 7;
 export const RETURN_POLICY_SUMMARY =
   `Returns and exchanges are accepted within ${RETURN_WINDOW_DAYS} days of delivery. Items must be unworn, unwashed, ` +
   'and in their original packaging. Refunds are processed within 5-7 business days.';
-// Site-wide free-shipping message (top bar, promo banner, marquee)
+// Site-wide free-shipping message (top bar, promo banner)
 export const FREE_SHIPPING_MESSAGE = `Free shipping on orders over Rs. ${FREE_SHIPPING_THRESHOLD.toLocaleString('en-PK')}`;
 // Homepage meta description; same text as HOME_DESCRIPTION in backend/app/services/seo_service.py
 export const HOME_DESCRIPTION =

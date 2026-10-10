@@ -28,8 +28,8 @@ const config: Config = {
         error: '#E63946',
         warning: '#F5A623',
         info: '#2196F3',
-        // Discounted price
-        sale: '#E32B2B',
+        // Discounted price (spec #E32B2B, darkened for WCAG AA on light-grey backgrounds)
+        sale: '#DE2828',
       },
       // Typography system — the values live as CSS variables on :root in styles/globals.css.
       //   font-display: Archivo, for headlines (use the .type-display / .type-section / .type-promo classes)
@@ -72,8 +72,6 @@ const config: Config = {
         'slide-in-right': 'slideInRight 0.3s ease-out',
         'slide-in-up': 'slideInUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
-        'marquee': 'marquee 30s linear infinite',
-        'marquee-fast': 'marquee 18s linear infinite',
       },
       keyframes: {
         slideInRight: {
@@ -87,10 +85,6 @@ const config: Config = {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
-        },
-        marquee: {
-          '0%': { transform: 'translateX(0)' },
-          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

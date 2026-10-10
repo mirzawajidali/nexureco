@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import storyImage1000 from '@/assets/images/brand-story-1000.avif';
-import storyImage1600 from '@/assets/images/brand-story-1600.avif';
+import storyImage1200 from '@/assets/images/brand-story-1200.avif';
 import storyImageWebp1000 from '@/assets/images/brand-story-1000.webp';
-import storyImageWebp1600 from '@/assets/images/brand-story-1600.webp';
+import storyImageWebp1200 from '@/assets/images/brand-story-1200.webp';
 
 export default function BrandStory() {
   return (
@@ -14,16 +14,16 @@ export default function BrandStory() {
           <picture>
             <source
               type="image/avif"
-              srcSet={`${storyImage1000} 1000w, ${storyImage1600} 1600w`}
+              srcSet={`${storyImage1000} 1000w, ${storyImage1200} 1200w`}
               sizes="(max-width: 1024px) 100vw, 50vw"
             />
             <img
               src={storyImageWebp1000}
-              srcSet={`${storyImageWebp1000} 1000w, ${storyImageWebp1600} 1600w`}
+              srcSet={`${storyImageWebp1000} 1000w, ${storyImageWebp1200} 1200w`}
               sizes="(max-width: 1024px) 100vw, 50vw"
-              alt="Our Story"
+              alt="Model in a red Nexure CO T-shirt"
               width={1000}
-              height={667}
+              height={533}
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
             />

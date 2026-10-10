@@ -9,7 +9,6 @@ import TrendingProducts from '@/components/home/TrendingProducts';
 import BrandStory from '@/components/home/BrandStory';
 import NewsletterSection from '@/components/home/NewsletterSection';
 import StillInterested from '@/components/home/StillInterested';
-import MarqueeStrip from '@/components/home/MarqueeStrip';
 import PromoStrip from '@/components/home/PromoStrip';
 import { getHeroBanners } from '@/api/pages.api';
 import { HOME_DESCRIPTION, SITE_NAME } from '@/utils/constants';
@@ -55,7 +54,6 @@ export default function HomePage() {
       <h1 className="sr-only">{`${SITE_NAME} — Premium Cotton T-Shirts in Pakistan`}</h1>
 
       <HeroBanner slides={heroSlides} />
-      <MarqueeStrip variant="dark" />
       <ShopByCollection />
       <PromoStrip
         eyebrow="Members Only"
@@ -67,7 +65,6 @@ export default function HomePage() {
       />
       <TrendingProducts />
       <StillInterested />
-      <MarqueeStrip variant="light" speed="fast" />
       <BrandStory />
       <FeaturedCollections />
       <NewsletterSection />

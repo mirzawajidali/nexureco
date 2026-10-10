@@ -12,7 +12,7 @@
 
     --color-text: #000000;
     --color-text-muted: #767677;
-    --color-sale: #e32b2b;
+    --color-sale: #de2828; /* #E32B2B darkened slightly: 4.5:1+ contrast on white and the #FAFAFA section background */
     --color-text-inverse: #ffffff;
 
     /* size / line-height / letter-spacing per role */
@@ -433,13 +433,8 @@
   }
 }
 
-/* Respect "reduce motion": stop the scrolling marquee and other decorative animation (WCAG 2.3.3) */
+/* Respect "reduce motion": stop decorative animation and transitions (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee,
-  .animate-marquee-fast {
-    animation: none;
-  }
-
   *,
   *::before,
   *::after {

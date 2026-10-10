@@ -118,7 +118,9 @@ export default function CategoryPage() {
     !subtreeProductCount;
   const description =
     cat?.meta_description ||
-    (cat?.description ? truncateText(cat.description, 160) : `Shop ${categoryName} at ${SITE_NAME}. ${APP_DESCRIPTION}.`);
+    (cat?.description
+      ? truncateText(cat.description.split(/\n\s*\n/)[0], 160)
+      : `Shop ${categoryName} at ${SITE_NAME}. ${APP_DESCRIPTION}.`);
 
   return (
     <>
@@ -168,10 +170,10 @@ export default function CategoryPage() {
           )}
         </div>
 
-        {/* Description */}
+        {/* Intro: the description's first paragraph (the full text is in the section at the bottom) */}
         {cat?.description && (
           <p className="text-sm text-gray-600 max-w-2xl mb-6 leading-relaxed">
-            {cat.description}
+            {cat.description.split(/\n\s*\n/)[0]}
           </p>
         )}
 
