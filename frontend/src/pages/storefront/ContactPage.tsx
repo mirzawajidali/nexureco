@@ -282,7 +282,7 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16">
           {/* Left — Contact channels */}
           <div className="lg:col-span-2">
-            <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-4 block">
+            <span className="text-xs font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-4 block">
               Get in Touch
             </span>
             <h2 className="type-section mb-8">
@@ -372,7 +372,7 @@ export default function ContactPage() {
         <div className="container-custom section-padding">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
-              <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-3 block">
+              <span className="text-xs font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-3 block">
                 FAQ
               </span>
               <h2 className="type-section">

@@ -88,7 +88,7 @@ export default function AboutPage() {
 
             {/* Content */}
             <div>
-              <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-4 block">
+              <span className="text-xs font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-4 block">
                 Our Story
               </span>
               <h2
@@ -121,7 +121,7 @@ export default function AboutPage() {
       <section className="section-padding bg-gray-50">
         <div className="container-custom">
           <div className="text-center mb-12 md:mb-16">
-            <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-4 block">
+            <span className="text-xs font-heading font-bold uppercase tracking-[0.25em] text-gray-400 mb-4 block">
               What We Stand For
             </span>
             <h2

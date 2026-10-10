@@ -15,7 +15,10 @@ import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constan
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import CouponField from '@/components/cart/CouponField';
 import { useTrackOnce } from '@/hooks/useAnalytics';
-import { useCoupon } from '@/hooks/useCoupon';
+import { useBagDiscount } from '@/hooks/useBagDiscount';
+import FreeShippingProgress from '@/components/cart/FreeShippingProgress';
+import BundleNotice from '@/components/cart/BundleNotice';
+import { BUNDLE_LABEL } from '@/utils/bundles';
 import { cartLineToItem, trackRemoveFromCart, trackViewCart } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
@@ -109,7 +112,8 @@ function CartItem({
 /* ── Main Page ── */
 export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, subtotal } = useCartStore();
-  const { code: couponCode, discount } = useCoupon();
+  // Bundle or promo code, whichever saves more (same rule as checkout and the server)
+  const { code: couponCode, discount, source, bundle, couponOutdone } = useBagDiscount();
   const total = subtotal();
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   // Same rule as the server: free shipping goes by the subtotal before any discount
@@ -158,31 +162,11 @@ export default function CartPage() {
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
             {/* ── Left: Items ── */}
             <div className="flex-1 min-w-0">
-              {/* Free shipping progress */}
-              {total < FREE_SHIPPING_THRESHOLD && (
-                <div className="bg-gray-50 px-5 py-4 mb-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TruckIcon className="w-4 h-4 text-gray-600" />
-                    <p className="text-xs font-bold text-brand-black uppercase tracking-wider">
-                      You're {formatPrice(FREE_SHIPPING_THRESHOLD - total)} away from free shipping
-                    </p>
-                  </div>
-                  <div className="w-full h-1 bg-gray-200 overflow-hidden">
-                    <div
-                      className="h-full bg-brand-black transition-all duration-500"
-                      style={{ width: `${Math.min(100, (total / FREE_SHIPPING_THRESHOLD) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-              {total >= FREE_SHIPPING_THRESHOLD && (
-                <div className="bg-green-50 px-5 py-3 mb-6 flex items-center gap-2">
-                  <TruckIcon className="w-4 h-4 text-green-700" />
-                  <p className="text-xs font-bold text-green-700 uppercase tracking-wider">
-                    You qualify for free shipping!
-                  </p>
-                </div>
-              )}
+              {/* Free shipping progress + bundle deal (same components as the bag drawer) */}
+              <div className="bg-gray-50 px-5 py-4 mb-6 space-y-3">
+                <FreeShippingProgress subtotal={total} />
+                <BundleNotice bundle={bundle} applied={source === 'bundle'} couponOutdone={couponOutdone} />
+              </div>
 
               {/* Items list */}
               <div className="divide-y divide-gray-200">
@@ -244,7 +228,7 @@ export default function CartPage() {
                     </div>
                     {discount > 0 && (
                       <div className="flex justify-between text-green-700">
-                        <span>Promo code ({couponCode})</span>
+                        <span>{source === 'bundle' ? BUNDLE_LABEL : `Promo code (${couponCode})`}</span>
                         <span className="font-bold">-{formatPrice(discount)}</span>
                       </div>
                     )}

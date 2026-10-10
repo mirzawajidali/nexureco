@@ -60,6 +60,8 @@ const WishlistPage = lazy(() => import('@/pages/storefront/WishlistPage'));
 const CheckoutPage = lazy(() => import('@/pages/storefront/CheckoutPage'));
 const OrderConfirmationPage = lazy(() => import('@/pages/storefront/OrderConfirmationPage'));
 const OrderTrackingPage = lazy(() => import('@/pages/storefront/OrderTrackingPage'));
+const ConfirmOrderPage = lazy(() => import('@/pages/storefront/ConfirmOrderPage'));
+const RestoreBagPage = lazy(() => import('@/pages/storefront/RestoreBagPage'));
 const AccountPage = lazy(() => import('@/pages/storefront/AccountPage'));
 const ContactPage = lazy(() => import('@/pages/storefront/ContactPage'));
 const SizeGuidePage = lazy(() => import('@/pages/storefront/SizeGuidePage'));
@@ -76,6 +78,7 @@ const AdminCollectionsPage = lazy(() => import('@/pages/admin/AdminCollectionsPa
 const AdminCollectionFormPage = lazy(() => import('@/pages/admin/AdminCollectionFormPage'));
 const AdminOrdersPage = lazy(() => import('@/pages/admin/AdminOrdersPage'));
 const AdminOrderDetailPage = lazy(() => import('@/pages/admin/AdminOrderDetailPage'));
+const AdminAbandonedCheckoutsPage = lazy(() => import('@/pages/admin/AdminAbandonedCheckoutsPage'));
 const AdminCreateOrderPage = lazy(() => import('@/pages/admin/AdminCreateOrderPage'));
 const AdminCustomersPage = lazy(() => import('@/pages/admin/AdminCustomersPage'));
 const AdminCustomerDetailPage = lazy(() => import('@/pages/admin/AdminCustomerDetailPage'));
@@ -116,6 +119,8 @@ export const router = createBrowserRouter([
       { path: '/checkout', element: <Lazy component={CheckoutPage} /> },
       { path: '/order-confirmation/:orderNumber', element: <Lazy component={OrderConfirmationPage} /> },
       { path: '/track-order', element: <Lazy component={OrderTrackingPage} /> },
+      { path: '/order/confirm', element: <Lazy component={ConfirmOrderPage} /> },
+      { path: '/bag/:token', element: <Lazy component={RestoreBagPage} /> },
       { path: '/track-order/:orderNumber', element: <Lazy component={OrderTrackingPage} /> },
 
       // Account
@@ -163,6 +168,7 @@ export const router = createBrowserRouter([
       { path: 'orders', element: <M module="orders" component={AdminOrdersPage} /> },
       { path: 'orders/new', element: <M module="orders" component={AdminCreateOrderPage} /> },
       { path: 'orders/:id', element: <M module="orders" component={AdminOrderDetailPage} /> },
+      { path: 'abandoned-checkouts', element: <M module="orders" component={AdminAbandonedCheckoutsPage} /> },
       { path: 'customers', element: <M module="customers" component={AdminCustomersPage} /> },
       { path: 'customers/new', element: <M module="customers" component={AdminCustomerFormPage} /> },
       { path: 'customers/:id', element: <M module="customers" component={AdminCustomerDetailPage} /> },

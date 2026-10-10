@@ -12,6 +12,8 @@ import { formatDate } from '@/utils/formatters';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import ReviewPhotoPicker from './ReviewPhotoPicker';
+import ReviewPhotos from './ReviewPhotos';
 import { trackEvent } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
@@ -49,6 +51,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(linkedToReviews && !!emailedOrderNumber);
   const [hoverRating, setHoverRating] = useState(0);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const queryClient = useQueryClient();
@@ -84,10 +87,12 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
   const selectedRating = watch('rating');
 
   const mutation = useMutation({
-    mutationFn: ({ rating, title, comment, name, order_number, contact }: ReviewFormData) =>
-      user
-        ? reviewApi.create({ product_id: productId, rating, title, comment })
-        : reviewApi.createVerified({
+    // The review is saved first; its photos are then uploaded one by one with the token it returns,
+    // so a photo that fails to upload never loses the review itself
+    mutationFn: async ({ rating, title, comment, name, order_number, contact }: ReviewFormData) => {
+      const res = user
+        ? await reviewApi.create({ product_id: productId, rating, title, comment })
+        : await reviewApi.createVerified({
             product_id: productId,
             rating,
             title,
@@ -95,13 +100,29 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
             name: name?.trim() || undefined,
             order_number: (order_number ?? '').trim(),
             contact: (contact ?? '').trim(),
-          }),
-    onSuccess: (_res, data) => {
-      trackEvent('submit_review', { item_id: String(productId), rating: data.rating });
+          });
+      const created = res.data as Review & { photo_upload_token?: string };
+      let failedPhotos = 0;
+      for (const file of photos) {
+        try {
+          await reviewApi.uploadPhoto(created.id, created.photo_upload_token ?? '', file);
+        } catch {
+          failedPhotos += 1;
+        }
+      }
+      return { failedPhotos };
+    },
+    onSuccess: ({ failedPhotos }, data) => {
+      trackEvent('submit_review', { item_id: String(productId), rating: data.rating, photos: photos.length });
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
       queryClient.invalidateQueries({ queryKey: ['review-summary', productId] });
-      toast.success('Review submitted!');
+      if (failedPhotos > 0) {
+        toast.error(`Review posted, but ${failedPhotos} photo${failedPhotos > 1 ? "s" : ''} couldn't be uploaded`);
+      } else {
+        toast.success('Thanks! Your review is live.');
+      }
       setShowForm(false);
+      setPhotos([]);
       reset({ rating: 0 });
     },
     onError: (err: unknown) => {
@@ -360,6 +381,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                   </div>
 
                   <Input label="Title (optional)" {...register('title')} />
+                  <ReviewPhotoPicker files={photos} onChange={setPhotos} />
                   <div>
                     <label htmlFor="review-comment" className="text-xs font-bold text-brand-black block mb-1">
                       Comment (optional)
@@ -383,6 +405,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                       variant="ghost"
                       onClick={() => {
                         setShowForm(false);
+                        setPhotos([]);
                         reset({ rating: 0 });
                       }}
                     >
@@ -436,18 +459,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                         </span>
                       </div>
 
-                      {review.images.length > 0 && (
-                        <div className="flex gap-2 mt-3">
-                          {review.images.map((img) => (
-                            <img
-                              key={img.id}
-                              src={img.url}
-                              alt="Review"
-                              className="w-16 h-16 object-cover bg-gray-100"
-                            />
-                          ))}
-                        </div>
-                      )}
+                      <ReviewPhotos images={review.images} reviewer={review.user_name} />
 
                       {/* Helpful + Report */}
                       <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">

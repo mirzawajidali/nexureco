@@ -1,5 +1,8 @@
 import re
+from datetime import datetime, timedelta, timezone
 
+from fastapi import UploadFile
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -8,8 +11,28 @@ from app.models.review import Review, ReviewImage
 from app.models.product import Product
 from app.models.user import User
 from app.schemas.review import ReviewCreate, VerifiedReviewCreate
-from app.core.exceptions import NotFoundException, ConflictException, BadRequestException
+from app.config import get_settings
+from app.core.exceptions import NotFoundException, ConflictException, BadRequestException, UnauthorizedException
+from app.core.security import decode_token
+from app.utils.file_upload import save_upload_file_with_meta
 from app.utils.pagination import paginate
+
+settings = get_settings()
+
+MAX_REVIEW_PHOTOS = 3
+# The token returned with a new review authorizes adding photos to that review only, for an hour.
+# Its type isn't "access", so it can never be used to sign in.
+PHOTO_TOKEN_TYPE = "review_photos"
+PHOTO_TOKEN_TTL = timedelta(hours=1)
+
+
+def _photo_upload_token(review_id: int) -> str:
+    expires = datetime.now(timezone.utc) + PHOTO_TOKEN_TTL
+    return jwt.encode(
+        {"type": PHOTO_TOKEN_TYPE, "sub": str(review_id), "exp": expires},
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
 
 
 async def create_review(db: AsyncSession, user_id: int, data: ReviewCreate) -> dict:
@@ -52,7 +75,7 @@ async def create_review(db: AsyncSession, user_id: int, data: ReviewCreate) -> d
 
     review = await _reload_with_images(db, review.id)
     user = await db.get(User, user_id)
-    return _build_review_out(review, user)
+    return {**_build_review_out(review, user), "photo_upload_token": _photo_upload_token(review.id)}
 
 
 # One message for every failed check, so the form can't be used to find out which order numbers exist
@@ -113,7 +136,32 @@ async def create_verified_review(db: AsyncSession, data: VerifiedReviewCreate) -
     await db.flush()
     await _update_product_rating(db, data.product_id)
     review = await _reload_with_images(db, review.id)
-    return _build_review_out(review, order.user)
+    return {**_build_review_out(review, order.user), "photo_upload_token": _photo_upload_token(review.id)}
+
+
+async def add_review_photo(db: AsyncSession, review_id: int, token: str, file: UploadFile) -> dict:
+    """Attach a customer photo to their own review (authorized by the token from creating it)."""
+    payload = decode_token(token)
+    if not payload or payload.get("type") != PHOTO_TOKEN_TYPE or payload.get("sub") != str(review_id):
+        raise UnauthorizedException("This link to add photos has expired. Please submit your review again.")
+
+    review = (await db.execute(
+        select(Review).options(selectinload(Review.images)).where(Review.id == review_id)
+    )).scalar_one_or_none()
+    if not review:
+        raise NotFoundException("Review not found")
+    if len(review.images) >= MAX_REVIEW_PHOTOS:
+        raise BadRequestException(f"A review can have up to {MAX_REVIEW_PHOTOS} photos")
+
+    try:
+        meta = await save_upload_file_with_meta(file, subfolder="reviews", max_width=1600, name_hint="review")
+    except ValueError as exc:
+        raise BadRequestException(str(exc)) from exc
+
+    image = ReviewImage(review_id=review_id, url=meta["url"])
+    db.add(image)
+    await db.flush()
+    return {"id": image.id, "url": image.url}
 
 
 async def get_product_reviews(

@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import { adminOrdersApi } from '@/api/admin.api';
 import Spinner from '@/components/ui/Spinner';
+import OrderWhatsAppCard from '@/components/admin/OrderWhatsAppCard';
 import { formatPrice } from '@/utils/formatters';
 import type { Order, OrderStatusHistory as StatusEntry } from '@/types/order';
 
@@ -485,7 +486,7 @@ export default function AdminOrderDetailPage() {
 
               {/* Payment method */}
               <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
-                Payment method: <span className="capitalize font-medium text-gray-700">{order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method}</span>
+                Payment method: <span className="capitalize font-medium text-gray-700">{order.payment_method === 'cod' ? 'Cash on Delivery' : order.payment_method === 'payfast' ? 'Online (PayFast)' : order.payment_method}</span>
               </div>
 
               {/* Mark as paid action */}
@@ -691,6 +692,9 @@ export default function AdminOrderDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* One-click WhatsApp messages (review request, ...) */}
+            <OrderWhatsAppCard orderId={order.id} status={order.status} />
 
             {/* Shipping address */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">

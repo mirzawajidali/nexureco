@@ -20,11 +20,18 @@ import Spinner from '@/components/ui/Spinner';
 import Accordion from '@/components/ui/Accordion';
 import ZoomableImage from '@/components/ui/ZoomableImage';
 import { formatPrice, truncateText } from '@/utils/formatters';
-import { SITE_NAME } from '@/utils/constants';
+import { SITE_NAME, SITE_URL } from '@/utils/constants';
 import { htmlToText, productStructuredData, productTitle, shortProductName } from '@/utils/seo';
 import { resizedImage } from '@/utils/image';
 import ReviewSection from '@/components/product/ReviewSection';
 import ProductCard from '@/components/product/ProductCard';
+import ProductImageCarousel from '@/components/product/ProductImageCarousel';
+import StickyAddToBag from '@/components/product/StickyAddToBag';
+import TrustBadges from '@/components/product/TrustBadges';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { trackWhatsAppClick, whatsappLink } from '@/utils/whatsapp';
+import { BUNDLE_LABEL } from '@/utils/bundles';
 import { useTrackOnce, useViewItemList } from '@/hooks/useAnalytics';
 import {
   productToItem,
@@ -240,6 +247,39 @@ export default function ProductPage() {
     setCartOpen(true);
   };
 
+  // Phones get a swipeable one-photo carousel, desktops the photo grid; only one is rendered,
+  // so a phone never downloads the grid's images
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const addToBagRef = useRef<HTMLButtonElement>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const missingOptions = product ? product.options.filter((opt) => !selectedOptions[opt.id]).map((opt) => opt.name) : [];
+
+  // Sticky bar: with an option still to choose, take the customer to it instead of erroring
+  const stickyAddToBag = () => {
+    if (hasOptions && !allOptionsSelected) {
+      setAttemptedAdd(true);
+      optionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    handleAddToCart();
+  };
+
+  // "Order on WhatsApp": the product, chosen options and quantity, ready to send to the store
+  const whatsappOrderText = () => {
+    if (!product) return '';
+    const chosen = product.options
+      .map((opt) => {
+        const val = opt.values.find((v) => v.id === selectedOptions[opt.id]);
+        return val ? `${opt.name}: ${val.value}` : null;
+      })
+      .filter(Boolean)
+      .join(', ');
+    return (
+      `Hi ${SITE_NAME}! I'd like to order:\n${product.name}${chosen ? ` (${chosen})` : ''}\n` +
+      `Quantity: ${quantity}\nPrice: ${formatPrice(currentPrice)} each\n${SITE_URL}/product/${product.slug}`
+    );
+  };
+
   const handleToggleWishlist = () => {
     if (!product) return;
     (wishlisted ? trackRemoveFromWishlist : trackAddToWishlist)([productToItem(product)]);
@@ -272,15 +312,16 @@ export default function ProductPage() {
     const showError = attemptedAdd && !selectedValueId;
 
     return (
-      <div key={option.id} className="mb-8">
-        <h3 className={clsx('text-sm font-bold mb-4', showError ? 'text-error' : 'text-brand-black')}>
-          {isColor ? 'Colors' : option.name}
+      <div key={option.id} className="mb-6">
+        <h3 className={clsx('text-sm font-bold mb-3', showError ? 'text-error' : 'text-brand-black')}>
+          {isColor ? 'Colour' : option.name}
+          {isColor && selectedLabel && <span className="font-normal">: {selectedLabel}</span>}
           {showError && <span className="font-normal ml-1">— Please select</span>}
         </h3>
 
         {isColor ? (
           <>
-            <div className="flex gap-1" role="group" aria-label="Colors">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Colours">
               {colorVariantImages.map((cv) => {
                 const available = isValueAvailable(option.id, cv.valueId);
                 return (
@@ -289,26 +330,27 @@ export default function ProductPage() {
                   type="button"
                   aria-pressed={selectedValueId === cv.valueId}
                   aria-label={available ? cv.label : `${cv.label} (sold out)`}
+                  title={available ? cv.label : `${cv.label} (sold out)`}
                   onClick={() => {
                     setSelectedOptions((prev) => ({ ...prev, [option.id]: cv.valueId }));
                     setAttemptedAdd(false);
                   }}
                   className={clsx(
-                    'w-[120px] aspect-[3/4] overflow-hidden transition-all',
+                    'w-20 aspect-[3/4] overflow-hidden transition-all ring-offset-2',
                     !available && 'opacity-50',
                     selectedValueId === cv.valueId
-                      ? 'border-b-[4px] border-brand-black'
+                      ? 'ring-2 ring-brand-black'
                       : showError
-                        ? 'border-b-[4px] border-error'
-                        : 'border-b-[4px] border-transparent hover:border-gray-300'
+                        ? 'ring-2 ring-error'
+                        : 'ring-1 ring-transparent hover:ring-gray-400'
                   )}
                 >
                   {cv.image ? (
                     <img
                       src={resizedImage(cv.image, 320)}
                       alt={`${product!.name} in ${cv.label}`}
-                      width={120}
-                      height={160}
+                      width={80}
+                      height={107}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -320,9 +362,6 @@ export default function ProductPage() {
                 );
               })}
             </div>
-            {selectedLabel && (
-              <p className="text-sm text-brand-black mt-2">{selectedLabel}</p>
-            )}
           </>
         ) : (
           <div className="grid grid-cols-5 gap-[2px]" role="group" aria-label={option.name}>
@@ -397,37 +436,43 @@ export default function ProductPage() {
         <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
       </Helmet>
 
-      {/* Full-width layout: images flush left, sidebar padded right */}
-      <div className="flex flex-col lg:flex-row">
-
-        {/* Left — Image Gallery (flush to left edge) */}
-        <div className="flex-1 min-w-0 relative">
-          {/* Breadcrumb overlaid on top of images */}
-          <nav className="absolute top-4 left-4 z-10 flex items-center gap-2 text-xs text-gray-500">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-1 hover:text-brand-black transition-colors"
+      {/* Breadcrumb — its own row above the photos */}
+      <nav aria-label="Breadcrumb" className="px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-gray-600 min-w-0">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 hover:text-brand-black transition-colors flex-shrink-0"
+        >
+          <ArrowLeftIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="underline">Back</span>
+        </button>
+        <span aria-hidden="true">/</span>
+        <Link to="/" className="hover:text-brand-black transition-colors underline flex-shrink-0">Home</Link>
+        {product.category_slug && product.category_name && (
+          <>
+            <ChevronRightIcon className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+            <Link
+              to={`/category/${product.category_slug}`}
+              className="hover:text-brand-black transition-colors underline flex-shrink-0"
             >
-              <ArrowLeftIcon className="h-3.5 w-3.5" />
-              <span className="underline">Back</span>
-            </button>
-            <span className="mx-1">/</span>
-            <Link to="/" className="hover:text-brand-black transition-colors underline">Home</Link>
-            {product.category_name && (
-              <>
-                <ChevronRightIcon className="h-3 w-3" />
-                <Link
-                  to={`/category/${product.category_name.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="hover:text-brand-black transition-colors underline"
-                >
-                  {product.category_name}
-                </Link>
-              </>
-            )}
-          </nav>
+              {product.category_name}
+            </Link>
+          </>
+        )}
+        <ChevronRightIcon className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+        <span aria-current="page" className="text-brand-black truncate">{shortName}</span>
+      </nav>
 
+      {/* Phones: photos, then the buy box, then details. Desktop: photos and details on the left,
+          the sticky buy box on the right (spanning both rows). */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
+
+        {/* Photos */}
+        <div className="lg:col-start-1 lg:row-start-1 min-w-0 relative">
+          {!isDesktop ? (
+            <ProductImageCarousel images={allImages} productName={product.name} onOpen={setLightboxIndex} />
+          ) : (
           <div className="relative">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+            <div className="grid grid-cols-2 gap-0.5">
               {visibleImages.map((img, idx) => (
                 <ZoomableImage
                   key={img.id}
@@ -461,7 +506,183 @@ export default function ProductPage() {
               </div>
             )}
           </div>
+          )}
+        </div>
 
+
+        {/* Buy box — sticky on desktop */}
+        <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 px-5 sm:px-6 lg:pl-10 lg:pr-10 xl:pr-14 pt-2 lg:pt-4">
+          <div className="lg:sticky lg:top-8">
+              {/* Category + Rating row */}
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-gray-500">
+                  {product.category_name || 'Apparel'}
+                </p>
+                {product.review_count > 0 && (
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <StarIcon
+                        key={i}
+                        className={clsx(
+                          'h-3.5 w-3.5',
+                          i < Math.round(product.avg_rating) ? 'text-brand-black' : 'text-gray-300'
+                        )}
+                      />
+                    ))}
+                    <span className="text-xs text-gray-500 ml-1 underline cursor-pointer">{product.review_count}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Name */}
+              <h1 className="type-section mb-3">
+                {product.name}
+              </h1>
+
+              {/* Price */}
+              <div className="flex items-center gap-3 mb-2">
+                <span className={clsx('type-price', currentComparePrice && currentComparePrice > currentPrice && 'text-sale')}>
+                  {formatPrice(currentPrice)}
+                </span>
+                {currentComparePrice && currentComparePrice > currentPrice && (
+                  <>
+                    <span className="text-sm text-gray-600 line-through">
+                      {formatPrice(currentComparePrice)}
+                    </span>
+                    <span className="badge-error text-xs">
+                      -{Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100)}%
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Bundle deal (backend services/bundle_service.py) */}
+              <p className="text-sm font-bold text-sale mb-2">{BUNDLE_LABEL}, mix and match</p>
+
+              {/* Stock Status (below price) */}
+              {selectedVariant && (
+                <p className={clsx('text-xs mb-1', inStock ? 'text-success' : 'text-error')}>
+                  {inStock
+                    ? selectedVariant.stock_quantity <= selectedVariant.low_stock_threshold
+                      ? `Only ${selectedVariant.stock_quantity} left in stock`
+                      : 'In Stock'
+                    : 'Out of Stock'}
+                </p>
+              )}
+
+              {/* Spacer before options */}
+              <div className="mt-6" />
+
+              {/* Variant Selectors (the sticky bar scrolls here when an option is missing) */}
+              <div ref={optionsRef}>
+                {product.options?.map((option) => renderOptionSelector(option))}
+              </div>
+
+              {/* Size guide link (show for size-type options) */}
+              {product.options?.some(
+                (opt) => ['size', 'sizes'].includes(opt.name.toLowerCase())
+              ) && (
+                <button
+                  onClick={openSizeGuide}
+                  className="text-sm font-bold underline mb-6 cursor-pointer hover:text-gray-700"
+                >
+                  Size guide
+                </button>
+              )}
+
+              {/* Quantity + Add to Bag + Wishlist in one row, so Add to Bag sits higher on the page */}
+              <div className="flex gap-2 mb-3">
+                <div className="flex items-center h-[52px] border border-gray-300 flex-shrink-0" role="group" aria-label="Quantity">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+                    aria-label="Decrease quantity"
+                  >
+                    <MinusIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-8 h-full flex items-center justify-center text-sm font-bold" aria-live="polite">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+                    className="w-9 h-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+                    aria-label="Increase quantity"
+                  >
+                    <PlusIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <button
+                  ref={addToBagRef}
+                  onClick={handleAddToCart}
+                  disabled={!inStock && allOptionsSelected}
+                  className={clsx(
+                    'flex-1 min-w-0 flex items-center justify-between gap-2 px-4 sm:px-6 h-[52px] text-sm font-bold uppercase tracking-wider transition-colors',
+                    !inStock && allOptionsSelected
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-brand-black text-white hover:bg-gray-800'
+                  )}
+                >
+                  <span>{!inStock && allOptionsSelected ? 'Out of Stock' : 'Add to bag'}</span>
+                  {(inStock || !allOptionsSelected) && (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={handleToggleWishlist}
+                  aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  aria-pressed={wishlisted}
+                  className="w-[52px] h-[52px] flex items-center justify-center border border-gray-300 hover:border-brand-black transition-colors flex-shrink-0"
+                >
+                  {wishlisted ? (
+                    <HeartSolid className="h-5 w-5 text-brand-black" />
+                  ) : (
+                    <HeartIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+
+              {/* Order on WhatsApp: the chosen options and quantity, ready to send to the store */}
+              <a
+                href={whatsappLink(whatsappOrderText())}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackWhatsAppClick('product_page')}
+                className="w-full flex items-center justify-center gap-2 h-12 mb-4 border border-[#1DA851] text-[#128C3E] text-sm font-bold uppercase tracking-wider hover:bg-[#1DA851]/10 transition-colors"
+              >
+                <WhatsAppIcon className="w-5 h-5" />
+                Order on WhatsApp
+              </a>
+
+              <TrustBadges />
+
+              {/* True to size recommendation */}
+              {product.options?.some(
+                (opt) => ['size', 'sizes'].includes(opt.name.toLowerCase())
+              ) && (
+                <div className="bg-[#eceff1] rounded-md px-5 py-4 mt-4 flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                  </svg>
+                  <p className="text-sm">
+                    <span className="font-bold">True to size.</span>{' '}
+                    We recommend ordering your usual size.
+                  </p>
+                </div>
+              )}
+
+              {/* Short description */}
+              {product.short_description && (
+                <p className="text-sm text-gray-600 leading-relaxed mt-6">
+                  {product.short_description}
+                </p>
+              )}
+          </div>
+        </div>
+
+        {/* Details and reviews: below the buy box on phones, under the photos on desktop */}
+        <div className="lg:col-start-1 lg:row-start-2 min-w-0">
           {/* Accordion sections — centered within image column */}
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
             {/* Reviews accordion */}
@@ -637,163 +858,24 @@ export default function ProductPage() {
             <div className="border-t border-gray-200" />
           </div>
         </div>
-
-        {/* Right — Sticky Product Info Sidebar */}
-        <div className="lg:w-[420px] xl:w-[460px] flex-shrink-0 px-5 sm:px-6 lg:pl-10 lg:pr-10 xl:pr-14 pt-6 lg:pt-8">
-          <div className="lg:sticky lg:top-8">
-              {/* Category + Rating row */}
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-500">
-                  {product.category_name || 'Apparel'}
-                </p>
-                {product.review_count > 0 && (
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <StarIcon
-                        key={i}
-                        className={clsx(
-                          'h-3.5 w-3.5',
-                          i < Math.round(product.avg_rating) ? 'text-brand-black' : 'text-gray-300'
-                        )}
-                      />
-                    ))}
-                    <span className="text-xs text-gray-500 ml-1 underline cursor-pointer">{product.review_count}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Product Name */}
-              <h1 className="type-section mb-3">
-                {product.name}
-              </h1>
-
-              {/* Price */}
-              <div className="flex items-center gap-3 mb-2">
-                <span className={clsx('type-price', currentComparePrice && currentComparePrice > currentPrice && 'text-sale')}>
-                  {formatPrice(currentPrice)}
-                </span>
-                {currentComparePrice && currentComparePrice > currentPrice && (
-                  <>
-                    <span className="text-sm text-gray-600 line-through">
-                      {formatPrice(currentComparePrice)}
-                    </span>
-                    <span className="badge-error text-xs">
-                      -{Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100)}%
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Stock Status (below price) */}
-              {selectedVariant && (
-                <p className={clsx('text-xs mb-1', inStock ? 'text-success' : 'text-error')}>
-                  {inStock
-                    ? selectedVariant.stock_quantity <= selectedVariant.low_stock_threshold
-                      ? `Only ${selectedVariant.stock_quantity} left in stock`
-                      : 'In Stock'
-                    : 'Out of Stock'}
-                </p>
-              )}
-
-              {/* Spacer before options */}
-              <div className="mt-8" />
-
-              {/* Variant Selectors */}
-              {product.options?.map((option) => renderOptionSelector(option))}
-
-              {/* Size guide link (show for size-type options) */}
-              {product.options?.some(
-                (opt) => ['size', 'sizes'].includes(opt.name.toLowerCase())
-              ) && (
-                <button
-                  onClick={openSizeGuide}
-                  className="text-sm font-bold underline mb-6 cursor-pointer hover:text-gray-700"
-                >
-                  Size guide
-                </button>
-              )}
-
-              {/* True to size recommendation */}
-              {product.options?.some(
-                (opt) => ['size', 'sizes'].includes(opt.name.toLowerCase())
-              ) && (
-                <div className="bg-[#eceff1] rounded-md px-5 py-4 mb-8 flex items-center gap-3">
-                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                  </svg>
-                  <p className="text-sm">
-                    <span className="font-bold">True to size.</span>{' '}
-                    We recommend ordering your usual size.
-                  </p>
-                </div>
-              )}
-
-              {/* Quantity selector */}
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-sm font-bold text-brand-black">Quantity</span>
-                <div className="flex items-center h-10 border border-gray-300">
-                  <button
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="w-10 h-full flex items-center justify-center hover:bg-gray-100 transition-colors"
-                    aria-label="Decrease quantity"
-                  >
-                    <MinusIcon className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-10 h-full flex items-center justify-center text-sm font-bold border-x border-gray-300">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() => setQuantity((q) => Math.min(10, q + 1))}
-                    className="w-10 h-full flex items-center justify-center hover:bg-gray-100 transition-colors"
-                    aria-label="Increase quantity"
-                  >
-                    <PlusIcon className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Add to Bag + Wishlist */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={handleAddToCart}
-                  disabled={!inStock && allOptionsSelected}
-                  className={clsx(
-                    'flex-1 flex items-center justify-between px-6 h-[52px] text-sm font-bold uppercase tracking-wider transition-colors',
-                    !inStock && allOptionsSelected
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-brand-black text-white hover:bg-gray-800'
-                  )}
-                >
-                  <span>{!inStock && allOptionsSelected ? 'Out of Stock' : 'Add to bag'}</span>
-                  {(inStock || !allOptionsSelected) && (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={handleToggleWishlist}
-                  aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                  aria-pressed={wishlisted}
-                  className="w-[52px] h-[52px] flex items-center justify-center border border-gray-300 hover:border-brand-black transition-colors flex-shrink-0"
-                >
-                  {wishlisted ? (
-                    <HeartSolid className="h-5 w-5 text-brand-black" />
-                  ) : (
-                    <HeartIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-
-              {/* Short description */}
-              {product.short_description && (
-                <p className="text-sm text-gray-600 leading-relaxed mt-6">
-                  {product.short_description}
-                </p>
-              )}
-          </div>
-        </div>
       </div>
+
+      {/* Sticky Add to Bag: shows while the buy box's own button is out of view */}
+      <StickyAddToBag
+        targetRef={addToBagRef}
+        name={shortName}
+        price={currentPrice}
+        compareAtPrice={currentComparePrice}
+        label={
+          !inStock && allOptionsSelected
+            ? 'Out of stock'
+            : missingOptions.length > 0
+              ? `Select ${missingOptions[0].toLowerCase()}`
+              : 'Add to bag'
+        }
+        disabled={!inStock && allOptionsSelected}
+        onClick={stickyAddToBag}
+      />
 
       {/* You may also like */}
       {relatedProducts.length > 0 && (

@@ -1,24 +1,63 @@
-import { useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { orderApi } from '@/api/cart.api';
+import { goToPayFast, orderApi } from '@/api/cart.api';
+import { useAuthStore } from '@/store/authStore';
 import { formatPrice, formatDate } from '@/utils/formatters';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import type { Order } from '@/types/order';
 
+/** Result of an online payment (?payment=paid|failed, set by the PayFast return URL), with a retry. */
+function PaymentResult({ orderNumber, payment }: { orderNumber: string; payment: string | null }) {
+  const [retrying, setRetrying] = useState(false);
+  if (payment === 'paid') {
+    return (
+      <div className="max-w-3xl mx-auto mb-8 bg-green-50 border border-green-200 p-4 text-sm text-green-800" role="status">
+        <strong>Payment received.</strong> Your order is confirmed and we'll send it out soon.
+      </div>
+    );
+  }
+  if (payment !== 'failed') return null;
+  return (
+    <div className="max-w-3xl mx-auto mb-8 bg-red-50 border border-red-200 p-4 text-sm text-red-800" role="alert">
+      <p className="mb-3">
+        <strong>Your payment didn't go through.</strong> Your order {orderNumber} is saved: you can try paying again,
+        or we'll contact you on WhatsApp to arrange cash on delivery instead.
+      </p>
+      <button
+        type="button"
+        disabled={retrying}
+        onClick={() => {
+          setRetrying(true);
+          goToPayFast(orderNumber).catch(() => setRetrying(false));
+        }}
+        className="btn-primary disabled:opacity-60"
+      >
+        {retrying ? 'Opening payment page…' : 'Try paying again'}
+      </button>
+    </div>
+  );
+}
+
 export default function OrderConfirmationPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const payment = searchParams.get('payment');
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  // Checkout hands over the order it just placed, so guests (who can't fetch orders) still see it
+  const placedOrder = (location.state as { order?: Order } | null)?.order;
 
   const { data, isLoading } = useQuery({
     queryKey: ['order', orderNumber],
     queryFn: () => orderApi.get(orderNumber!),
-    enabled: !!orderNumber,
+    enabled: !!orderNumber && isAuthenticated,
   });
 
-  const order: Order | undefined = data?.data;
+  const order: Order | undefined = data?.data ?? placedOrder;
 
   // TikTok Pixel: Purchase event (fires once when order loads)
   useEffect(() => {
@@ -38,7 +77,7 @@ export default function OrderConfirmationPage() {
     }
   }, [order]);
 
-  if (isLoading) {
+  if (isLoading && isAuthenticated && !placedOrder) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Spinner size="lg" />
@@ -48,8 +87,21 @@ export default function OrderConfirmationPage() {
 
   if (!order) {
     return (
-      <div className="container-custom py-16 text-center">
-        <h1 className="type-display">Order Not Found</h1>
+      <div className="container-custom py-16">
+        <Helmet>
+          <title>Your Order</title>
+        </Helmet>
+        {payment && orderNumber ? (
+          <PaymentResult orderNumber={orderNumber} payment={payment} />
+        ) : (
+          <div className="text-center">
+            <h1 className="type-display mb-4">Thank you!</h1>
+            <p className="text-gray-600">
+              {orderNumber ? `Order ${orderNumber} has been placed. ` : ''}
+              You can follow it on the <Link to="/track-order" className="underline">Track Order</Link> page.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -61,6 +113,8 @@ export default function OrderConfirmationPage() {
       </Helmet>
 
       <div className="container-custom py-12">
+        {payment && <PaymentResult orderNumber={order.order_number} payment={payment} />}
+
         {/* Success Header */}
         <div className="text-center mb-12">
           <CheckCircleIcon className="h-16 w-16 text-success mx-auto mb-4" />

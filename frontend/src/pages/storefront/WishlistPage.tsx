@@ -75,7 +75,7 @@ function WishlistCard({
 
         {/* Discount badge */}
         {hasDiscount && (
-          <span className="absolute top-3 left-3 bg-brand-accent text-white text-[11px] font-bold px-2 py-0.5">
+          <span className="absolute top-3 left-3 bg-brand-accent text-white text-xs font-bold px-2 py-0.5">
             -{Math.round(((product.compare_at_price! - product.base_price) / product.compare_at_price!) * 100)}%
           </span>
         )}

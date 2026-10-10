@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import get_current_user, get_optional_user
 from app.schemas.order import CheckoutRequest, OrderOut, OrderListItem, TrackOrderRequest, TrackOrderOut
-from app.services import order_service
+from app.services import order_confirmation, order_service
 from app.models.user import User
 from app.core.exceptions import BadRequestException
 
@@ -17,6 +18,26 @@ async def track_order(
 ):
     """Public endpoint — track an order by order number + email."""
     return await order_service.track_order(db, data)
+
+
+class ConfirmOrderRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=1000)
+
+
+# Declared before /{order_number} so "confirm" isn't taken for an order number
+@router.get("/confirm")
+async def get_order_to_confirm(
+    token: str = Query(min_length=10, max_length=1000),
+    db: AsyncSession = Depends(get_db),
+):
+    """The order behind a confirmation link (from the store's WhatsApp message)."""
+    return order_confirmation.confirmation_summary(await order_confirmation.order_for_token(db, token))
+
+
+@router.post("/confirm")
+async def confirm_order(data: ConfirmOrderRequest, db: AsyncSession = Depends(get_db)):
+    """The customer confirms their cash-on-delivery order: pending -> confirmed."""
+    return await order_confirmation.confirm_order(db, data.token)
 
 
 @router.post("/checkout", response_model=OrderOut)

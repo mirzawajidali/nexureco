@@ -87,6 +87,10 @@ services:
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       SITE_URL: ${SITE_URL:-http://localhost}
+      PAYFAST_MERCHANT_ID: ${PAYFAST_MERCHANT_ID:-}
+      PAYFAST_SECURED_KEY: ${PAYFAST_SECURED_KEY:-}
+      PAYFAST_MERCHANT_NAME: ${PAYFAST_MERCHANT_NAME:-Nexure CO}
+      PAYFAST_BASE_URL: ${PAYFAST_BASE_URL:-https://ipguat.apps.net.pk}
       ELASTICSEARCH_URL: http://elasticsearch:9200
       REDIS_URL: redis://redis:6379/0
     volumes:

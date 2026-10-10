@@ -15,6 +15,8 @@ from app.schemas.order import CheckoutRequest, TrackOrderRequest
 from app.services import coupon_service
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.store import FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST
+from app.services.abandoned_checkout_service import mark_recovered
+from app.services.bundle_service import BUNDLE_PRICE, BUNDLE_SIZE, bundle_discount, is_bundle_eligible
 from app.utils.image_variants import jpeg_url
 from app.utils.pagination import paginate
 from app.utils.email import send_email_background
@@ -51,6 +53,13 @@ def _email_image_url(img: str | None) -> str:
     return f"https://nexureco.com{img}" if img.startswith("/") else img
 
 
+def payment_label(order: Order) -> str:
+    """How the order is paid, for emails and messages."""
+    if order.payment_method == "payfast":
+        return "Paid online" if order.payment_status == "paid" else "Online payment (pending)"
+    return "Cash on Delivery"
+
+
 def _build_order_email_context(order: Order, order_items: list[dict]) -> dict:
     customer_name = f"{order.shipping_first_name or ''} {order.shipping_last_name or ''}".strip()
     # Build email-friendly items with full image URLs
@@ -58,6 +67,7 @@ def _build_order_email_context(order: Order, order_items: list[dict]) -> dict:
     return {
         "order_number": order.order_number,
         "customer_name": customer_name or "Customer",
+        "payment_label": payment_label(order),
         "items": email_items,
         "subtotal": float(order.subtotal),
         "shipping_cost": float(order.shipping_cost),
@@ -140,6 +150,7 @@ async def _send_order_status_email(
     ctx = {
         "order_number": order.order_number,
         "customer_name": customer_name,
+        "payment_label": payment_label(order),
         "total": float(order.total),
         "subtotal": float(order.subtotal),
         "shipping_cost": float(order.shipping_cost),
@@ -170,8 +181,11 @@ async def _send_order_status_email(
 
 
 async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest) -> Order:
+    if data.payment_method == "payfast" and not _settings.payfast_enabled:
+        raise BadRequestException("Online payment isn't available right now. Please choose cash on delivery.")
     order_items = []
     subtotal = 0
+    bundle_units: list[float] = []  # one price per unit that counts toward the bundle deal
 
     for cart_item in data.items:
         prod_result = await db.execute(
@@ -224,6 +238,8 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
 
         line_total = unit_price * cart_item.quantity
         subtotal += line_total
+        if is_bundle_eligible(product):
+            bundle_units.extend([unit_price] * cart_item.quantity)
 
         order_items.append({
             "product_id": product.id,
@@ -254,7 +270,15 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
         coupon_id = coupon_info["coupon_id"]
         coupon_code = coupon_info["code"]
 
-    # Calculate totals
+    # Bundle deal or promo code, whichever saves more (they never stack). The bundle's label goes in
+    # coupon_code so the order shows "Discount (Bundle: ...)"; no coupon is used, so none is recorded.
+    bundle = bundle_discount(bundle_units)
+    if bundle.discount > discount_amount:
+        discount_amount = bundle.discount
+        coupon_id = None
+        coupon_code = f"Bundle: {bundle.sets} x {BUNDLE_SIZE} for Rs. {BUNDLE_PRICE:,}"
+
+    # Calculate totals (free shipping is judged on the subtotal before discounts)
     shipping_cost = 0 if subtotal >= FREE_SHIPPING_THRESHOLD else STANDARD_SHIPPING_COST
     total = subtotal - discount_amount + shipping_cost
 
@@ -264,7 +288,7 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
         user_id=user.id if user else None,
         guest_email=data.guest_email if not user else None,
         status="pending",
-        payment_method="cod",
+        payment_method=data.payment_method,
         payment_status="pending",
         subtotal=subtotal,
         shipping_cost=shipping_cost,
@@ -297,6 +321,9 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
     # Record coupon usage
     if coupon_id:
         await coupon_service.record_coupon_usage(db, coupon_id, user.id if user else None, order.id)
+
+    # This checkout's saved bag no longer needs a reminder
+    await mark_recovered(db, data.draft_token, order.id)
 
     # Clear DB cart if logged in
     if user:

@@ -10,7 +10,7 @@ interface FilterSidebarProps {
   onClear: () => void;
 }
 
-const SORT_OPTIONS = [
+export const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
   { value: 'price_asc', label: 'Price: Low to High' },
   { value: 'price_desc', label: 'Price: High to Low' },

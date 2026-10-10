@@ -19,6 +19,7 @@ from app.schemas.order import OrderOut, OrderListItem
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.utils.pagination import paginate
 from app.services.order_service import _generate_order_number, _send_order_status_email
+from app.services.customer_messages import order_messages
 
 router = APIRouter(prefix="/admin/orders", tags=["Admin Orders"])
 
@@ -388,6 +389,21 @@ async def list_orders(
 
     result["items"] = items
     return result
+
+
+@router.get("/{order_id}/messages")
+async def get_order_messages(
+    order_id: int,
+    admin: User = require_module("orders"),
+    db: AsyncSession = Depends(get_db),
+):
+    """WhatsApp texts for this order's customer (review request, ...), sent from the admin page."""
+    order = (await db.execute(
+        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+    )).scalar_one_or_none()
+    if not order:
+        raise NotFoundException("Order not found")
+    return await order_messages(db, order)
 
 
 @router.get("/{order_id}", response_model=OrderOut)

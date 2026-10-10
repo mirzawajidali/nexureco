@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { AdjustmentsHorizontalIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { categoriesApi } from '@/api/products.api';
 import ProductGrid from '@/components/product/ProductGrid';
-import FilterSidebar from '@/components/filters/FilterSidebar';
+import FilterSidebar, { SORT_OPTIONS } from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
 import ComingSoon from '@/components/product/ComingSoon';
@@ -205,19 +205,33 @@ export default function CategoryPage() {
             ))}
           </div>
 
-          {/* Filter & Sort button */}
-          <button
-            onClick={() => setShowMobileFilters(true)}
-            className="flex-shrink-0 inline-flex items-center gap-2 border border-gray-300 px-5 py-2.5 text-sm font-medium hover:border-brand-black transition-colors"
-          >
-            Filter & Sort
-            <AdjustmentsHorizontalIcon className="h-4 w-4" />
-          </button>
+          {/* Sort (always visible) + filters drawer */}
+          <div className="flex-shrink-0 flex items-center gap-2 mb-2">
+            <label htmlFor="category-sort" className="sr-only">Sort by</label>
+            <select
+              id="category-sort"
+              value={sort}
+              onChange={(e) => updateFilters({ sort: e.target.value })}
+              className="border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium hover:border-brand-black transition-colors"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              className="inline-flex items-center gap-2 border border-gray-300 px-4 py-2.5 text-sm font-medium hover:border-brand-black transition-colors"
+            >
+              Filter
+              <AdjustmentsHorizontalIcon className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Products */}
         <div>
-          <ProductGrid products={products} isLoading={isLoading} list={analyticsList} />
+          {/* Every product here is in this category, so cards don't repeat its name */}
+          <ProductGrid products={products} isLoading={isLoading} list={analyticsList} showCategoryName={false} />
           <Pagination
             currentPage={page}
             totalPages={totalPages}

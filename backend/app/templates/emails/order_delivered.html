@@ -118,7 +118,7 @@
           <td align="right" style="font-family:Helvetica,Arial,sans-serif;font-size:18px;font-weight:900;color:#000000;padding:14px 0 0;border-top:1px solid #eee;">Rs. {{ "%.0f"|format(total) }}</td>
         </tr>
         <tr>
-          <td colspan="2" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:6px 0;">Payment: Cash on Delivery</td>
+          <td colspan="2" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;padding:6px 0;">Payment: {{ payment_label | default('Cash on Delivery') }}</td>
         </tr>
       </table>
     </td>

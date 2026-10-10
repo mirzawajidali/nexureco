@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
 
@@ -27,6 +29,10 @@ class CheckoutRequest(BaseModel):
     shipping_country: str = "Pakistan"
     customer_note: str | None = None
     coupon_code: str | None = None
+    # The browser's saved-checkout id (abandoned_checkout_service): placing the order marks it recovered
+    draft_token: str | None = Field(None, max_length=64)
+    # "payfast": pay online on PayFast's page right after placing the order (only when configured)
+    payment_method: Literal["cod", "payfast"] = "cod"
 
 
 class OrderItemOut(BaseModel):

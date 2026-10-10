@@ -7,7 +7,6 @@ import FeaturedCollections from '@/components/home/FeaturedCollections';
 import ShopByCollection from '@/components/home/ShopByCollection';
 import TrendingProducts from '@/components/home/TrendingProducts';
 import BrandStory from '@/components/home/BrandStory';
-import NewsletterSection from '@/components/home/NewsletterSection';
 import HomeSeoContent from '@/components/home/HomeSeoContent';
 import StillInterested from '@/components/home/StillInterested';
 import PromoStrip from '@/components/home/PromoStrip';
@@ -40,6 +39,7 @@ export default function HomePage() {
       subtitle: b.subtitle || undefined,
       imageUrl: b.image_url || undefined,
       mobileImageUrl: b.mobile_image_url || undefined,
+      imageAlt: b.image_alt || undefined,
       linkUrl: b.link_url || '/',
       buttonText: b.button_text || 'Shop Now',
     }));
@@ -69,7 +69,6 @@ export default function HomePage() {
       <StillInterested />
       <BrandStory />
       <FeaturedCollections />
-      <NewsletterSection />
       <HomeSeoContent />
     </>
   );

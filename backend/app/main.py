@@ -48,6 +48,15 @@ async def lifespan(app: FastAPI):
                     if col_name not in existing:
                         sync_conn.execute(text(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}"))
 
+                # Orders: online payment (PayFast) next to cash on delivery
+                if insp.has_table("orders"):
+                    try:
+                        sync_conn.execute(text(
+                            "ALTER TABLE orders MODIFY COLUMN payment_method ENUM('cod','payfast') DEFAULT 'cod'"
+                        ))
+                    except Exception:
+                        pass  # Already updated or non-MySQL
+
                 # Reviews: verified-purchase reviews without an account
                 if insp.has_table("reviews"):
                     review_cols = {c["name"]: c for c in insp.get_columns("reviews")}

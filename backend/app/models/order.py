@@ -17,7 +17,7 @@ class Order(Base):
         Enum("pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", name="order_status"),
         default="pending", index=True,
     )
-    payment_method = Column(Enum("cod", name="payment_method"), default="cod")
+    payment_method = Column(Enum("cod", "payfast", name="payment_method"), default="cod")
     payment_status = Column(Enum("pending", "paid", "refunded", name="payment_status"), default="pending")
     subtotal = Column(Numeric(10, 2), nullable=False)
     shipping_cost = Column(Numeric(10, 2), default=0)

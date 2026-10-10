@@ -32,6 +32,9 @@ _RATE_RULES: list[tuple[str, str | None, int]] = [
     # Storefront — spam-prone public write endpoints
     ("/api/v1/orders/checkout",       "POST", 10),
     ("/api/v1/orders/track",          "POST", 15),
+    ("/api/v1/orders/confirm",        None,   20),
+    ("/api/v1/checkout-drafts",       None,   30),
+    ("/api/v1/payments/payfast/start", "POST", 10),
     ("/api/v1/contact",               "POST", 5),
     ("/api/v1/newsletter/subscribe",  "POST", 5),
     # No account needed, and each attempt checks an order number: keep guessing slow

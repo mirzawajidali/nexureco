@@ -46,6 +46,17 @@ class Settings(BaseSettings):
     # Served by the frontend container on an internal-only port (frontend/nginx/shell.conf).
     SPA_SHELL_URL: str = "http://frontend:8080/index.html"
 
+    # PayFast (Pakistan) online payments: offered at checkout only once the merchant ID and secured key
+    # are set. The base URL defaults to PayFast's UAT (test) system; use the production URL PayFast gives you.
+    PAYFAST_MERCHANT_ID: str = ""
+    PAYFAST_SECURED_KEY: str = ""
+    PAYFAST_MERCHANT_NAME: str = "Nexure CO"
+    PAYFAST_BASE_URL: str = "https://ipguat.apps.net.pk"
+
+    @property
+    def payfast_enabled(self) -> bool:
+        return bool(self.PAYFAST_MERCHANT_ID and self.PAYFAST_SECURED_KEY)
+
     # Elasticsearch
     ELASTICSEARCH_URL: str = "http://localhost:9200"
 

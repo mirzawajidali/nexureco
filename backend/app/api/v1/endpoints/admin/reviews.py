@@ -11,6 +11,7 @@ from app.models.product import Product
 from app.models.review import Review
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.review_service import _update_product_rating
+from app.utils.file_upload import delete_upload_file
 from app.utils.pagination import paginate
 from datetime import datetime
 
@@ -120,16 +121,19 @@ async def delete_review(
     admin: User = require_module("reviews"),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Review).where(Review.id == review_id))
+    result = await db.execute(select(Review).options(selectinload(Review.images)).where(Review.id == review_id))
     review = result.scalar_one_or_none()
     if not review:
         raise NotFoundException("Review not found")
 
     product_id = review.product_id
+    photo_urls = [img.url for img in review.images]
     await db.delete(review)
     await db.flush()
 
     # Recalculate product rating after deletion
     await _update_product_rating(db, product_id)
+    for url in photo_urls:
+        delete_upload_file(url)
 
     return {"message": "Review deleted successfully"}

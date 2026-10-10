@@ -56,7 +56,13 @@ interface NavItem {
 
 const ADMIN_NAV: NavItem[] = [
   { label: 'Home', href: '/admin', icon: HomeIcon, module: 'dashboard' },
-  { label: 'Orders', href: '/admin/orders', icon: ClipboardDocumentListIcon, module: 'orders' },
+  {
+    label: 'Orders',
+    href: '/admin/orders',
+    icon: ClipboardDocumentListIcon,
+    module: 'orders',
+    children: [{ label: 'Abandoned checkouts', href: '/admin/abandoned-checkouts', module: 'orders' }],
+  },
   {
     label: 'Products',
     href: '/admin/products',

@@ -2,7 +2,7 @@ import io
 import os
 import uuid
 from fastapi import UploadFile
-from PIL import Image
+from PIL import Image, ImageOps
 from slugify import slugify
 from app.config import get_settings
 from app.utils.image_variants import delete_variants
@@ -58,8 +58,12 @@ async def save_upload_file_with_meta(
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, filename)
 
-    # Optimize image
-    img = Image.open(io.BytesIO(content))
+    # Optimize image. exif_transpose applies a phone photo's rotation flag, which is lost on save
+    # (along with the rest of the EXIF data, GPS location included)
+    try:
+        img = ImageOps.exif_transpose(Image.open(io.BytesIO(content)))
+    except Exception as exc:
+        raise ValueError("The file isn't a readable image") from exc
     original_width, original_height = img.width, img.height
 
     if img.width > max_width:

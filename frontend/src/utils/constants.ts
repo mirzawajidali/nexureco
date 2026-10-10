@@ -8,6 +8,8 @@ export const DEFAULT_DESCRIPTION =
   'Nexure CO - premium fashion & apparel. Shop new arrivals, best sellers and everyday essentials.';
 export const STORE_EMAIL = 'support@nexureco.com';
 export const STORE_PHONE = '+92 316 7936302';
+// Store WhatsApp (floating button, "Order on WhatsApp"); see utils/whatsapp.ts
+export const WHATSAPP_NUMBER = STORE_PHONE;
 export const STORE_ADDRESS = 'Nexure Co, Ferozepur Road, Ichhra, Lahore';
 export const STORE_HOURS = 'Mon - Sat, 10am - 8pm PKT';
 // Mirrored in backend/app/core/store.py (checkout charges, chatbot, structured data) — keep in sync

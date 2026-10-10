@@ -1,5 +1,44 @@
 import client from './client';
 
+export interface OrderMessage {
+  kind: string;
+  label: string;
+  text: string;
+  available: boolean;
+  /** Why it can't be sent yet, when not available */
+  reason: string | null;
+}
+
+export interface AbandonedCheckout {
+  id: number;
+  /** open: waiting for a reminder · reminded · converted: ordered after all · active: still checking out */
+  status: 'open' | 'reminded' | 'converted' | 'active';
+  first_name: string | null;
+  phone: string;
+  /** wa.me form of the phone, or null if it isn't a mobile number */
+  whatsapp: string | null;
+  email: string | null;
+  city: string | null;
+  items: { name: string; variant_info: string | null; quantity: number; price: number }[];
+  subtotal: number;
+  updated_at: string;
+  reminded_at: string | null;
+  /** Ready-to-send reminder with the bag-restore link */
+  message: string;
+}
+
+export const adminAbandonedCheckoutsApi = {
+  list: (status: string) =>
+    client.get<{ items: AbandonedCheckout[] }>('/admin/abandoned-checkouts/', { params: { status } }),
+  markReminded: (id: number) => client.post(`/admin/abandoned-checkouts/${id}/reminded`),
+};
+
+export interface OrderMessages {
+  /** Customer's WhatsApp number (923001234567), or null when the order's phone isn't a mobile number */
+  phone: string | null;
+  messages: OrderMessage[];
+}
+
 // Dashboard
 export const adminDashboardApi = {
   getStats: () => client.get('/admin/dashboard/stats'),
@@ -57,6 +96,8 @@ export const adminCollectionsApi = {
 export const adminOrdersApi = {
   list: (params?: Record<string, unknown>) => client.get('/admin/orders/', { params }),
   get: (id: number) => client.get(`/admin/orders/${id}`),
+  /** Ready-to-send WhatsApp texts for the order's customer (see backend services/customer_messages.py) */
+  messages: (id: number) => client.get<OrderMessages>(`/admin/orders/${id}/messages`),
   create: (data: Record<string, unknown>) => client.post('/admin/orders/create', data),
   stats: () => client.get('/admin/orders/stats'),
   exportCsv: (params?: Record<string, unknown>) =>

@@ -42,6 +42,14 @@ export const reviewApi = {
     title?: string;
     comment?: string;
   }) => client.post('/reviews/verified', data),
+  /** Attach one photo to a just-created review, using the photo_upload_token it returned */
+  uploadPhoto: (reviewId: number, token: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return client.post(`/reviews/${reviewId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data', 'X-Review-Token': token },
+    });
+  },
 };
 
 export const newsletterApi = {

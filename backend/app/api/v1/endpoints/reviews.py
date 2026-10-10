@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Header, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
@@ -25,6 +25,17 @@ async def create_verified_review(
 ):
     """Review without an account: the order number and its email or phone prove the purchase."""
     return await review_service.create_verified_review(db, data)
+
+
+@router.post("/{review_id}/images", status_code=201)
+async def add_review_photo(
+    review_id: int,
+    file: UploadFile = File(...),
+    x_review_token: str = Header(..., description="photo_upload_token from creating the review"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add one customer photo (JPEG, PNG, WebP or AVIF, up to 5 MB; 3 per review)."""
+    return await review_service.add_review_photo(db, review_id, x_review_token, file)
 
 
 @router.get("/product/{product_id}", response_model=dict)

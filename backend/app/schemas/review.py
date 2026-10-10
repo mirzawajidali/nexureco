@@ -38,6 +38,8 @@ class ReviewOut(BaseModel):
     helpful_count: int
     images: list[ReviewImageOut] = []
     created_at: datetime
+    # Only in the response to creating a review: lets that reviewer attach photos for the next hour
+    photo_upload_token: str | None = None
 
 
 class ReviewSummary(BaseModel):

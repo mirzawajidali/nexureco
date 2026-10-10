@@ -6,10 +6,15 @@ import { ShoppingBagIcon } from '@heroicons/react/24/solid';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatters';
 import Button from '@/components/ui/Button';
+import FreeShippingProgress from './FreeShippingProgress';
+import BundleNotice from './BundleNotice';
+import { useBagDiscount } from '@/hooks/useBagDiscount';
+import { BUNDLE_LABEL } from '@/utils/bundles';
 
 export default function CartDrawer() {
   const { items, isCartOpen, setCartOpen, removeItem, updateQuantity, subtotal } = useCartStore();
   const total = subtotal();
+  const { discount, source, bundle, couponOutdone } = useBagDiscount();
 
   return (
     <Transition show={isCartOpen} as={Fragment}>
@@ -41,10 +46,18 @@ export default function CartDrawer() {
               <DialogTitle className="font-heading font-bold text-lg uppercase tracking-wider">
                 Your Bag ({items.length})
               </DialogTitle>
-              <button onClick={() => setCartOpen(false)} className="p-2 hover:bg-gray-100">
+              <button onClick={() => setCartOpen(false)} className="p-2 hover:bg-gray-100" aria-label="Close bag">
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
+
+            {/* Free-delivery progress — nudges the order toward the free-shipping threshold */}
+            {items.length > 0 && (
+              <div className="px-6 py-3 bg-gray-50 border-b space-y-2">
+                <FreeShippingProgress subtotal={total} />
+                <BundleNotice bundle={bundle} applied={source === 'bundle'} couponOutdone={couponOutdone} />
+              </div>
+            )}
 
             {/* Items */}
             <div className="flex-1 overflow-y-auto">
@@ -92,6 +105,7 @@ export default function CartDrawer() {
                                 updateQuantity(item.productId, item.variantId, item.quantity - 1)
                               }
                               className="p-1.5 hover:bg-gray-100"
+                              aria-label={`Decrease quantity of ${item.name}`}
                             >
                               <MinusIcon className="h-3 w-3" />
                             </button>
@@ -101,6 +115,7 @@ export default function CartDrawer() {
                                 updateQuantity(item.productId, item.variantId, item.quantity + 1)
                               }
                               className="p-1.5 hover:bg-gray-100"
+                              aria-label={`Increase quantity of ${item.name}`}
                             >
                               <PlusIcon className="h-3 w-3" />
                             </button>
@@ -108,6 +123,7 @@ export default function CartDrawer() {
                           <button
                             onClick={() => removeItem(item.productId, item.variantId)}
                             className="p-1.5 text-gray-400 hover:text-brand-accent"
+                            aria-label={`Remove ${item.name} from bag`}
                           >
                             <TrashIcon className="h-4 w-4" />
                           </button>
@@ -131,6 +147,12 @@ export default function CartDrawer() {
                   <span className="text-sm font-heading font-bold uppercase">Subtotal</span>
                   <span className="text-lg font-bold">{formatPrice(total)}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-700">
+                    <span>{source === 'bundle' ? BUNDLE_LABEL : 'Promo code'}</span>
+                    <span className="font-bold">-{formatPrice(discount)}</span>
+                  </div>
+                )}
                 <p className="text-xs text-gray-500">
                   Shipping & taxes calculated at checkout.
                 </p>

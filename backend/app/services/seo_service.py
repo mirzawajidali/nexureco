@@ -83,6 +83,7 @@ _PRIVATE_PAGES: dict[str, str] = {
     "/register": "Create Account",
     "/forgot-password": "Forgot Password",
     "/track-order": "Track Your Order",
+    "/order/confirm": "Confirm Your Order",
 }
 # Private pages under a path prefix: (prefix, title); the prefix itself matches too ("/account")
 _PRIVATE_PREFIXES: list[tuple[str, str]] = [
@@ -90,6 +91,7 @@ _PRIVATE_PREFIXES: list[tuple[str, str]] = [
     ("/track-order", "Track Your Order"),
     ("/order-confirmation", "Order Confirmed"),
     ("/admin", "Admin"),
+    ("/bag", "Your Bag"),
 ]
 
 _DETAIL_PATH = re.compile(r"^/(category|collections|product|page)/([^/]+)$")

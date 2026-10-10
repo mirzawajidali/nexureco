@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
-import { orderApi } from '@/api/cart.api';
+import { goToPayFast, orderApi, paymentsApi } from '@/api/cart.api';
 import { formatPrice } from '@/utils/formatters';
 import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
 import Button from '@/components/ui/Button';
@@ -15,7 +15,11 @@ import Input from '@/components/ui/Input';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import CouponField from '@/components/cart/CouponField';
 import { useTrackOnce } from '@/hooks/useAnalytics';
-import { useCoupon } from '@/hooks/useCoupon';
+import { useBagDiscount } from '@/hooks/useBagDiscount';
+import { checkoutDraftToken, clearCheckoutDraftToken, saveCheckoutDraft } from '@/utils/checkoutDraft';
+import { useQuery } from '@tanstack/react-query';
+import BundleNotice from '@/components/cart/BundleNotice';
+import { BUNDLE_LABEL } from '@/utils/bundles';
 import {
   cartLineToItem,
   trackAddPaymentInfo,
@@ -51,9 +55,20 @@ export default function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CheckoutFormData | null>(null);
-  // Only a code the server currently accepts is sent with the order (and shown in the totals)
-  const { coupon, discount } = useCoupon();
-  const couponCode = coupon?.code;
+  // Bundle or promo code, whichever saves more (same rule as the server). Only a code that is both
+  // currently valid and the discount being applied is sent with the order.
+  const { discount, source, bundle, couponOutdone, appliedCouponCode } = useBagDiscount();
+  const couponCode = appliedCouponCode;
+
+  // Online payment (PayFast) is offered only when the backend has it configured
+  const { data: paymentMethods } = useQuery({
+    queryKey: ['payment-methods'],
+    queryFn: () => paymentsApi.methods().then((res) => res.data.methods),
+    staleTime: 10 * 60 * 1000,
+  });
+  const canPayOnline = !!paymentMethods?.includes('payfast');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'payfast'>('cod');
+  const payOnline = canPayOnline && paymentMethod === 'payfast';
 
   const total = subtotal();
   // Same rule as the server: free shipping goes by the subtotal before any discount
@@ -85,6 +100,17 @@ export default function CheckoutPage() {
     setFormData(data);
     setCurrentStep(1);
     window.scrollTo(0, 0);
+    // Save this bag so the store can send a WhatsApp reminder if the order isn't placed
+    saveCheckoutDraft(
+      checkoutDraftToken(),
+      {
+        first_name: data.shipping_first_name,
+        phone: data.shipping_phone,
+        email: isAuthenticated ? user?.email : data.guest_email,
+        city: data.shipping_city,
+      },
+      items,
+    );
     trackAddShippingInfo(analyticsItems(), shipping === 0 ? 'Free Shipping' : 'Standard Shipping', couponCode);
     // TikTok Pixel: InitiateCheckout + AddPaymentInfo
     if ((window as any).ttq) {
@@ -99,7 +125,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (!formData) return;
 
-    trackAddPaymentInfo(analyticsItems(), 'Cash on Delivery', couponCode);
+    trackAddPaymentInfo(analyticsItems(), payOnline ? 'Online (PayFast)' : 'Cash on Delivery', couponCode);
     setIsSubmitting(true);
     try {
       const response = await orderApi.checkout({
@@ -111,6 +137,8 @@ export default function CheckoutPage() {
           quantity: item.quantity,
         })),
         coupon_code: couponCode || undefined,
+        draft_token: checkoutDraftToken(),
+        payment_method: payOnline ? 'payfast' : 'cod',
       });
       // TikTok Pixel: PlaceAnOrder + CompletePayment
       if ((window as any).ttq) {
@@ -129,7 +157,18 @@ export default function CheckoutPage() {
       // GA4 purchase uses the server's order (real totals, discount, order number as transaction_id)
       trackPurchase(response.data);
       clearCart();
-      navigate(`/order-confirmation/${response.data.order_number}`);
+      clearCheckoutDraftToken();
+      if (payOnline) {
+        // The order is saved; if the payment page can't be opened, the confirmation page offers a retry
+        try {
+          await goToPayFast(response.data.order_number);
+          return;
+        } catch {
+          navigate(`/order-confirmation/${response.data.order_number}?payment=failed`, { state: { order: response.data } });
+          return;
+        }
+      }
+      navigate(`/order-confirmation/${response.data.order_number}`, { state: { order: response.data } });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       toast.error(error.response?.data?.detail || 'Failed to place order');
@@ -231,13 +270,18 @@ export default function CheckoutPage() {
                       error={errors.shipping_last_name?.message}
                     />
                   </div>
-                  <Input
-                    label="Phone Number"
-                    type="tel"
-                    autoComplete="shipping tel"
-                    {...register('shipping_phone')}
-                    error={errors.shipping_phone?.message}
-                  />
+                  <div>
+                    <Input
+                      label="Phone Number"
+                      type="tel"
+                      autoComplete="shipping tel"
+                      {...register('shipping_phone')}
+                      error={errors.shipping_phone?.message}
+                    />
+                    <p className="mt-1 text-xs text-gray-600">
+                      We'll WhatsApp or call this number to confirm and deliver your order.
+                    </p>
+                  </div>
                   <Input
                     label="Address"
                     autoComplete="shipping address-line1"
@@ -344,14 +388,36 @@ export default function CheckoutPage() {
                   <h3 className="text-xs font-heading font-bold uppercase tracking-wider mb-4">
                     Payment Method
                   </h3>
-                  <div className="flex items-center gap-3 bg-gray-50 p-4">
-                    <div className="w-10 h-10 bg-brand-black text-white flex items-center justify-center text-xs font-bold">
-                      COD
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">Cash on Delivery</p>
-                      <p className="text-xs text-gray-500">Pay when your order is delivered</p>
-                    </div>
+                  <div className="space-y-2" role="radiogroup" aria-label="Payment method">
+                    {[
+                      { value: 'cod' as const, badge: 'COD', title: 'Cash on Delivery', text: 'Pay when your order is delivered' },
+                      ...(canPayOnline
+                        ? [{ value: 'payfast' as const, badge: 'PAY', title: 'Pay online', text: 'Debit/credit card, JazzCash, Easypaisa or bank account (via PayFast)' }]
+                        : []),
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex items-center gap-3 p-4 cursor-pointer border ${
+                          (canPayOnline ? paymentMethod : 'cod') === option.value ? 'border-brand-black bg-gray-50' : 'border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment_method"
+                          value={option.value}
+                          checked={(canPayOnline ? paymentMethod : 'cod') === option.value}
+                          onChange={() => setPaymentMethod(option.value)}
+                          className="sr-only"
+                        />
+                        <span className="w-10 h-10 bg-brand-black text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {option.badge}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-bold">{option.title}</span>
+                          <span className="block text-xs text-gray-500">{option.text}</span>
+                        </span>
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -400,7 +466,7 @@ export default function CheckoutPage() {
                     size="lg"
                     fullWidth
                   >
-                    Place Order - {formatPrice(grandTotal)}
+                    {payOnline ? 'Pay' : 'Place Order'} - {formatPrice(grandTotal)}
                   </Button>
                   <p className="text-xs text-gray-500 text-center mt-3">
                     By placing your order, you agree to our{' '}
@@ -434,10 +500,11 @@ export default function CheckoutPage() {
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-green-700">
-                    <span>Promo code ({couponCode})</span>
+                    <span>{source === 'bundle' ? BUNDLE_LABEL : `Promo code (${couponCode})`}</span>
                     <span className="font-bold">-{formatPrice(discount)}</span>
                   </div>
                 )}
+                <BundleNotice bundle={bundle} applied={source === 'bundle'} couponOutdone={couponOutdone} />
                 {currentStep < 2 && (
                   <div className="pt-3 border-t border-gray-200">
                     <CouponField />

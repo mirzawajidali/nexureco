@@ -23,6 +23,8 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /wishlist
 Disallow: /order-confirmation/
+Disallow: /order/
+Disallow: /bag/
 Disallow: /track-order
 
 # Internal search results and sorted/filtered copies of category & collection pages
