@@ -22,7 +22,7 @@ export default function AccountPage() {
       </Helmet>
 
       <div className="container-custom py-8">
-        <h1 className="text-heading-xl font-heading uppercase mb-8">My Account</h1>
+        <h1 className="type-display mb-8">My Account</h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Navigation */}

@@ -70,7 +70,7 @@ export default function SearchPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-heading-xl font-heading uppercase">
+            <h1 className="type-display">
               {q ? `Results for "${q}"` : 'Search'}
             </h1>
             {q && <p className="text-sm text-gray-500 mt-1">{total} products found</p>}
@@ -110,7 +110,7 @@ export default function SearchPage() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <p className="text-heading font-heading uppercase mb-2">Search for something</p>
+            <p className="type-promo mb-2">Search for something</p>
             <p className="text-sm text-gray-500">Enter a search term above to find products.</p>
           </div>
         )}

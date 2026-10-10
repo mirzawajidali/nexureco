@@ -17,17 +17,26 @@ def _format_date(dt) -> str:
     return dt.strftime("%Y-%m-%d")
 
 
-def _build_url_entry(loc: str, lastmod=None, changefreq: str = "weekly", priority: str = "0.5") -> str:
+def _build_url_entry(
+    loc: str,
+    lastmod=None,
+    changefreq: str = "weekly",
+    priority: str = "0.5",
+    images: list[str] | None = None,
+) -> str:
     parts = [f"  <url>\n    <loc>{escape(loc)}</loc>"]
     if lastmod:
         parts.append(f"    <lastmod>{_format_date(lastmod)}</lastmod>")
     parts.append(f"    <changefreq>{changefreq}</changefreq>")
     parts.append(f"    <priority>{priority}</priority>")
+    # Image sitemap extension, so product photos are discoverable in Google Images
+    for image in images or []:
+        parts.append(f"    <image:image><image:loc>{escape(image)}</image:loc></image:image>")
     parts.append("  </url>")
     return "\n".join(parts)
 
 
-@router.get("/sitemap.xml", response_class=Response)
+@router.api_route("/sitemap.xml", methods=["GET", "HEAD"], response_class=Response)
 async def sitemap_xml(db: AsyncSession = Depends(get_db)):
     """Generate dynamic XML sitemap with all public URLs."""
     base_url = settings.SITE_URL.rstrip("/")
@@ -66,6 +75,7 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
             lastmod=prod["updated_at"],
             changefreq="weekly",
             priority="0.8",
+            images=[url if url.startswith("http") else f"{base_url}{url}" for url in prod["images"]],
         ))
 
     # CMS Pages
@@ -78,7 +88,10 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
         ))
 
     xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml_content += (
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+        ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
+    )
     xml_content += "\n".join(urls)
     xml_content += "\n</urlset>\n"
 

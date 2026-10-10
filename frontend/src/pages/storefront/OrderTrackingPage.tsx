@@ -160,7 +160,7 @@ function TrackingResult({
             <p className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-gray-400 mb-1">
               Order Number
             </p>
-            <h2 className="text-heading font-heading uppercase">
+            <h2 className="type-promo">
               {order.order_number}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -466,9 +466,7 @@ export default function OrderTrackingPage() {
             className="[&_a]:text-gray-500 [&_span]:text-gray-400 [&_svg]:text-gray-600 mb-8"
           />
           <h1
-            className="font-heading font-black uppercase text-white leading-[0.95] tracking-tight"
-            style={{ fontSize: 'clamp(2.25rem, 5vw, 3.75rem)' }}
-          >
+            className="type-display text-white">
             Track Your<br />Order
           </h1>
         </div>

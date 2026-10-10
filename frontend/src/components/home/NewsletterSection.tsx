@@ -37,7 +37,7 @@ export default function NewsletterSection({
   return (
     <section className="bg-gray-100 section-padding">
       <div className="container-custom text-center">
-        <h2 className="text-heading-xl font-heading uppercase mb-3">
+        <h2 className="type-section mb-3">
           {title}
         </h2>
         <p className="text-gray-600 text-sm max-w-md mx-auto mb-8">

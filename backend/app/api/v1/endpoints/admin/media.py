@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
@@ -76,7 +77,10 @@ async def upload_media(
     admin: User = require_module("media"),
     db: AsyncSession = Depends(get_db),
 ):
-    meta = await save_upload_file_with_meta(file, subfolder="media")
+    # Keep the uploaded file's own name (slugified) for image search
+    meta = await save_upload_file_with_meta(
+        file, subfolder="media", name_hint=os.path.splitext(file.filename or "")[0] or None
+    )
     media_file = MediaFile(
         url=meta["url"],
         original_filename=meta["original_filename"],

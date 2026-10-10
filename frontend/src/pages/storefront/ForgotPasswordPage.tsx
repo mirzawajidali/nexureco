@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md">
           {submitted ? (
             <div className="text-center">
-              <h1 className="text-heading-xl font-heading uppercase mb-4">Check Your Email</h1>
+              <h1 className="type-display mb-4">Check Your Email</h1>
               <p className="text-sm text-gray-500 mb-8">
                 If an account exists with that email, we've sent a password reset link.
                 Check your inbox and follow the instructions.
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               <div className="text-center mb-10">
-                <h1 className="text-display font-heading uppercase mb-2">Reset Password</h1>
+                <h1 className="type-display mb-2">Reset Password</h1>
                 <p className="text-sm text-gray-500">
                   Enter your email address and we'll send you a link to reset your password.
                 </p>

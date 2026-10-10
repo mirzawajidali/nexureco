@@ -25,7 +25,7 @@ export default function StillInterested() {
   return (
     <section className="section-padding">
       <div className="container-custom">
-        <h2 className="text-heading-xl font-heading uppercase mb-10">
+        <h2 className="type-section mb-10">
           Still interested?
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">

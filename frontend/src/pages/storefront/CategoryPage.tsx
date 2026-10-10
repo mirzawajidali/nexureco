@@ -156,19 +156,16 @@ export default function CategoryPage() {
         </div>
 
         {/* Heading + count */}
-        <div className="mb-2">
-          <h1 className="font-heading font-black uppercase tracking-tight leading-[0.95]"
-            style={{ fontSize: 'clamp(1.75rem, 4vw, 3rem)' }}
-          >
+        {/* The count stays outside the <h1> so the heading is just the category name */}
+        <div className="mb-2 flex items-baseline gap-3 flex-wrap">
+          <h1 className="type-display">
             {categoryName}
-            {total > 0 && (
-              <span className="text-gray-400 font-normal ml-2"
-                style={{ fontSize: 'clamp(0.9rem, 1.5vw, 1.25rem)' }}
-              >
-                [{total}]
-              </span>
-            )}
           </h1>
+          {total > 0 && (
+            <span className="text-gray-600 text-sm">
+              {total} {total === 1 ? 'product' : 'products'}
+            </span>
+          )}
         </div>
 
         {/* Description */}
@@ -230,9 +227,7 @@ export default function CategoryPage() {
         {/* SEO Category Links Grid */}
         {linkGroups.length > 0 && (
           <section className="mt-16 pt-12 border-t border-gray-200">
-            <h2 className="font-heading font-black uppercase tracking-tight mb-8"
-              style={{ fontSize: 'clamp(1.25rem, 2vw, 1.75rem)' }}
-            >
+            <h2 className="type-section mb-8">
               Shop by Category
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-1">
@@ -265,9 +260,7 @@ export default function CategoryPage() {
         {/* SEO Long-form Content */}
         {cat?.description && (
           <section className="mt-12 pt-12 border-t border-gray-200">
-            <h2 className="font-heading font-black uppercase tracking-tight mb-4"
-              style={{ fontSize: 'clamp(1.25rem, 2vw, 1.75rem)' }}
-            >
+            <h2 className="type-section mb-4">
               {`Shop ${categoryName} at ${SITE_NAME}`}
             </h2>
             <div className="text-sm text-gray-600 leading-relaxed max-w-4xl whitespace-pre-line">

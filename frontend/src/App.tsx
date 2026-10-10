@@ -28,7 +28,7 @@ export default function App() {
               style: {
                 background: '#000',
                 color: '#fff',
-                fontFamily: 'Montserrat, sans-serif',
+                fontFamily: 'var(--font-body)',
                 fontSize: '14px',
                 fontWeight: 600,
                 textTransform: 'uppercase',

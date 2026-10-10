@@ -76,10 +76,10 @@ export default function MobileMenu() {
           leaveFrom="translate-x-0"
           leaveTo="-translate-x-full"
         >
-          <DialogPanel className="fixed inset-y-0 left-0 w-full max-w-sm bg-white">
+          <DialogPanel id="mobile-menu" className="fixed inset-y-0 left-0 w-full max-w-sm bg-white">
             {/* Header */}
             <div className="flex items-center justify-between px-6 h-16 border-b">
-              <span className="font-heading font-black text-xl tracking-tighter">
+              <span className="font-display text-xl uppercase tracking-[2px]">
                 {APP_NAME}
               </span>
               <button

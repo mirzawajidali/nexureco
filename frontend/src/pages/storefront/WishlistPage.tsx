@@ -133,7 +133,7 @@ function WishlistCard({
         <Link to={`/product/${product.slug}`} onClick={onSelect} className="block space-y-0.5">
           {/* Price */}
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-brand-black">
+            <span className={hasDiscount ? 'type-product-name text-sale' : 'type-product-name'}>
               {formatPrice(product.base_price)}
             </span>
             {hasDiscount && (
@@ -144,7 +144,7 @@ function WishlistCard({
           </div>
 
           {/* Name */}
-          <h3 className="text-sm text-brand-black mt-1 line-clamp-2 leading-snug">
+          <h3 className="type-product-name mt-1 line-clamp-2">
             {product.name}
           </h3>
 
@@ -205,7 +205,7 @@ function RecentlyViewedSection({ excludeIds }: { excludeIds: number[] }) {
   return (
     <section className="container-custom pb-16">
       <div className="border-t border-gray-200 pt-12 mt-4">
-        <h2 className="text-heading-lg font-heading uppercase mb-8">
+        <h2 className="type-section mb-8">
           Recently Viewed
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
@@ -269,7 +269,7 @@ export default function WishlistPage() {
       <div className="container-custom py-8">
         <Breadcrumb items={[{ label: 'Wishlist' }]} />
 
-        <h1 className="text-heading-xl font-heading uppercase mb-1">
+        <h1 className="type-display mb-1">
           Wishlist
         </h1>
         <p className="text-sm text-gray-500 mb-10">
@@ -279,7 +279,7 @@ export default function WishlistPage() {
         {productIds.length === 0 ? (
           <div className="text-center py-20">
             <HeartIcon className="h-16 w-16 text-gray-300 mx-auto mb-6" />
-            <p className="text-heading font-heading uppercase mb-2">
+            <p className="type-promo mb-2">
               Your wishlist is empty
             </p>
             <p className="text-sm text-gray-500 mb-8 max-w-sm mx-auto">

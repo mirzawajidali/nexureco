@@ -52,7 +52,7 @@ export default function AccountPassword() {
 
   return (
     <div>
-      <h2 className="text-heading font-heading uppercase mb-6">Change Password</h2>
+      <h2 className="type-promo mb-6">Change Password</h2>
 
       <div className="max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

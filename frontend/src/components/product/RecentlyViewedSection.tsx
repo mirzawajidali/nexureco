@@ -30,7 +30,7 @@ export default function RecentlyViewedSection({ excludeIds = [], limit = 8 }: Pr
 
   return (
     <section className="mt-16 pt-12 border-t border-gray-200">
-      <h2 className="text-heading font-heading uppercase mb-8">
+      <h2 className="type-promo mb-8">
         Recently Viewed
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">

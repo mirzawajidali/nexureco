@@ -193,7 +193,7 @@ export default function ProductCard({
       <Link to={`/product/${slug}`} onClick={handleSelect} className="block pt-3 space-y-0.5">
         {/* Price */}
         <div className="flex items-center gap-2">
-          <span className="text-base font-bold text-brand-black">{formatPrice(price)}</span>
+          <span className={hasDiscount ? 'type-product-name text-sale' : 'type-product-name'}>{formatPrice(price)}</span>
           {hasDiscount && (
             <span className="text-sm text-gray-600 line-through">
               {formatPrice(compareAtPrice)}
@@ -202,7 +202,7 @@ export default function ProductCard({
         </div>
 
         {/* Product name */}
-        <h3 className="text-sm text-brand-black mt-1 line-clamp-2 leading-snug">
+        <h3 className="type-product-name mt-1 line-clamp-2">
           {name}
         </h3>
 

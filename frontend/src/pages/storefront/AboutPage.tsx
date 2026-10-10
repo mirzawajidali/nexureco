@@ -62,9 +62,7 @@ export default function AboutPage() {
           <Breadcrumb items={[{ label: 'About Us' }]} className="!text-gray-500 [&_a]:!text-gray-500 [&_a:hover]:!text-white [&_span:last-child_span]:!text-white" />
 
           <h1
-            className="font-heading font-black uppercase text-white leading-[0.95] tracking-tight max-w-3xl"
-            style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}
-          >
+            className="type-display text-white max-w-3xl">
             We don't follow<br />trends — we set them
           </h1>
 
@@ -97,9 +95,7 @@ export default function AboutPage() {
                 Our Story
               </span>
               <h2
-                className="font-heading font-black uppercase leading-[0.95] tracking-tight mb-6"
-                style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)' }}
-              >
+                className="type-section mb-6">
                 Born from passion,<br />built with purpose
               </h2>
               <div className="w-10 h-[3px] bg-brand-black mb-6" />
@@ -133,9 +129,7 @@ export default function AboutPage() {
               What We Stand For
             </span>
             <h2
-              className="font-heading font-black uppercase leading-[0.95] tracking-tight"
-              style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)' }}
-            >
+              className="type-section">
               Our Values
             </h2>
           </div>
@@ -165,7 +159,7 @@ export default function AboutPage() {
             {STATS.map((s) => (
               <div key={s.label}>
                 <p
-                  className="font-heading font-black tracking-tight"
+                  className="font-display"
                   style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)' }}
                 >
                   {s.value}
@@ -183,9 +177,7 @@ export default function AboutPage() {
       <section className="section-padding">
         <div className="container-custom text-center">
           <h2
-            className="font-heading font-black uppercase leading-[0.95] tracking-tight mb-4"
-            style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)' }}
-          >
+            className="type-section mb-4">
             Join the Movement
           </h2>
           <p className="text-gray-500 max-w-md mx-auto mb-8">

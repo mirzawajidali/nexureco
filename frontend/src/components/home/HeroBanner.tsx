@@ -129,7 +129,7 @@ function SlideContent({
 
           {/* Headline */}
           <h2
-            className={`font-heading font-black uppercase text-white leading-[0.9] tracking-tight mb-4 md:mb-5 transition-all duration-600 delay-200 hero-headline ${
+            className={`type-display text-white mb-4 md:mb-5 transition-all duration-600 delay-200 ${
               isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
             }`}
             style={{ whiteSpace: 'pre-line' }}

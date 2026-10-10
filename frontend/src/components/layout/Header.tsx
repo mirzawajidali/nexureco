@@ -65,7 +65,7 @@ export default function Header() {
 
   const cartItemCount = useCartStore((s) => s.itemCount());
   const wishlistCount = useWishlistStore((s) => s.productIds.length);
-  const { toggleMobileMenu, toggleSearch, isSearchOpen, setSearchOpen } = useUIStore();
+  const { toggleMobileMenu, isMobileMenuOpen, toggleSearch, isSearchOpen, setSearchOpen } = useUIStore();
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -102,6 +102,9 @@ export default function Header() {
             onClick={toggleMobileMenu}
             className="lg:hidden p-2 -ml-2 hover:bg-gray-100"
             aria-label="Open menu"
+            aria-haspopup="dialog"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-menu"
           >
             <Bars3Icon className="h-6 w-6" />
           </button>
@@ -121,7 +124,7 @@ export default function Header() {
                 <Link
                   to={link.href}
                   target={link.target}
-                  className={`text-xs font-heading font-bold uppercase tracking-wider hover:text-gray-500 transition-colors inline-flex items-center gap-1 ${
+                  className={`py-2 text-xs font-heading font-bold uppercase tracking-wider hover:text-gray-500 transition-colors inline-flex items-center gap-1 ${
                     link.accent ? 'text-brand-accent' : ''
                   }`}
                 >

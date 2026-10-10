@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { compression } from 'vite-plugin-compression2'
 import path from 'path'
 
-// Preload the two Latin body/heading fonts. Otherwise the browser only discovers them after
+// Preload the Latin body fonts (Barlow 400/700). Otherwise the browser only discovers them after
 // downloading and parsing the main CSS, and text re-renders (and shifts) late.
 function preloadFonts(): Plugin {
   return {
@@ -13,7 +13,9 @@ function preloadFonts(): Plugin {
       order: 'post',
       handler: (_html, { bundle }) =>
         Object.keys(bundle ?? {})
-          .filter((file) => /\/(inter|montserrat)-latin-wght-normal-[\w-]+\.woff2$/.test(file))
+          // Archivo (88 KB, headlines only) isn't preloaded: on mobile it would compete with the hero
+          // image (the LCP element); headlines swap in from Helvetica once it arrives
+          .filter((file) => /\/barlow-latin-(400|700)-normal-[\w-]+\.woff2$/.test(file))
           .map((file) => ({
             tag: 'link',
             attrs: { rel: 'preload', href: `/${file}`, as: 'font', type: 'font/woff2', crossorigin: '' },

@@ -24,7 +24,8 @@ router = APIRouter(include_in_schema=False)
 HTML_CACHE = "public, max-age=0, s-maxage=300, stale-while-revalidate=60"
 
 
-@router.get("/_render/{path:path}")
+# HEAD too: uptime monitors, link checkers and some crawlers probe pages with it
+@router.api_route("/_render/{path:path}", methods=["GET", "HEAD"])
 async def render_page(path: str, request: Request, db: AsyncSession = Depends(get_db)):
     page_path = "/" + path.strip("/")
     # CMS copies of built-in pages redirect to them (like routes/index.tsx does client-side)

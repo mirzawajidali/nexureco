@@ -28,19 +28,37 @@ const config: Config = {
         error: '#E63946',
         warning: '#F5A623',
         info: '#2196F3',
+        // Discounted price
+        sale: '#E32B2B',
       },
+      // Typography system — the values live as CSS variables on :root in styles/globals.css.
+      //   font-display: Archivo, for headlines (use the .type-display / .type-section / .type-promo classes)
+      //   font-body / font-heading: Barlow. "font-heading" marks bold uppercase UI labels and buttons,
+      //   which use the body face in this system; real headlines use font-display.
       fontFamily: {
-        heading: ['Montserrat Variable', 'Montserrat', 'system-ui', 'sans-serif'],
-        body: ['Inter Variable', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-body)'],
+        body: ['var(--font-body)'],
+        heading: ['var(--font-body)'],
+        display: ['var(--font-display)'],
+      },
+      // Body copy only uses 400 and 700; 800 is reserved for Archivo headlines
+      fontWeight: {
+        medium: '400',
+        semibold: '700',
+        black: '800',
+      },
+      letterSpacing: {
+        // Uppercase UI labels and buttons
+        wider: '1.5px',
       },
       fontSize: {
-        'display-xl': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.02em', fontWeight: '900' }],
-        'display-lg': ['3.75rem', { lineHeight: '1', letterSpacing: '-0.02em', fontWeight: '800' }],
-        'display': ['3rem', { lineHeight: '1.1', letterSpacing: '-0.01em', fontWeight: '800' }],
-        'heading-xl': ['2.25rem', { lineHeight: '1.2', fontWeight: '700' }],
-        'heading-lg': ['1.875rem', { lineHeight: '1.2', fontWeight: '700' }],
-        'heading': ['1.5rem', { lineHeight: '1.3', fontWeight: '700' }],
-        'heading-sm': ['1.25rem', { lineHeight: '1.3', fontWeight: '600' }],
+        'display-xl': ['38px', { lineHeight: '40px', letterSpacing: '3px' }],
+        'display-lg': ['38px', { lineHeight: '40px', letterSpacing: '3px' }],
+        'display': ['38px', { lineHeight: '40px', letterSpacing: '3px' }],
+        'heading-xl': ['24px', { lineHeight: '28px', letterSpacing: '2.5px' }],
+        'heading-lg': ['24px', { lineHeight: '28px', letterSpacing: '2.5px' }],
+        'heading': ['20px', { lineHeight: '24px', letterSpacing: '2px' }],
+        'heading-sm': ['20px', { lineHeight: '24px', letterSpacing: '2px' }],
       },
       spacing: {
         '18': '4.5rem',

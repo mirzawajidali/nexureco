@@ -45,7 +45,7 @@ export default function AccountProfile() {
 
   return (
     <div>
-      <h2 className="text-heading font-heading uppercase mb-6">Profile Information</h2>
+      <h2 className="type-promo mb-6">Profile Information</h2>
 
       <div className="max-w-lg">
         {/* Email (read-only) */}

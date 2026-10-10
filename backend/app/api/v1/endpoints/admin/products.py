@@ -3,6 +3,7 @@ import io
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import require_module
@@ -12,6 +13,7 @@ from app.services import product_service
 from app.utils.file_upload import save_upload_file_with_meta, delete_upload_file
 from app.models.user import User
 from app.models.media import MediaFile
+from app.models.product import Product
 from app.db.redis import CacheService
 
 router = APIRouter(prefix="/admin/products", tags=["Admin Products"])
@@ -177,7 +179,9 @@ async def upload_product_image(
     admin: User = require_module("products"),
     db: AsyncSession = Depends(get_db),
 ):
-    meta = await save_upload_file_with_meta(file, subfolder="products")
+    # Name the file after the product for image search, e.g. essential-tee-3f9a1c2b7d4e.avif
+    product_slug = await db.scalar(select(Product.slug).where(Product.id == product_id))
+    meta = await save_upload_file_with_meta(file, subfolder="products", name_hint=product_slug)
 
     # Also track in media library
     media_file = MediaFile(

@@ -47,7 +47,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
               <DialogPanel className={`w-full ${sizeClasses[size]} bg-white p-6`}>
                 {title && (
                   <div className="flex items-center justify-between mb-6">
-                    <DialogTitle className="text-heading-sm font-heading uppercase">
+                    <DialogTitle className="type-promo">
                       {title}
                     </DialogTitle>
                     <button onClick={onClose} className="p-1 hover:bg-gray-100 transition-colors">

@@ -35,9 +35,7 @@ export default function PromoStrip({
               {eyebrow}
             </span>
           )}
-          <h3 className="font-heading font-black uppercase tracking-tight leading-[0.95]"
-            style={{ fontSize: 'clamp(1.75rem, 4vw, 3rem)' }}
-          >
+          <h3 className="type-promo">
             {title}
           </h3>
           {subtitle && (

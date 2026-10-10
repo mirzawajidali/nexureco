@@ -39,7 +39,7 @@ function CollectionCard({ col }: { col: Collection }) {
 
       {/* Text content below image */}
       <div className="pt-5">
-        <h3 className="font-heading font-black uppercase text-base sm:text-lg tracking-tight text-black">
+        <h3 className="type-card-title text-black">
           {col.name}
         </h3>
         {col.description && (
@@ -103,7 +103,7 @@ export default function ShopByCollection() {
             <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-600 mb-3 block">
               Curated For You
             </span>
-            <h2 className="text-heading-xl font-heading uppercase">Collections</h2>
+            <h2 className="type-section">Collections</h2>
           </div>
 
           {/* Nav buttons */}

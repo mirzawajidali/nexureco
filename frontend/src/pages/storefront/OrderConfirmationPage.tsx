@@ -49,7 +49,7 @@ export default function OrderConfirmationPage() {
   if (!order) {
     return (
       <div className="container-custom py-16 text-center">
-        <h1 className="text-heading-xl font-heading uppercase">Order Not Found</h1>
+        <h1 className="type-display">Order Not Found</h1>
       </div>
     );
   }
@@ -64,7 +64,7 @@ export default function OrderConfirmationPage() {
         {/* Success Header */}
         <div className="text-center mb-12">
           <CheckCircleIcon className="h-16 w-16 text-success mx-auto mb-4" />
-          <h1 className="text-heading-xl font-heading uppercase mb-2">Thank You!</h1>
+          <h1 className="type-display mb-2">Thank You!</h1>
           <p className="text-gray-500">Your order has been placed successfully.</p>
           <p className="text-sm text-gray-400 mt-2">
             Order #{order.order_number} - {formatDate(order.created_at)}

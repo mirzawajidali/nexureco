@@ -190,7 +190,7 @@ export default function CheckoutPage() {
             {/* Step 1: Shipping */}
             {currentStep === 0 && (
               <div>
-                <h2 className="text-heading font-heading uppercase mb-6">
+                <h2 className="type-promo mb-6">
                   {isAuthenticated ? 'Shipping Information' : 'Contact & Shipping'}
                 </h2>
                 <form onSubmit={handleSubmit(handleShippingSubmit)} className="space-y-4">
@@ -286,7 +286,7 @@ export default function CheckoutPage() {
             {/* Step 2: Review */}
             {currentStep === 1 && formData && (
               <div>
-                <h2 className="text-heading font-heading uppercase mb-6">Review Your Order</h2>
+                <h2 className="type-promo mb-6">Review Your Order</h2>
 
                 {/* Contact info for guests */}
                 {!isAuthenticated && formData.guest_email && (

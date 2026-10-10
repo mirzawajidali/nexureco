@@ -356,7 +356,7 @@ export default function ProductPage() {
           <title>Product Not Found</title>
           <meta name="robots" content="noindex" />
         </Helmet>
-        <h1 className="text-heading-xl font-heading uppercase">Product Not Found</h1>
+        <h1 className="type-display">Product Not Found</h1>
       </div>
     );
   }
@@ -643,13 +643,15 @@ export default function ProductPage() {
               </div>
 
               {/* Product Name */}
-              <h1 className="text-[22px] leading-7 font-heading font-bold uppercase mb-3">
+              <h1 className="type-section mb-3">
                 {product.name}
               </h1>
 
               {/* Price */}
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-base font-bold">{formatPrice(currentPrice)}</span>
+                <span className={clsx('type-price', currentComparePrice && currentComparePrice > currentPrice && 'text-sale')}>
+                  {formatPrice(currentPrice)}
+                </span>
                 {currentComparePrice && currentComparePrice > currentPrice && (
                   <>
                     <span className="text-sm text-gray-600 line-through">

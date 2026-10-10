@@ -54,7 +54,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-10">
-            <h1 className="text-display font-heading uppercase mb-2">Sign In</h1>
+            <h1 className="type-display mb-2">Sign In</h1>
             <p className="text-sm text-gray-500">
               Welcome back. Enter your credentials to access your account.
             </p>

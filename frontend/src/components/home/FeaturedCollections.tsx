@@ -34,7 +34,7 @@ export default function FeaturedCollections() {
                   to={cat.href}
                   className="group block py-5 border-b border-gray-300 hover:border-brand-black transition-colors duration-300"
                 >
-                  <span className="text-lg sm:text-xl font-heading font-black lowercase tracking-tight text-brand-black group-hover:text-gray-600 transition-colors duration-300">
+                  <span className="type-card-title text-brand-black group-hover:text-gray-600 transition-colors duration-300">
                     {cat.name}
                   </span>
                 </Link>

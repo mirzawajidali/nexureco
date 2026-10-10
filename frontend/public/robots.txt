@@ -1,6 +1,16 @@
 # robots.txt for https://nexureco.com
 
+# All crawlers share one rule group. AI search/answer bots are named explicitly so it's clear they
+# may crawl and cite the store; they're in this group (not their own) so the Disallow rules below
+# still apply to them. AI training crawlers (GPTBot, Google-Extended, CCBot…) fall under "*".
 User-agent: *
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
 Allow: /
 
 # Admin, account and checkout flow — nothing here should be indexed

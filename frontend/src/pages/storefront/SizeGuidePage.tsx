@@ -213,11 +213,14 @@ function SizeTableSection({ table }: { table: SizeTable }) {
       <div className="overflow-x-auto -mx-4 sm:mx-0">
         <div className="inline-block min-w-full px-4 sm:px-0">
           <table className="w-full text-sm border border-gray-200">
+            {/* The visible heading above names the table; the caption ties it to the table for screen readers */}
+            <caption className="sr-only">{table.title} size chart</caption>
             <thead>
               <tr className="bg-brand-black text-white">
                 {table.headers.map((h) => (
                   <th
                     key={h}
+                    scope="col"
                     className="px-4 py-3 text-left text-xs font-heading font-bold uppercase tracking-wider whitespace-nowrap"
                   >
                     {h}
@@ -234,17 +237,18 @@ function SizeTableSection({ table }: { table: SizeTable }) {
                     i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   )}
                 >
-                  {row.map((cell, j) => (
-                    <td
-                      key={j}
-                      className={clsx(
-                        'px-4 py-3 whitespace-nowrap',
-                        j === 0 ? 'font-bold text-brand-black' : 'text-gray-600'
-                      )}
-                    >
-                      {cell}
-                    </td>
-                  ))}
+                  {row.map((cell, j) =>
+                    // The first cell (the size) labels its row
+                    j === 0 ? (
+                      <th key={j} scope="row" className="px-4 py-3 whitespace-nowrap text-left font-bold text-brand-black">
+                        {cell}
+                      </th>
+                    ) : (
+                      <td key={j} className="px-4 py-3 whitespace-nowrap text-gray-600">
+                        {cell}
+                      </td>
+                    )
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -284,7 +288,7 @@ export default function SizeGuidePage() {
             <span className="text-white font-medium">Size Guide</span>
           </nav>
 
-          <h1 className="text-heading-xl md:text-display font-heading uppercase leading-none mb-3">
+          <h1 className="type-display mb-3">
             Size Guide
           </h1>
           <p className="text-gray-400 text-sm md:text-base max-w-xl">
@@ -322,7 +326,7 @@ export default function SizeGuidePage() {
       {/* ── Size Tables ── */}
       <section className="container-custom py-12 md:py-16">
         <div className="max-w-4xl">
-          <h2 className="text-heading font-heading uppercase mb-1">
+          <h2 className="type-promo mb-1">
             {activeTab}&apos;s Sizing
           </h2>
           <p className="text-sm text-gray-500 mb-8">
@@ -338,7 +342,7 @@ export default function SizeGuidePage() {
       {/* ── How to Measure ── */}
       <section className="bg-gray-50">
         <div className="container-custom py-12 md:py-16">
-          <h2 className="text-heading font-heading uppercase mb-2">
+          <h2 className="type-promo mb-2">
             How to Measure
           </h2>
           <p className="text-sm text-gray-500 mb-10 max-w-xl">
@@ -352,7 +356,7 @@ export default function SizeGuidePage() {
                 key={item.step}
                 className="bg-white border border-gray-200 p-6 hover:border-brand-black transition-colors"
               >
-                <span className="text-display-lg font-heading font-black text-gray-100 leading-none select-none">
+                <span className="font-display text-6xl text-gray-100 leading-none select-none">
                   {item.step}
                 </span>
                 <h3 className="text-sm font-heading font-bold uppercase tracking-wider -mt-4 mb-3">
@@ -370,7 +374,7 @@ export default function SizeGuidePage() {
       {/* ── Fit Tips ── */}
       <section className="container-custom py-12 md:py-16">
         <div className="max-w-3xl">
-          <h2 className="text-heading font-heading uppercase mb-2">
+          <h2 className="type-promo mb-2">
             Fit Tips & FAQ
           </h2>
           <p className="text-sm text-gray-500 mb-6">
@@ -391,7 +395,7 @@ export default function SizeGuidePage() {
       {/* ── CTA Banner ── */}
       <section className="bg-brand-black">
         <div className="container-custom py-12 md:py-16 text-center">
-          <h2 className="text-heading-lg md:text-heading-xl font-heading uppercase text-white mb-3">
+          <h2 className="type-section text-white mb-3">
             Still Not Sure?
           </h2>
           <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">

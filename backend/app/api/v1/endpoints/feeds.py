@@ -46,7 +46,7 @@ def _money(amount: float) -> str:
     return f"{amount:.2f} {CURRENCY}"
 
 
-@router.get("/feeds/products.xml", response_class=Response)
+@router.api_route("/feeds/products.xml", methods=["GET", "HEAD"], response_class=Response)
 async def product_feed(db: AsyncSession = Depends(get_db)):
     """All active products, one item each, in Google Merchant Center's RSS format."""
     base_url = settings.SITE_URL.rstrip("/")
@@ -105,7 +105,7 @@ def _absolute_jpeg(base_url: str, url: str) -> str | None:
     return f"{base_url}{feed_url}" if feed_url else None
 
 
-@router.get("/llms.txt", response_class=Response)
+@router.api_route("/llms.txt", methods=["GET", "HEAD"], response_class=Response)
 async def llms_txt(db: AsyncSession = Depends(get_db)):
     base_url = settings.SITE_URL.rstrip("/")
     products = await active_products(db)

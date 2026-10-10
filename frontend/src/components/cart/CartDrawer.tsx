@@ -51,7 +51,7 @@ export default function CartDrawer() {
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6">
                   <ShoppingBagIcon className="h-16 w-16 text-gray-300 mb-4" />
-                  <p className="text-heading-sm font-heading uppercase mb-2">Your bag is empty</p>
+                  <p className="type-promo mb-2">Your bag is empty</p>
                   <p className="text-sm text-gray-500 mb-6">
                     Looks like you haven't added any items yet.
                   </p>

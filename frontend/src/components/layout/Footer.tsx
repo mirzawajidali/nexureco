@@ -88,7 +88,7 @@ export default function Footer() {
       <div className="border-b border-gray-800">
         <div className="container-custom section-padding">
           <div className="max-w-xl">
-            <h3 className="text-heading font-heading uppercase mb-2">
+            <h3 className="type-promo mb-2">
               Stay in the Loop
             </h3>
             <p className="text-gray-400 text-sm mb-6">
@@ -173,9 +173,9 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom Bar — extra bottom padding keeps it clear of the floating chat button */}
       <div className="border-t border-gray-800">
-        <div className="container-custom py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="container-custom pt-6 pb-24 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-500">
             &copy; {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>

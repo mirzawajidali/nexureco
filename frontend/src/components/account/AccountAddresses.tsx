@@ -101,7 +101,7 @@ export default function AccountAddresses() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-heading font-heading uppercase">Addresses</h2>
+        <h2 className="type-promo">Addresses</h2>
         <Button size="sm" variant="secondary" onClick={() => {
           setEditingAddress(null);
           reset({ country: 'Pakistan', is_default: false });

@@ -106,21 +106,17 @@ export default function CollectionPage() {
         </div>
 
         {/* Heading + count */}
-        <div className="mb-2">
+        {/* The count stays outside the <h1> so the heading is just the collection name */}
+        <div className="mb-2 flex items-baseline gap-3 flex-wrap">
           <h1
-            className="font-heading font-black uppercase tracking-tight leading-[0.95]"
-            style={{ fontSize: 'clamp(1.75rem, 4vw, 3rem)' }}
-          >
+            className="type-display">
             {collectionName}
-            {total > 0 && (
-              <span
-                className="text-gray-400 font-normal ml-2"
-                style={{ fontSize: 'clamp(0.9rem, 1.5vw, 1.25rem)' }}
-              >
-                [{total}]
-              </span>
-            )}
           </h1>
+          {total > 0 && (
+            <span className="text-gray-600 text-sm">
+              {total} {total === 1 ? 'product' : 'products'}
+            </span>
+          )}
         </div>
 
         {/* Description */}

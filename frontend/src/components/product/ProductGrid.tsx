@@ -34,7 +34,7 @@ export default function ProductGrid({ products, isLoading = false, columns = 4, 
   if (products.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-heading font-heading uppercase mb-2">No products found</p>
+        <p className="type-promo mb-2">No products found</p>
         <p className="text-sm text-gray-500">Try adjusting your filters or search terms.</p>
       </div>
     );

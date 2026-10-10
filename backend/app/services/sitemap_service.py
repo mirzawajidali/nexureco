@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.product import Product
+from app.models.product import Product, ProductImage
 from app.models.category import Category
 from app.models.collection import Collection
 from app.models.page import Page
@@ -13,13 +13,22 @@ REDIRECTED_PAGE_SLUGS = frozenset({"about", "contact"})
 async def get_sitemap_entries(db: AsyncSession) -> dict:
     """Fetch all active/published content slugs and timestamps for sitemap."""
 
-    # Active products
+    # Active products, each with its gallery images (primary first) for the image sitemap
     products_result = await db.execute(
-        select(Product.slug, Product.updated_at)
+        select(Product.id, Product.slug, Product.updated_at)
         .where(Product.status == "active")
         .order_by(Product.updated_at.desc())
     )
-    products = [{"slug": r.slug, "updated_at": r.updated_at} for r in products_result]
+    products = [{"id": r.id, "slug": r.slug, "updated_at": r.updated_at, "images": []} for r in products_result]
+    by_id = {p["id"]: p for p in products}
+    if by_id:
+        images_result = await db.execute(
+            select(ProductImage.product_id, ProductImage.url)
+            .where(ProductImage.product_id.in_(by_id))
+            .order_by(ProductImage.product_id, ProductImage.is_primary.desc(), ProductImage.display_order)
+        )
+        for product_id, url in images_result:
+            by_id[product_id]["images"].append(url)
 
     # Active categories
     categories_result = await db.execute(

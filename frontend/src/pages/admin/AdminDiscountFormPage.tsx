@@ -482,7 +482,7 @@ export default function AdminDiscountFormPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-gray-400">
                   No discount code yet
                 </p>
               )}

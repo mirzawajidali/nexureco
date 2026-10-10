@@ -34,7 +34,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-[50vh] flex items-center justify-center py-12 px-4">
           <div className="text-center max-w-md">
-            <h2 className="text-heading-sm font-heading uppercase mb-2">
+            <h2 className="type-promo mb-2">
               Something went wrong
             </h2>
             <p className="text-sm text-gray-500 mb-6">

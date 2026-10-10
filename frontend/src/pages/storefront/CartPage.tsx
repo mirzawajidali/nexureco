@@ -49,7 +49,7 @@ function CartItem({
         <div>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-brand-black leading-snug line-clamp-2">
+              <h3 className="type-product-name line-clamp-2">
                 {item.name}
               </h3>
               {item.variantInfo && (
@@ -142,7 +142,7 @@ export default function CartPage() {
       <div className="container-custom py-8">
         <Breadcrumb items={[{ label: 'Shopping Bag' }]} />
 
-        <h1 className="text-heading-xl font-heading uppercase mb-1">
+        <h1 className="type-display mb-1">
           Your Bag
         </h1>
         {items.length > 0 && (
@@ -155,7 +155,7 @@ export default function CartPage() {
           /* ── Empty state ── */
           <div className="text-center py-20">
             <ShoppingBagIcon className="h-16 w-16 text-gray-300 mx-auto mb-6" />
-            <p className="text-heading font-heading uppercase mb-2">
+            <p className="type-promo mb-2">
               Your bag is empty
             </p>
             <p className="text-sm text-gray-500 mb-8 max-w-sm mx-auto">

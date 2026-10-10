@@ -38,7 +38,7 @@ export default function AccountOrders() {
 
   return (
     <div>
-      <h2 className="text-heading font-heading uppercase mb-6">Order History</h2>
+      <h2 className="type-promo mb-6">Order History</h2>
 
       {orders.length === 0 ? (
         <div className="text-center py-12 bg-gray-50">

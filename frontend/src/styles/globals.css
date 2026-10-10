@@ -3,6 +3,31 @@
 @tailwind utilities;
 
 @layer base {
+  /* Typography system (Adidas-inspired). Barlow stands in for AdihausDIN, Archivo for adidasFG. */
+  :root {
+    --font-body: 'Barlow', Helvetica, Arial, sans-serif;
+    --font-display: 'Archivo Variable', 'Archivo', Helvetica, Arial, sans-serif;
+    --font-display-weight: 800;
+    --font-display-stretch: 112%;
+
+    --color-text: #000000;
+    --color-text-muted: #767677;
+    --color-sale: #e32b2b;
+    --color-text-inverse: #ffffff;
+
+    /* size / line-height / letter-spacing per role */
+    --type-display-size: 38px;  --type-display-leading: 40px;  --type-display-tracking: 3px;
+    --type-section-size: 24px;  --type-section-leading: 28px;  --type-section-tracking: 2.5px;
+    --type-promo-size: 20px;    --type-promo-leading: 24px;    --type-promo-tracking: 2px;
+    --type-card-size: 16px;     --type-card-leading: 24px;
+    --type-product-size: 16px;  --type-product-leading: 24px;
+    --type-price-size: 18px;    --type-price-leading: 24px;
+    --type-body-size: 16px;     --type-body-leading: 22px;
+    --type-ui-size: 14px;       --type-ui-leading: 20px;
+    --type-label-size: 14px;    --type-label-leading: 20px;    --type-label-tracking: 1.5px;
+    --type-meta-size: 12px;     --type-meta-leading: 16px;
+  }
+
   * {
     margin: 0;
     padding: 0;
@@ -15,12 +40,39 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Default UI text: Barlow 400, 14/20, black */
   body {
-    @apply font-body text-gray-900 bg-white;
+    @apply bg-white;
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--type-ui-size);
+    line-height: var(--type-ui-leading);
+    color: var(--color-text);
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
+  /* Element defaults; the .type-* classes below apply the same roles to any element */
+  h1 { @apply type-display; }
+  h2 { @apply type-section; }
+  /* Card-title face without forced uppercase: h3 is also used for product names, which stay in normal case.
+     Card and category titles add .type-card-title. */
+  h3 {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: var(--type-card-size);
+    line-height: var(--type-card-leading);
+  }
+  h4, h5, h6 {
+    font-family: var(--font-body);
+    font-weight: 700;
+  }
+  p {
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-leading);
+  }
+
+  /* No italics anywhere (including rich text from the CMS) */
+  em, i, cite, address {
+    font-style: normal;
   }
 
   a {
@@ -41,6 +93,92 @@
 }
 
 @layer components {
+  /* ── Type roles ─────────────────────────────────────────────── */
+  /* Headlines: Archivo 800 at 112% width, uppercase, tight leading, wide tracking */
+  .type-display,
+  .type-section,
+  .type-promo,
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: var(--font-display-weight);
+    font-stretch: var(--font-display-stretch);
+  }
+  .type-display,
+  .type-section,
+  .type-promo {
+    text-transform: uppercase;
+  }
+  .type-display {
+    font-size: var(--type-display-size);
+    line-height: var(--type-display-leading);
+    letter-spacing: var(--type-display-tracking);
+  }
+  .type-section {
+    font-size: var(--type-section-size);
+    line-height: var(--type-section-leading);
+    letter-spacing: var(--type-section-tracking);
+  }
+  .type-promo {
+    font-size: var(--type-promo-size);
+    line-height: var(--type-promo-leading);
+    letter-spacing: var(--type-promo-tracking);
+  }
+
+  /* Card / category title: Barlow 700, 16/24, uppercase */
+  .type-card-title {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: var(--type-card-size);
+    line-height: var(--type-card-leading);
+    letter-spacing: normal;
+    text-transform: uppercase;
+  }
+  /* Product name / emphasis: Barlow 700, 16/24, normal case */
+  .type-product-name {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: var(--type-product-size);
+    line-height: var(--type-product-leading);
+  }
+  /* Large price / label: Barlow 700, 18/24 */
+  .type-price {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: var(--type-price-size);
+    line-height: var(--type-price-leading);
+  }
+  /* Body copy: Barlow 400, 16/22, sentence case */
+  .type-body {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-leading);
+  }
+  /* Default UI text (nav, links, product info): Barlow 400, 14/20 */
+  .type-ui {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--type-ui-size);
+    line-height: var(--type-ui-leading);
+  }
+  /* Bold UI labels and buttons: Barlow 700, 14/20, uppercase, tracked */
+  .type-label {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: var(--type-label-size);
+    line-height: var(--type-label-leading);
+    letter-spacing: var(--type-label-tracking);
+    text-transform: uppercase;
+  }
+  /* Small meta / captions: Barlow 400, 12/16, muted */
+  .type-meta {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--type-meta-size);
+    line-height: var(--type-meta-leading);
+    color: var(--color-text-muted);
+  }
+
   .container-custom {
     @apply max-w-8xl mx-auto px-4 sm:px-6 lg:px-8;
   }
@@ -186,20 +324,19 @@
   );
 }
 
-.hero-headline {
-  font-size: clamp(2.5rem, 8vw, 5.5rem);
-}
 
 /* CTA buttons */
 .hero-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Montserrat Variable', 'Montserrat', system-ui, sans-serif;
+  /* Bold UI label / button style */
+  font-family: var(--font-body);
   font-weight: 700;
-  font-size: 0.8125rem;
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-leading);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--type-label-tracking);
   padding: 0.875rem 1.75rem;
   transition: all 0.2s ease;
   white-space: nowrap;

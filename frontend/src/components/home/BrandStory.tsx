@@ -43,8 +43,7 @@ export default function BrandStory() {
             </span>
 
             {/* Headline */}
-            <h2 className="font-heading font-black uppercase text-white leading-[0.95] tracking-tight mb-6"
-                style={{ fontSize: 'clamp(2rem, 4vw, 3.25rem)' }}>
+            <h2 className="type-section text-white mb-6">
               Born to be<br />Different
             </h2>
 

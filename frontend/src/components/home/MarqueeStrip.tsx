@@ -53,7 +53,7 @@ export default function MarqueeStrip({
             key={i}
             // The second copy only exists for the seamless loop, so screen readers skip it
             aria-hidden={i >= words.length || undefined}
-            className="flex items-center font-heading font-black uppercase tracking-tight text-2xl md:text-4xl lg:text-5xl px-6"
+            className="flex items-center font-display uppercase tracking-[3px] text-2xl md:text-4xl lg:text-5xl px-6"
           >
             {word}
             <span className="ml-6 inline-block h-2 w-2 rounded-full bg-current opacity-60" />

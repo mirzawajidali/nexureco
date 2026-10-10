@@ -3,6 +3,7 @@ import os
 import uuid
 from fastapi import UploadFile
 from PIL import Image
+from slugify import slugify
 from app.config import get_settings
 from app.utils.image_variants import delete_variants
 
@@ -34,8 +35,14 @@ async def save_upload_file_with_meta(
     file: UploadFile,
     subfolder: str = "products",
     max_width: int = 1200,
+    name_hint: str | None = None,
 ) -> dict:
-    """Save file and return dict with url, original_filename, file_size, content_type, width, height."""
+    """Save file and return dict with url, original_filename, file_size, content_type, width, height.
+
+    ``name_hint`` (e.g. the product's slug) makes a descriptive file name such as
+    ``essential-tee-3f9a1c2b7d4e.avif`` for image search; the random suffix keeps names unique,
+    so files are never overwritten and stay safe to cache forever.
+    """
     original_filename = file.filename or "unknown"
     ext = os.path.splitext(original_filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -45,7 +52,8 @@ async def save_upload_file_with_meta(
     if len(content) > settings.MAX_FILE_SIZE:
         raise ValueError(f"File size exceeds {settings.MAX_FILE_SIZE // (1024*1024)}MB limit")
 
-    filename = f"{uuid.uuid4().hex}{ext}"
+    stem = slugify(name_hint, max_length=60) if name_hint else ""
+    filename = f"{stem}-{uuid.uuid4().hex[:12]}{ext}" if stem else f"{uuid.uuid4().hex}{ext}"
     folder_path = os.path.join(settings.UPLOAD_DIR, subfolder)
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, filename)

@@ -113,7 +113,7 @@ export default function AdminRolesPage() {
 
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {role.permissions.length === 0 ? (
-                  <span className="text-xs text-gray-400 italic">No permissions</span>
+                  <span className="text-xs text-gray-400">No permissions</span>
                 ) : (
                   role.permissions.map((perm) => (
                     <span

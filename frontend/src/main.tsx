@@ -1,8 +1,10 @@
 import './utils/storageMigration';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@fontsource-variable/inter';
-import '@fontsource-variable/montserrat';
+// Typography: Barlow (body/UI, 400 + 700 only) and Archivo (display headlines, width axis for font-stretch)
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/700.css';
+import '@fontsource-variable/archivo/wdth.css';
 import App from './App';
 import './styles/globals.css';
 

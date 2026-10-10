@@ -1,0 +1,9 @@
+{
+  "name": "Nexure CO",
+  "short_name": "Nexure CO",
+  "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }],
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "display": "browser",
+  "start_url": "/"
+}

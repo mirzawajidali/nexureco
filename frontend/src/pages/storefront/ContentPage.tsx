@@ -41,7 +41,7 @@ export default function ContentPage() {
           <meta name="robots" content="noindex" />
         </Helmet>
         <div className="text-center py-20">
-          <h1 className="text-heading-sm font-heading uppercase mb-4">Page Not Found</h1>
+          <h1 className="type-display mb-4">Page Not Found</h1>
           <p className="text-gray-500 text-sm mb-8">
             The page you're looking for doesn't exist or has been unpublished.
           </p>
@@ -80,7 +80,7 @@ export default function ContentPage() {
         </nav>
 
         {/* Page Title */}
-        <h1 className="text-heading-lg font-heading uppercase mb-8">
+        <h1 className="type-display mb-8">
           {data.title}
         </h1>
 

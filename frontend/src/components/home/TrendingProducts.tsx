@@ -22,7 +22,7 @@ export default function TrendingProducts() {
     <section className="section-padding bg-gray-50">
       <div className="container-custom">
         <div className="flex items-center justify-between mb-10">
-          <h2 className="text-heading-xl font-heading uppercase">Trending Now</h2>
+          <h2 className="type-section">Trending Now</h2>
           <Link
             to="/collections/new-arrivals"
             className="text-xs font-heading font-bold uppercase tracking-wider border-b-2 border-brand-black pb-0.5 hover:text-gray-600 transition-colors"

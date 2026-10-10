@@ -31,8 +31,8 @@ export default function NotFoundPage() {
 
       <div className="min-h-[70vh] flex items-center justify-center py-12 px-4">
         <div className="text-center max-w-lg">
-          <h1 className="text-display-xl font-heading uppercase mb-4">404</h1>
-          <p className="text-heading font-heading uppercase mb-2">Page Not Found</p>
+          <h1 className="type-display mb-4">404</h1>
+          <p className="type-promo mb-2">Page Not Found</p>
           <p className="text-sm text-gray-500 mb-8">
             The page you're looking for doesn't exist or has been moved.
           </p>
