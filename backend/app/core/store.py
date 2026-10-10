@@ -2,6 +2,15 @@
 
 SITE_NAME = "Nexure CO"
 TAGLINE = "Premium Fashion & Apparel"
+SITE_MARKET = "Pakistan"
+# Page titles end with "| Nexure CO Pakistan" (frontend TITLE_SUFFIX)
+TITLE_SUFFIX = f"{SITE_NAME} {SITE_MARKET}"
+# Official social profiles (Organization sameAs; frontend SOCIAL_PROFILES)
+SOCIAL_PROFILES = [
+    "https://instagram.com/nexureco",
+    "https://tiktok.com/@nexureco",
+    "https://facebook.com/nexure",
+]
 DEFAULT_DESCRIPTION = (
     "Nexure CO - premium fashion & apparel. Shop new arrivals, best sellers and everyday essentials."
 )

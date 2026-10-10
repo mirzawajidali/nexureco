@@ -12,6 +12,7 @@ import { trackFilters } from '@/utils/analytics';
 import ComingSoon from '@/components/product/ComingSoon';
 import { APP_DESCRIPTION, SITE_NAME } from '@/utils/constants';
 import { truncateText } from '@/utils/formatters';
+import { breadcrumbStructuredData } from '@/utils/seo';
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -81,7 +82,10 @@ export default function CollectionPage() {
     <>
       {/* A custom meta title is used as-is (it usually already names the brand) */}
       <Helmet {...(col?.meta_title ? { titleTemplate: '%s' } : {})}>
-        <title>{col?.meta_title || collectionName}</title>
+        <title>{col?.meta_title || `${collectionName} T-Shirts and Tees`}</title>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbStructuredData([[collectionName, `/collections/${slug}`]]))}
+        </script>
         <meta name="description" content={description} />
         {isEmpty && <meta name="robots" content="noindex, follow" />}
       </Helmet>

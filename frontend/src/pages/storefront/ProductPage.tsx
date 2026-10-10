@@ -21,7 +21,7 @@ import Accordion from '@/components/ui/Accordion';
 import ZoomableImage from '@/components/ui/ZoomableImage';
 import { formatPrice, truncateText } from '@/utils/formatters';
 import { SITE_NAME } from '@/utils/constants';
-import { htmlToText, productStructuredData } from '@/utils/seo';
+import { htmlToText, productStructuredData, productTitle, shortProductName } from '@/utils/seo';
 import { resizedImage } from '@/utils/image';
 import ReviewSection from '@/components/product/ReviewSection';
 import ProductCard from '@/components/product/ProductCard';
@@ -361,10 +361,11 @@ export default function ProductPage() {
     );
   }
 
+  const shortName = shortProductName(product.name);
   const metaDescription =
     product.meta_description ||
     truncateText(
-      product.short_description || htmlToText(product.description || '') || `${product.name} at ${SITE_NAME}.`,
+      `Shop the ${shortName} at ${SITE_NAME}. ${product.short_description || htmlToText(product.description || '')}`.trim(),
       160,
     );
   const structuredData = productStructuredData(product);
@@ -372,7 +373,7 @@ export default function ProductPage() {
   return (
     <>
       <Helmet>
-        <title>{product.meta_title || `${product.name} – ${formatPrice(product.base_price)}`}</title>
+        <title>{product.meta_title || productTitle(product.name)}</title>
         <meta name="description" content={metaDescription} />
         <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
       </Helmet>
@@ -456,7 +457,7 @@ export default function ProductPage() {
                     <div className="aspect-[3/4] bg-[#eceff1] overflow-hidden">
                       <img
                         src={allImages[Math.min(1, allImages.length - 1)].url}
-                        alt={product.name}
+                        alt={allImages[Math.min(1, allImages.length - 1)].alt_text || `${product.name} - Image ${Math.min(1, allImages.length - 1) + 1}`}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
@@ -515,7 +516,7 @@ export default function ProductPage() {
                     <div className="aspect-[3/4] bg-[#eceff1] overflow-hidden">
                       <img
                         src={allImages[Math.min(2, allImages.length - 1)].url}
-                        alt={product.name}
+                        alt={allImages[Math.min(2, allImages.length - 1)].alt_text || `${product.name} - Image ${Math.min(2, allImages.length - 1) + 1}`}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />

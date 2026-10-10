@@ -252,7 +252,7 @@ export default function AdminSettingsPage() {
               name="announcement_text"
               value={form.announcement_text}
               onChange={handleChange}
-              placeholder="Free shipping on orders over Rs. 5,000!"
+              placeholder="Free shipping on orders of Rs. 5,000 or more!"
               className={inputClass}
             />
           </Field>

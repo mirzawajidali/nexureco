@@ -25,11 +25,13 @@ from app.core.store import (
     DEFAULT_DESCRIPTION,
     FREE_SHIPPING_THRESHOLD,
     SITE_NAME,
+    SOCIAL_PROFILES,
     STORE_ADDRESS,
     STORE_EMAIL,
     STORE_HOURS,
     STORE_PHONE,
     TAGLINE,
+    TITLE_SUFFIX,
     format_price,
 )
 from app.models.banner import Banner
@@ -41,21 +43,25 @@ from app.services.listing_service import get_listings_with_products
 from app.services.product_service import _product_eager_options
 from app.utils.image_variants import JPEG_PRESETS, jpeg_url
 
-# Same text as HOME_DESCRIPTION in frontend/src/utils/constants.ts
+# SEO copy (Adidas-style): titles "[keywords] | Nexure CO Pakistan" under 60 chars, descriptions 140-160 chars
+# starting with a verb. Same text as frontend/src/utils/constants.ts (HOME_*, PAGE_SEO) — keep them identical.
+HOME_TITLE = "Men's T-Shirts and Oversized Tees"
+HOME_H1 = "Men's T-Shirts and Oversized Tees in Pakistan"
 HOME_DESCRIPTION = (
-    f"Shop premium 100% cotton T-shirts at {SITE_NAME}: oversized, regular fit and embroidered tees. "
-    f"Cash on delivery across Pakistan, free shipping over {format_price(FREE_SHIPPING_THRESHOLD)}."
+    "Explore men's T-shirts at Nexure CO: oversized, regular fit and embroidered tees in 100% cotton. "
+    "Cash on delivery across Pakistan, free shipping from Rs. 5,000."
 )
 ABOUT_DESCRIPTION = (
-    f"Learn about {SITE_NAME} — our story, mission, and the values that drive everything we create."
+    "Discover Nexure CO, a Lahore T-shirt brand making premium 100% cotton tees in oversized, regular fit and "
+    "embroidered styles, delivered across Pakistan."
 )
 CONTACT_DESCRIPTION = (
     f"Contact {SITE_NAME} for help with orders, delivery, returns and sizing. "
     f"Call {STORE_PHONE} or email {STORE_EMAIL}, {STORE_HOURS}."
 )
 SIZE_GUIDE_DESCRIPTION = (
-    "Find your perfect fit with our comprehensive size guide. "
-    "Size charts for men's, women's, and kids' clothing and footwear."
+    "Find your T-shirt size with the Nexure CO size guide: chest and length charts for regular fit and oversized "
+    "tees, plus easy tips for measuring at home."
 )
 DEFAULT_IMAGE = "/static/images/logo.png"
 LISTING_LIMIT = 48  # products listed in a category/collection's no-JS fallback
@@ -63,9 +69,9 @@ LISTING_LIMIT = 48  # products listed in a category/collection's no-JS fallback
 # Indexable pages with fixed content: path -> (title, description)
 _STATIC_PAGES: dict[str, tuple[str | None, str]] = {
     "/": (None, HOME_DESCRIPTION),
-    "/about": ("About Us", ABOUT_DESCRIPTION),
-    "/contact": ("Contact Us", CONTACT_DESCRIPTION),
-    "/size-guide": ("Size Guide", SIZE_GUIDE_DESCRIPTION),
+    "/about": ("About Us and Our Story", ABOUT_DESCRIPTION),
+    "/contact": ("Contact Us and Customer Support", CONTACT_DESCRIPTION),
+    "/size-guide": ("T-Shirt Size Guide and Fit Chart", SIZE_GUIDE_DESCRIPTION),
 }
 
 # Account, cart and checkout pages: path -> title. Rendered, but never indexed.
@@ -120,6 +126,43 @@ def html_to_text(markup: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
+_BRAND_PREFIX = re.compile(r"^(nexure\s?co|nexureco)\s+", re.I)
+
+
+def short_product_name(name: str) -> str:
+    """The product name without the leading brand (the title already ends with it). Same as shortProductName()."""
+    return _BRAND_PREFIX.sub("", name).strip() or name
+
+
+_MATERIAL = re.compile(r"\s*\b\d+%\s+[A-Za-z]+(?:\s+jersey)?\b", re.I)
+
+
+def product_title(name: str) -> str:
+    """Title keywords for a product without a meta title: the name without the brand, and without the material
+    ("100% Cotton Jersey") when the full title would pass 60 characters. Same as productTitle() in utils/seo.ts."""
+    short = short_product_name(name)
+    if len(f"{short} | {TITLE_SUFFIX}") > 60:
+        short = _MATERIAL.sub("", short).strip() or short
+    return short
+
+
+def _first_paragraph(text: str) -> str:
+    return re.split(r"\n\s*\n", text.strip(), maxsplit=1)[0]
+
+
+def _breadcrumbs(base_url: str, trail: list[tuple[str, str]]) -> dict:
+    """BreadcrumbList JSON-LD: Home, then each (name, path). Same as breadcrumbStructuredData() in utils/seo.ts."""
+    items = [("Home", "/"), *trail]
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "name": name, "item": f"{base_url}{path}"}
+            for i, (name, path) in enumerate(items)
+        ],
+    }
+
+
 def truncate_text(text: str, max_length: int) -> str:
     """Same as truncateText() in frontend/src/utils/formatters.ts."""
     if len(text) <= max_length:
@@ -150,7 +193,7 @@ async def active_products(db: AsyncSession) -> list[Product]:
 
 def _branded(title: str | None) -> str:
     """Layout.tsx's titleTemplate / defaultTitle."""
-    return f"{title} | {SITE_NAME}" if title else f"{SITE_NAME} | {TAGLINE}"
+    return f"{title} | {TITLE_SUFFIX}" if title else f"{HOME_TITLE} | {TITLE_SUFFIX}"
 
 
 def _e(value: str) -> str:
@@ -264,7 +307,7 @@ async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
     return PageHead(
         title=_branded(None),
         description=HOME_DESCRIPTION,
-        og_title=f"{SITE_NAME} | {TAGLINE}",
+        og_title=HOME_TITLE,
         image=image,
         image_size=image_size,
         image_alt=SITE_NAME,
@@ -277,6 +320,7 @@ async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
                     "name": SITE_NAME,
                     "url": f"{base_url}/",
                     "logo": f"{base_url}{DEFAULT_IMAGE}",
+                    "sameAs": SOCIAL_PROFILES,
                     "email": STORE_EMAIL,
                     "telephone": STORE_PHONE,
                     "address": {
@@ -292,11 +336,16 @@ async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
                     "name": SITE_NAME,
                     "url": f"{base_url}/",
                     "publisher": {"@id": f"{base_url}/#organization"},
+                    "potentialAction": {
+                        "@type": "SearchAction",
+                        "target": {"@type": "EntryPoint", "urlTemplate": f"{base_url}/search?q={{search_term_string}}"},
+                        "query-input": "required name=search_term_string",
+                    },
                 },
             ],
         }],
         noscript=(
-            f"<h1>{_e(SITE_NAME)} — Premium Cotton T-Shirts in Pakistan</h1><p>{_e(HOME_DESCRIPTION)}</p>"
+            f"<h1>{_e(HOME_H1)}</h1><p>{_e(HOME_DESCRIPTION)}</p>"
             + (f"<h2>Shop by category</h2><ul>{category_links}</ul>" if category_links else "")
             + (f"<h2>Latest products</h2>{_product_list(products, base_url)}" if products else "")
         ),
@@ -318,8 +367,11 @@ async def _product_head(db: AsyncSession, slug: str, base_url: str) -> PageHead 
     stocked = in_stock(product)
     images = sorted_images(product)
     text = product.short_description or html_to_text(product.description or "")
-    description = product.meta_description or truncate_text(text or f"{product.name} at {SITE_NAME}.", 160)
-    page_title = product.meta_title or f"{product.name} – {format_price(price)}"
+    short_name = short_product_name(product.name)
+    description = product.meta_description or truncate_text(
+        f"Shop the {short_name} at {SITE_NAME}. {text}".strip(), 160
+    )
+    page_title = product.meta_title or product_title(product.name)
     category = product.category
 
     breadcrumbs = [{"name": "Home", "url": f"{base_url}/"}]
@@ -368,7 +420,7 @@ async def _product_head(db: AsyncSession, slug: str, base_url: str) -> PageHead 
         f"<p>{_e(format_price(price))}"
         + (f" <s>{_e(format_price(compare_at))}</s>" if compare_at and compare_at > price else "")
         + f" · {'In stock' if stocked else 'Out of stock'}"
-        + f" · Cash on delivery · Free shipping over {_e(format_price(FREE_SHIPPING_THRESHOLD))}</p>"
+        + f" · Cash on delivery · Free shipping on orders of {_e(format_price(FREE_SHIPPING_THRESHOLD))} or more</p>"
         + (f"<ul>{options}</ul>" if options else "")
         + (f"<p>{_e(html_to_text(product.description))}</p>" if product.description else "")
     )
@@ -427,7 +479,7 @@ async def _category_head(db: AsyncSession, slug: str, base_url: str) -> PageHead
         .limit(LISTING_LIMIT)
     )).all()
     description = category.meta_description or (
-        truncate_text(category.description, 160)
+        truncate_text(_first_paragraph(category.description), 160)
         if category.description
         else f"Shop {category.name} at {SITE_NAME}. {TAGLINE}."
     )
@@ -442,6 +494,7 @@ async def _category_head(db: AsyncSession, slug: str, base_url: str) -> PageHead
         image=image,
         image_size=image_size,
         image_alt=category.name,
+        json_ld=[_breadcrumbs(base_url, [(category.name, f"/category/{category.slug}")])],
         noscript=(
             f"<h1>{_e(category.name)}</h1>"
             + (f"<p>{_e(category.description)}</p>" if category.description else "")
@@ -472,13 +525,14 @@ async def _collection_head(db: AsyncSession, slug: str, base_url: str) -> PageHe
     )
     image, image_size = _social_image(collection.image_url)
     return PageHead(
-        title=collection.meta_title or _branded(collection.name),
+        title=collection.meta_title or _branded(f"{collection.name} T-Shirts and Tees"),
         description=description,
-        og_title=collection.meta_title or collection.name,
+        og_title=collection.meta_title or f"{collection.name} T-Shirts and Tees",
         robots="noindex, follow" if await _is_empty_listing(db, "collections", slug) else None,
         image=image,
         image_size=image_size,
         image_alt=collection.name,
+        json_ld=[_breadcrumbs(base_url, [(collection.name, f"/collections/{collection.slug}")])],
         noscript=(
             f"<h1>{_e(collection.name)}</h1>"
             + (f"<p>{_e(collection.description)}</p>" if collection.description else "")
@@ -502,6 +556,7 @@ async def _content_page_head(db: AsyncSession, slug: str, base_url: str) -> Page
         title=page.meta_title or _branded(page.title),
         description=page.meta_description or (truncate_text(text, 160) if text else DEFAULT_DESCRIPTION),
         og_title=page.meta_title or page.title,
+        json_ld=[_breadcrumbs(base_url, [(page.title, f"/page/{page.slug}")])],
         noscript=f"<h1>{_e(page.title)}</h1>{content}",
     )
 
@@ -523,14 +578,15 @@ def head_tags(head: PageHead, path: str, base_url: str) -> str:
     """The <head> tags for a page. data-rh="true" marks tags react-helmet replaces once the app loads."""
     canonical = f"{base_url}{path}"  # Layout.tsx: SITE_URL + pathname
     description = head.description
-    og_title = head.og_title or head.title.removesuffix(f" | {SITE_NAME}")
+    og_title = head.og_title or head.title.removesuffix(f" | {TITLE_SUFFIX}")
     tags = [
         f"<title>{_e(head.title)}</title>",
         f'<meta name="description" content="{_e(description)}" data-rh="true" />',
         f'<link rel="canonical" href="{_e(canonical)}" data-rh="true" />',
     ]
-    if head.robots:
-        tags.append(f'<meta name="robots" content="{_e(head.robots)}" data-rh="true" />')
+    # Layout.tsx's default; noindex pages override it
+    robots = head.robots or ("index, follow" if head.status == 200 else "noindex")
+    tags.append(f'<meta name="robots" content="{_e(robots)}" data-rh="true" />')
 
     if head.status == 200:
         image = _absolute(base_url, head.image or DEFAULT_IMAGE)

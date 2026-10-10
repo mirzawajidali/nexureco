@@ -1,5 +1,5 @@
 import type { Product } from '@/types/product';
-import { APP_NAME, SITE_NAME, SITE_URL } from './constants';
+import { APP_NAME, SITE_NAME, SITE_URL, TITLE_SUFFIX } from './constants';
 import { truncateText } from './formatters';
 
 const absoluteUrl = (path: string) => (/^https?:\/\//.test(path) ? path : `${SITE_URL}${path}`);
@@ -10,6 +10,36 @@ export function htmlToText(html: string): string {
   const spaced = html.replace(/<\/?(p|div|br|li|ul|ol|h[1-6]|tr|td|th|blockquote)\b[^>]*>/gi, ' $& ');
   const doc = new DOMParser().parseFromString(spaced, 'text/html');
   return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+/** Product name without the leading brand (titles already end with it). Same as short_product_name() on the server. */
+export function shortProductName(name: string): string {
+  return name.replace(/^(nexure\s?co|nexureco)\s+/i, '').trim() || name;
+}
+
+/**
+ * Title keywords for a product without a meta title: the name without the brand, and without the material
+ * ("100% Cotton Jersey") when the full title would pass 60 characters. Same as product_title() on the server.
+ */
+export function productTitle(name: string): string {
+  const short = shortProductName(name);
+  if (`${short} | ${TITLE_SUFFIX}`.length <= 60) return short;
+  return short.replace(/\s*\b\d+%\s+[A-Za-z]+(?:\s+jersey)?\b/i, '').trim() || short;
+}
+
+/** BreadcrumbList JSON-LD: Home, then each [name, path]. Same as _breadcrumbs() in backend seo_service.py. */
+export function breadcrumbStructuredData(trail: [string, string][]) {
+  const items: [string, string][] = [['Home', '/'], ...trail];
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map(([name, path], i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name,
+      item: `${SITE_URL}${path}`,
+    })),
+  };
 }
 
 /** Product + Offer and BreadcrumbList JSON-LD for a product page. */

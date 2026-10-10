@@ -35,9 +35,9 @@ export default function PromoStrip({
               {eyebrow}
             </span>
           )}
-          <h3 className="type-promo">
+          <h2 className="type-promo">
             {title}
-          </h3>
+          </h2>
           {subtitle && (
             <p className="mt-3 text-sm md:text-base max-w-xl leading-relaxed">
               {subtitle}

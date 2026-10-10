@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { usePageViews } from '@/hooks/useAnalytics';
 import { setAnalyticsUserId } from '@/utils/analytics';
 import { Helmet } from 'react-helmet-async';
-import { APP_DESCRIPTION, DEFAULT_DESCRIPTION, FREE_SHIPPING_MESSAGE, SITE_NAME, SITE_URL } from '@/utils/constants';
+import { DEFAULT_DESCRIPTION, FREE_SHIPPING_MESSAGE, HOME_TITLE, SITE_URL, TITLE_SUFFIX } from '@/utils/constants';
 
 export default function Layout() {
   const { pathname } = useLocation();
@@ -28,9 +28,11 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Site-wide defaults; pages set their own <title> (without the brand) and description */}
-      <Helmet titleTemplate={`%s | ${SITE_NAME}`} defaultTitle={`${SITE_NAME} | ${APP_DESCRIPTION}`}>
+      {/* Site-wide defaults; pages set their own <title> ("[keywords]", the template adds "| Nexure CO Pakistan"),
+          description and, for pages that shouldn't be indexed, robots */}
+      <Helmet titleTemplate={`%s | ${TITLE_SUFFIX}`} defaultTitle={`${HOME_TITLE} | ${TITLE_SUFFIX}`}>
         <meta name="description" content={DEFAULT_DESCRIPTION} />
+        <meta name="robots" content="index, follow" />
         <link rel="canonical" href={`${SITE_URL}${pathname}`} />
       </Helmet>
       {/* Keyboard users can jump past the header; focusing <main> avoids changing the URL hash */}

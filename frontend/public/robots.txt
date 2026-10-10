@@ -31,7 +31,19 @@ Disallow: /*?*sort=
 Disallow: /*?*min_price=
 Disallow: /*?*max_price=
 
-# /api/ is intentionally NOT blocked: pages are rendered client-side from /api/v1,
-# so crawlers need it to see product content.
+# Private / transactional API endpoints. The catalog API (products, categories, collections,
+# banners, pages, menus, reviews) stays crawlable: Google renders pages from it.
+Disallow: /api/v1/auth
+Disallow: /api/v1/users
+Disallow: /api/v1/cart
+Disallow: /api/v1/orders
+Disallow: /api/v1/wishlist
+Disallow: /api/v1/newsletter
+Disallow: /api/v1/contact
+Disallow: /api/v1/chat
+Disallow: /api/v1/csp-report
+Disallow: /api/v1/search
+Disallow: /api/v1/media
+Disallow: /api/v1/admin
 
 Sitemap: https://nexureco.com/sitemap.xml

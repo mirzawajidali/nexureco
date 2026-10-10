@@ -16,12 +16,12 @@ import {
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import { contactApi, type ContactFormData } from '@/api/contact.api';
 import {
+  PAGE_SEO,
   RETURN_POLICY_SUMMARY,
-  SITE_NAME,
-  STORE_EMAIL,
-  STORE_PHONE,
   STORE_ADDRESS,
+  STORE_EMAIL,
   STORE_HOURS,
+  STORE_PHONE,
 } from '@/utils/constants';
 import { trackGenerateLead } from '@/utils/analytics';
 import toast from 'react-hot-toast';
@@ -238,11 +238,8 @@ export default function ContactPage() {
   return (
     <>
       <Helmet>
-        <title>Contact Us</title>
-        <meta
-          name="description"
-          content={`Contact ${SITE_NAME} for help with orders, delivery, returns and sizing. Call ${STORE_PHONE} or email ${STORE_EMAIL}, ${STORE_HOURS}.`}
-        />
+        <title>{PAGE_SEO.contact.title}</title>
+        <meta name="description" content={PAGE_SEO.contact.description} />
       </Helmet>
 
       {/* Hero */}

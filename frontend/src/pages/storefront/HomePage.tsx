@@ -8,10 +8,11 @@ import ShopByCollection from '@/components/home/ShopByCollection';
 import TrendingProducts from '@/components/home/TrendingProducts';
 import BrandStory from '@/components/home/BrandStory';
 import NewsletterSection from '@/components/home/NewsletterSection';
+import HomeSeoContent from '@/components/home/HomeSeoContent';
 import StillInterested from '@/components/home/StillInterested';
 import PromoStrip from '@/components/home/PromoStrip';
 import { getHeroBanners } from '@/api/pages.api';
-import { HOME_DESCRIPTION, SITE_NAME } from '@/utils/constants';
+import { HOME_DESCRIPTION, HOME_H1 } from '@/utils/constants';
 
 const fallbackSlides: HeroBannerSlide[] = [
   {
@@ -51,7 +52,7 @@ export default function HomePage() {
       </Helmet>
 
       {/* The page's single H1. The hero slides rotate (each headline is an h2), so the H1 names the store instead. */}
-      <h1 className="sr-only">{`${SITE_NAME} — Premium Cotton T-Shirts in Pakistan`}</h1>
+      <h1 className="sr-only">{HOME_H1}</h1>
 
       <HeroBanner slides={heroSlides} />
       <ShopByCollection />
@@ -68,6 +69,7 @@ export default function HomePage() {
       <BrandStory />
       <FeaturedCollections />
       <NewsletterSection />
+      <HomeSeoContent />
     </>
   );
 }

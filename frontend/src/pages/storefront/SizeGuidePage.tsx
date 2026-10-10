@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { PAGE_SEO } from '@/utils/constants';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import Accordion from '@/components/ui/Accordion';
 import { clsx } from 'clsx';
@@ -269,11 +270,8 @@ export default function SizeGuidePage() {
   return (
     <>
       <Helmet>
-        <title>Size Guide</title>
-        <meta
-          name="description"
-          content="Find your perfect fit with our comprehensive size guide. Size charts for men's, women's, and kids' clothing and footwear."
-        />
+        <title>{PAGE_SEO.sizeGuide.title}</title>
+        <meta name="description" content={PAGE_SEO.sizeGuide.description} />
       </Helmet>
 
       {/* ── Hero ── */}

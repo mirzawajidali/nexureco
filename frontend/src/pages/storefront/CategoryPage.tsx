@@ -11,6 +11,7 @@ import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
 import ComingSoon from '@/components/product/ComingSoon';
 import { APP_DESCRIPTION, SITE_NAME } from '@/utils/constants';
 import { truncateText } from '@/utils/formatters';
+import { breadcrumbStructuredData } from '@/utils/seo';
 import { trackFilters } from '@/utils/analytics';
 import { clsx } from 'clsx';
 
@@ -127,6 +128,9 @@ export default function CategoryPage() {
       {/* A custom meta title is used as-is (it usually already names the brand) */}
       <Helmet {...(cat?.meta_title ? { titleTemplate: '%s' } : {})}>
         <title>{cat?.meta_title || categoryName}</title>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbStructuredData([[categoryName, `/category/${slug}`]]))}
+        </script>
         <meta name="description" content={description} />
         {/* Thin "coming soon" pages shouldn't be indexed; links on them are still followed */}
         {isEmpty && <meta name="robots" content="noindex, follow" />}

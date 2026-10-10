@@ -5,7 +5,7 @@ import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import Spinner from '@/components/ui/Spinner';
 import { pagesApi } from '@/api/pages.api';
 import { truncateText } from '@/utils/formatters';
-import { htmlToText } from '@/utils/seo';
+import { breadcrumbStructuredData, htmlToText } from '@/utils/seo';
 
 interface PageData {
   id: number;
@@ -61,6 +61,9 @@ export default function ContentPage() {
       {/* A custom meta title is used as-is (it usually already names the brand) */}
       <Helmet {...(data.meta_title ? { titleTemplate: '%s' } : {})}>
         <title>{data.meta_title || data.title}</title>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbStructuredData([[data.title, `/page/${data.slug}`]]))}
+        </script>
         {(data.meta_description || data.content) && (
           <meta
             name="description"

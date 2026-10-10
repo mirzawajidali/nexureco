@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 // 96px-tall WebP (2x the largest displayed size); logo.png is kept for the PDF reports
 import logoSrc from '@/assets/images/logo.webp';
+import { SITE_NAME } from '@/utils/constants';
 
 interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -18,7 +19,7 @@ export default function BrandLogo({ size = 'md', variant = 'dark', linkTo = '/' 
   const logo = (
     <img
       src={logoSrc}
-      alt="nexure"
+      alt={SITE_NAME}
       width={203}
       height={40}
       className={`${sizeClasses[size]} w-auto flex-shrink-0`}

@@ -110,7 +110,7 @@ function WishlistCard({
                 >
                   <img
                     src={vImg}
-                    alt=""
+                    alt={product.variant_colors?.[idx] ?? ''}
                     className="w-12 h-14 object-cover bg-[#eceff1]"
                   />
                   <div
