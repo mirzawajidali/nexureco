@@ -1,7 +1,16 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react';
-import { XMarkIcon, UserIcon, HeartIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  UserIcon,
+  HeartIcon,
+  ChevronDownIcon,
+  TruckIcon,
+  QuestionMarkCircleIcon,
+  ChatBubbleLeftEllipsisIcon,
+  InformationCircleIcon,
+} from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +31,13 @@ const FALLBACK_NAV_LINKS: NavLink[] = [
   { label: 'Best Sellers', href: '/collections/best-sellers' },
   { label: 'Men', href: '/category/men' },
   { label: 'Sale', href: '/collections/sale', accent: true },
+];
+
+const SUPPORT_LINKS = [
+  { label: 'Track Order', href: '/track-order', Icon: TruckIcon },
+  { label: 'Help & FAQ', href: '/page/faq', Icon: QuestionMarkCircleIcon },
+  { label: 'Contact Us', href: '/contact', Icon: ChatBubbleLeftEllipsisIcon },
+  { label: 'About Us', href: '/about', Icon: InformationCircleIcon },
 ];
 
 function mapMenuItems(items: MenuItemData[]): NavLink[] {
@@ -76,7 +92,7 @@ export default function MobileMenu() {
           leaveFrom="translate-x-0"
           leaveTo="-translate-x-full"
         >
-          <DialogPanel id="mobile-menu" className="fixed inset-y-0 left-0 w-full max-w-sm bg-white">
+          <DialogPanel id="mobile-menu" className="fixed inset-y-0 left-0 w-full max-w-sm bg-white overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between px-6 h-16 border-b">
               <span className="font-display text-xl uppercase tracking-[2px]">
@@ -167,6 +183,21 @@ export default function MobileMenu() {
                 <HeartIcon className="h-5 w-5" />
                 Wishlist
               </Link>
+            </div>
+
+            {/* Help — the desktop top-bar links, which have no other home on mobile */}
+            <div className="border-t border-gray-200 py-4">
+              {SUPPORT_LINKS.map(({ label, href, Icon }) => (
+                <Link
+                  key={href}
+                  to={href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-6 py-3 text-sm hover:bg-gray-50"
+                >
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              ))}
             </div>
           </DialogPanel>
         </TransitionChild>

@@ -226,14 +226,14 @@ export default function ChatPanel() {
       : 'Type a message...';
 
   return (
-    <div className="fixed bottom-[4.5rem] right-6 z-[60] w-[400px] h-[560px] max-h-[75vh] flex flex-col bg-white border-2 border-brand-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] overflow-hidden animate-slide-in-up max-sm:right-0 max-sm:left-0 max-sm:bottom-16 max-sm:w-full max-sm:h-[70vh] max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none">
+    <div className="fixed bottom-[calc(4.5rem_+_var(--sticky-bar-height,0px))] right-6 z-[60] w-[400px] h-[560px] max-h-[75vh] flex flex-col bg-white border-2 border-brand-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] overflow-hidden animate-slide-in-up max-sm:right-0 max-sm:left-0 max-sm:bottom-[calc(4rem_+_var(--sticky-bar-height,0px))] max-sm:w-full max-sm:h-[70vh] max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none">
       {/* ── Header ── */}
       <div className="bg-brand-black text-white px-5 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <BrandLogo size="sm" variant="light" linkTo="" />
             <div className="h-5 w-px bg-gray-600" />
-            <span className="text-[10px] text-gray-400 font-heading font-bold uppercase tracking-[0.15em]">
+            <span className="text-xs text-gray-400 font-heading font-bold uppercase tracking-[0.15em]">
               Support
             </span>
           </div>
@@ -267,7 +267,7 @@ export default function ChatPanel() {
       {/* ── Input Area ── */}
       <div className="border-t-2 border-brand-black p-4 flex-shrink-0 bg-white">
         {inputError && (
-          <p className="text-[11px] text-brand-accent font-heading font-bold uppercase tracking-wider mb-2">
+          <p className="text-xs text-brand-accent font-heading font-bold uppercase tracking-wider mb-2">
             {inputError}
           </p>
         )}
@@ -352,7 +352,7 @@ function MessageBubble({
                   {Icon && (
                     <Icon className="w-4 h-4 group-hover:text-white transition-colors" />
                   )}
-                  <span className="text-[9px] font-heading font-bold uppercase tracking-[0.1em] text-center leading-tight">
+                  <span className="text-xs font-heading font-bold uppercase tracking-[0.1em] text-center leading-tight">
                     {config?.label || opt.label}
                   </span>
                 </button>
@@ -395,7 +395,7 @@ function MessageBubble({
               <button
                 key={opt.action}
                 onClick={() => onAction(opt.action)}
-                className="px-4 py-2 border-2 border-brand-black bg-white text-brand-black font-heading text-[10px] font-bold uppercase tracking-[0.1em] hover:bg-brand-black hover:text-white transition-all duration-200"
+                className="px-4 py-2 border-2 border-brand-black bg-white text-brand-black font-heading text-xs font-bold uppercase tracking-[0.1em] hover:bg-brand-black hover:text-white transition-all duration-200"
               >
                 {opt.label}
               </button>

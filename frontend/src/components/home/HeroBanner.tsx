@@ -21,6 +21,8 @@ export interface HeroBannerSlide {
   imageUrl?: string;
   /** Mobile-specific image (optional, falls back to imageUrl) */
   mobileImageUrl?: string;
+  /** Describes the photo for screen readers; omit for a purely decorative image */
+  imageAlt?: string;
   /** Background video URL — takes priority over imageUrl when provided */
   videoUrl?: string;
   /** CTA link */
@@ -84,7 +86,7 @@ function SlideMedia({ slide, isFirst, onLoad }: { slide: HeroBannerSlide; isFirs
         src={src}
         srcSet={imageSrcSet(src)}
         sizes="100vw"
-        alt=""
+        alt={slide.imageAlt ?? ''}
         className="absolute inset-0 w-full h-full object-cover"
         fetchPriority={isFirst ? 'high' : undefined}
         onLoad={onLoad}
@@ -113,8 +115,10 @@ function SlideContent({
   const centered = slide.textAlign !== 'left';
 
   return (
-    <div className={`relative h-full flex z-10 ${centered ? 'items-center' : 'items-end'}`}>
-      <div className={`container-custom w-full ${centered ? 'text-center' : 'pb-16 md:pb-20 lg:pb-24'}`}>
+    // On phones the copy always sits at the bottom, over the darkest part of the gradient: centred
+    // over a portrait photo it lands on the model's face and the printed logo
+    <div className={`relative h-full flex z-10 ${centered ? 'items-end md:items-center' : 'items-end'}`}>
+      <div className={`container-custom w-full ${centered ? 'text-center pb-16 md:pb-0' : 'pb-16 md:pb-20 lg:pb-24'}`}>
         <div className={`${centered ? 'max-w-3xl mx-auto' : 'max-w-2xl'}`}>
           {/* Eyebrow */}
           {slide.eyebrow && (

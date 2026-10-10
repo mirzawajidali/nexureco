@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
-from app.schemas.review import ReviewCreate, ReviewOut, ReviewSummary
+from app.schemas.review import ReviewCreate, ReviewOut, ReviewSummary, VerifiedReviewCreate
 from app.services import review_service
 from app.models.user import User
 
@@ -16,6 +16,15 @@ async def create_review(
     db: AsyncSession = Depends(get_db),
 ):
     return await review_service.create_review(db, user.id, data)
+
+
+@router.post("/verified", response_model=ReviewOut, status_code=201)
+async def create_verified_review(
+    data: VerifiedReviewCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Review without an account: the order number and its email or phone prove the purchase."""
+    return await review_service.create_verified_review(db, data)
 
 
 @router.get("/product/{product_id}", response_model=dict)

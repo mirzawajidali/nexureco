@@ -157,7 +157,7 @@ function TrackingResult({
       <div className="bg-gray-50 p-6">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <p className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-gray-400 mb-1">
+            <p className="text-xs font-heading font-bold uppercase tracking-[0.2em] text-gray-400 mb-1">
               Order Number
             </p>
             <h2 className="type-promo">

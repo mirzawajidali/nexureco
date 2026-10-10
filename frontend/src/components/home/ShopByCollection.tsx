@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import { Navigation, Pagination } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import { collectionsApi } from '@/api/products.api';
 import { RectangleStackIcon } from '@heroicons/react/24/outline';
@@ -95,12 +95,14 @@ export default function ShopByCollection() {
   if (collections.length === 0) return null;
 
   return (
-    <section className="section-padding">
+    // overflow-hidden: on mobile the slider shows a peek of the next card (overflow-visible below),
+    // which must not widen the page and cause sideways scrolling
+    <section className="section-padding overflow-hidden">
       <div className="container-custom">
         {/* Header */}
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <span className="text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-600 mb-3 block">
+            <span className="text-xs font-heading font-bold uppercase tracking-[0.25em] text-gray-600 mb-3 block">
               Curated For You
             </span>
             <h2 className="type-section">Collections</h2>
@@ -133,7 +135,8 @@ export default function ShopByCollection() {
 
         {/* Slider */}
         <Swiper
-          modules={[Navigation, Pagination, Autoplay]}
+          // No autoplay: it moved the slider off the first collection before people started reading
+          modules={[Navigation, Pagination]}
           onSwiper={(s) => (swiperRef.current = s)}
           spaceBetween={12}
           slidesPerView={1.25}
@@ -143,7 +146,6 @@ export default function ShopByCollection() {
             1280: { slidesPerView: 4, spaceBetween: 24 },
           }}
           loop={collections.length > 4}
-          autoplay={{ delay: 4500, disableOnInteraction: false, pauseOnMouseEnter: true }}
           pagination={{ clickable: true, el: '.collections-pagination' }}
           className="!overflow-visible sm:!overflow-hidden"
         >

@@ -48,6 +48,22 @@ async def lifespan(app: FastAPI):
                     if col_name not in existing:
                         sync_conn.execute(text(f"ALTER TABLE products ADD COLUMN {col_name} {col_def}"))
 
+                # Reviews: verified-purchase reviews without an account
+                if insp.has_table("reviews"):
+                    review_cols = {c["name"]: c for c in insp.get_columns("reviews")}
+                    if not review_cols["user_id"]["nullable"]:
+                        sync_conn.execute(text("ALTER TABLE reviews MODIFY COLUMN user_id INT NULL"))
+                    if "reviewer_name" not in review_cols:
+                        sync_conn.execute(text("ALTER TABLE reviews ADD COLUMN reviewer_name VARCHAR(100) NULL"))
+                    if "is_verified" not in review_cols:
+                        sync_conn.execute(text("ALTER TABLE reviews ADD COLUMN is_verified TINYINT(1) NOT NULL DEFAULT 0"))
+
+                # Banners: alt text for the slide image
+                if insp.has_table("banners"):
+                    banner_cols = {c["name"] for c in insp.get_columns("banners")}
+                    if "image_alt" not in banner_cols:
+                        sync_conn.execute(text("ALTER TABLE banners ADD COLUMN image_alt VARCHAR(300) NULL"))
+
                 # Users table: add 'staff' to role enum and add role_id FK
                 if insp.has_table("users"):
                     user_cols = {c["name"] for c in insp.get_columns("users")}

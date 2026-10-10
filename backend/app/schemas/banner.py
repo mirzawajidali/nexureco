@@ -7,6 +7,7 @@ class BannerCreate(BaseModel):
     subtitle: str | None = Field(None, max_length=300)
     image_url: str = Field(min_length=1, max_length=500)
     mobile_image_url: str | None = Field(None, max_length=500)
+    image_alt: str | None = Field(None, max_length=300)
     link_url: str | None = Field(None, max_length=500)
     button_text: str | None = Field(None, max_length=100)
     position: str = "hero"
@@ -21,6 +22,7 @@ class BannerUpdate(BaseModel):
     subtitle: str | None = None
     image_url: str | None = None
     mobile_image_url: str | None = None
+    image_alt: str | None = Field(None, max_length=300)
     link_url: str | None = None
     button_text: str | None = None
     position: str | None = None
@@ -36,6 +38,7 @@ class BannerOut(BaseModel):
     subtitle: str | None
     image_url: str
     mobile_image_url: str | None
+    image_alt: str | None = None
     link_url: str | None
     button_text: str | None
     position: str

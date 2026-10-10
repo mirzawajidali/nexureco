@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { StarIcon } from '@heroicons/react/24/solid';
+import { StarIcon, CheckBadgeIcon } from '@heroicons/react/24/solid';
 import { StarIcon as StarOutline, ChevronDownIcon, HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline';
 import { reviewApi } from '@/api/user.api';
 import { useAuthStore } from '@/store/authStore';
@@ -24,7 +24,11 @@ interface ReviewSectionProps {
 const reviewSchema = z.object({
   rating: z.number().min(1, 'Please select a rating').max(5),
   title: z.string().optional(),
-  comment: z.string().optional(),
+  comment: z.string().max(2000, 'Please keep it under 2,000 characters').optional(),
+  // Without an account: proof of purchase (checked in onSubmit, since they don't apply to signed-in users)
+  name: z.string().max(60).optional(),
+  order_number: z.string().optional(),
+  contact: z.string().optional(),
 });
 
 type ReviewFormData = z.infer<typeof reviewSchema>;
@@ -40,17 +44,10 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
     const timer = setTimeout(() => document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' }), 100);
     return () => clearTimeout(timer);
   }, [linkedToReviews]);
-  const signInToReview = (
-    <Link
-      to="/login"
-      state={{ from: { pathname: `${location.pathname}#reviews` } }}
-      className="text-sm font-bold underline hover:text-gray-600"
-    >
-      Sign in to write a review
-    </Link>
-  );
+  // The "order delivered" email links here with ?review_order=<number>, so the form opens pre-filled
+  const emailedOrderNumber = new URLSearchParams(location.search).get('review_order') ?? '';
   const [page, setPage] = useState(1);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(linkedToReviews && !!emailedOrderNumber);
   const [hoverRating, setHoverRating] = useState(0);
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
@@ -77,30 +74,68 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
     setValue,
     watch,
     reset,
+    setError,
     formState: { errors },
   } = useForm<ReviewFormData>({
     resolver: zodResolver(reviewSchema),
-    defaultValues: { rating: 0 },
+    defaultValues: { rating: 0, order_number: emailedOrderNumber },
   });
 
   const selectedRating = watch('rating');
 
   const mutation = useMutation({
-    mutationFn: (data: ReviewFormData) =>
-      reviewApi.create({ product_id: productId, ...data }),
+    mutationFn: ({ rating, title, comment, name, order_number, contact }: ReviewFormData) =>
+      user
+        ? reviewApi.create({ product_id: productId, rating, title, comment })
+        : reviewApi.createVerified({
+            product_id: productId,
+            rating,
+            title,
+            comment,
+            name: name?.trim() || undefined,
+            order_number: (order_number ?? '').trim(),
+            contact: (contact ?? '').trim(),
+          }),
     onSuccess: (_res, data) => {
       trackEvent('submit_review', { item_id: String(productId), rating: data.rating });
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
       queryClient.invalidateQueries({ queryKey: ['review-summary', productId] });
       toast.success('Review submitted!');
       setShowForm(false);
-      reset();
+      reset({ rating: 0 });
     },
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { detail?: string } } };
       toast.error(error.response?.data?.detail || 'Failed to submit review');
     },
   });
+
+  const onSubmit = (data: ReviewFormData) => {
+    if (!user) {
+      let missing = false;
+      if (!data.order_number?.trim()) {
+        setError('order_number', { message: 'Enter your order number' });
+        missing = true;
+      }
+      if (!data.contact?.trim()) {
+        setError('contact', { message: 'Enter the email or phone number you ordered with' });
+        missing = true;
+      }
+      if (missing) return;
+    }
+    mutation.mutate(data);
+  };
+
+  const writeReviewButton = (
+    <button
+      type="button"
+      onClick={() => setShowForm(true)}
+      className="flex items-center gap-2 px-6 py-3 border border-brand-black text-sm font-bold hover:bg-gray-50 transition-colors"
+    >
+      Write a review
+      <span className="text-lg" aria-hidden>&rarr;</span>
+    </button>
+  );
 
   // Filter and sort reviews client-side
   const filteredReviews = reviews
@@ -119,6 +154,8 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
       {/* Accordion header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls="reviews-panel"
         className="w-full flex items-center justify-between py-5 text-left"
       >
         <span className="text-sm font-bold text-brand-black">
@@ -149,6 +186,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
 
       {/* Expandable content */}
       <div
+        id="reviews-panel"
         className={clsx(
           'overflow-hidden transition-all duration-300',
           isOpen ? 'max-h-[5000px] opacity-100 pb-8' : 'max-h-0 opacity-0'
@@ -156,14 +194,8 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
       >
         {totalReviews === 0 && !showForm ? (
           <div className="text-center py-8 bg-gray-50">
-            <p className="text-sm text-gray-500 mb-4">No reviews yet. Be the first to review!</p>
-            {user ? (
-              <Button size="sm" variant="secondary" onClick={() => setShowForm(true)}>
-                Write a Review
-              </Button>
-            ) : (
-              signInToReview
-            )}
+            <p className="text-sm text-gray-500 mb-4">No reviews yet. Bought this tee? Be the first to review it.</p>
+            <div className="flex justify-center">{writeReviewButton}</div>
           </div>
         ) : (
           <>
@@ -186,16 +218,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                     ))}
                   </div>
                 </div>
-                {user && !showForm && (
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="flex items-center gap-2 px-6 py-3 border border-brand-black text-sm font-bold hover:bg-gray-50 transition-colors"
-                  >
-                    Write a review
-                    <span className="text-lg">&rarr;</span>
-                  </button>
-                )}
-                {!user && signInToReview}
+                {!showForm && writeReviewButton}
               </div>
             )}
 
@@ -269,7 +292,47 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                 <h3 className="text-sm font-bold text-brand-black mb-4">
                   Write Your Review
                 </h3>
-                <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+                  {!user && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600">
+                        Reviews are from customers whose order has been delivered. Enter your order number and the
+                        email or phone number you ordered with, or{' '}
+                        <Link
+                          to="/login"
+                          state={{ from: { pathname: `${location.pathname}#reviews` } }}
+                          className="font-bold underline hover:text-gray-600"
+                        >
+                          sign in
+                        </Link>
+                        .
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Input
+                          label="Order number"
+                          placeholder="e.g. MB-12345678"
+                          autoComplete="off"
+                          error={errors.order_number?.message}
+                          {...register('order_number')}
+                        />
+                        <Input
+                          label="Email or phone"
+                          placeholder="As used for the order"
+                          autoComplete="email"
+                          error={errors.contact?.message}
+                          {...register('contact')}
+                        />
+                      </div>
+                      <Input
+                        label="Name shown with your review (optional)"
+                        placeholder="Defaults to the first name on the order"
+                        autoComplete="given-name"
+                        maxLength={60}
+                        error={errors.name?.message}
+                        {...register('name')}
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-bold text-brand-black block mb-1">Rating</label>
                     <div className="flex gap-1 mt-1">
@@ -277,6 +340,8 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                         <button
                           key={star}
                           type="button"
+                          aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                          aria-pressed={selectedRating === star}
                           onMouseEnter={() => setHoverRating(star)}
                           onMouseLeave={() => setHoverRating(0)}
                           onClick={() => setValue('rating', star)}
@@ -296,8 +361,12 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
 
                   <Input label="Title (optional)" {...register('title')} />
                   <div>
-                    <label className="text-xs font-bold text-brand-black block mb-1">Comment (optional)</label>
+                    <label htmlFor="review-comment" className="text-xs font-bold text-brand-black block mb-1">
+                      Comment (optional)
+                    </label>
                     <textarea
+                      id="review-comment"
+                      maxLength={2000}
                       {...register('comment')}
                       rows={4}
                       className="input-field resize-none"
@@ -314,7 +383,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                       variant="ghost"
                       onClick={() => {
                         setShowForm(false);
-                        reset();
+                        reset({ rating: 0 });
                       }}
                     >
                       Cancel
@@ -343,6 +412,12 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                         ))}
                       </div>
                       <p className="text-sm text-brand-black">{review.user_name}</p>
+                      {review.is_verified && (
+                        <p className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                          <CheckBadgeIcon className="h-4 w-4 text-success" aria-hidden="true" />
+                          Verified purchase
+                        </p>
+                      )}
                     </div>
 
                     {/* Right: title, comment, date, actions */}

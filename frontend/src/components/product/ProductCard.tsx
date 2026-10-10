@@ -5,6 +5,7 @@ import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice } from '@/utils/formatters';
 import { imageSrcSet, resizedImage } from '@/utils/image';
+import { shortProductName } from '@/utils/seo';
 import {
   productToItem,
   trackAddToWishlist,
@@ -12,6 +13,15 @@ import {
   trackSelectItem,
   type ItemList,
 } from '@/utils/analytics';
+
+/**
+ * Card title: the name without the brand and without the material ("100% Cotton Jersey"), which every
+ * tee shares, so cards are told apart by what differs. The full name stays in the image alt text,
+ * on the product page and in search results.
+ */
+function cardName(name: string): string {
+  return shortProductName(name).replace(/\s*\b\d+%\s+[A-Za-z]+(?:\s+jersey)?\b/i, '').trim() || name;
+}
 
 interface ProductCardProps {
   id: number;
@@ -54,6 +64,7 @@ export default function ProductCard({
     productToItem({ id, name, base_price: price, category_name: categoryName }, { index });
   const handleSelect = () => trackSelectItem(analyticsItem(), list);
   const hasDiscount = compareAtPrice && compareAtPrice > price;
+  const discountPercent = hasDiscount ? Math.round((1 - price / compareAtPrice) * 100) : 0;
   const [hoveredVariant, setHoveredVariant] = useState<number | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -98,7 +109,14 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* Wishlist button — top right */}
+        {/* Discount badge — top left (same rounding as the product page's "-40%") */}
+        {discountPercent > 0 && (
+          <span className="absolute top-2 left-2 z-10 bg-sale text-white text-xs font-bold px-2 py-1">
+            -{discountPercent}%
+          </span>
+        )}
+
+        {/* Wishlist button — top right; a 44px tap target with a white disc so it reads on any photo */}
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -106,14 +124,17 @@ export default function ProductCard({
             (wishlisted ? trackRemoveFromWishlist : trackAddToWishlist)([analyticsItem()]);
             toggleWishlist(id);
           }}
-          className="absolute top-3 right-3 z-10"
+          className="absolute top-1.5 right-1.5 z-10 w-11 h-11 flex items-center justify-center"
           aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-pressed={wishlisted}
         >
-          {wishlisted ? (
-            <HeartSolid className="h-7 w-7 text-brand-black drop-shadow-sm" />
-          ) : (
-            <HeartIcon className="h-7 w-7 text-brand-black/80 hover:text-brand-black transition-colors drop-shadow-sm" />
-          )}
+          <span className="w-8 h-8 rounded-full bg-white/90 shadow-sm flex items-center justify-center transition-colors group-hover:bg-white">
+            {wishlisted ? (
+              <HeartSolid className="h-[18px] w-[18px] text-brand-black" />
+            ) : (
+              <HeartIcon className="h-[18px] w-[18px] text-brand-black" />
+            )}
+          </span>
         </button>
       </Link>
 
@@ -152,8 +173,8 @@ export default function ProductCard({
                   }`}
                 />
                 {/* Tooltip on hover — shows product name */}
-                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-brand-black text-white text-[11px] font-medium px-2 py-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-20">
-                  {name}
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap bg-brand-black text-white text-xs font-medium px-2 py-1 opacity-0 group-hover/thumb:opacity-100 transition-opacity z-20">
+                  {cardName(name)}
                 </span>
               </Link>
             ))}
@@ -168,7 +189,7 @@ export default function ProductCard({
                 scrollStrip(-1);
               }}
               aria-label="Scroll variants left"
-              className="absolute left-0 top-1/2 -translate-y-1/2 w-7 h-16 bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-16 bg-white/95 border border-gray-300 flex items-center justify-center hover:bg-gray-50"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </button>
@@ -181,7 +202,7 @@ export default function ProductCard({
                 scrollStrip(1);
               }}
               aria-label="Scroll variants right"
-              className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-16 bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+              className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-16 bg-white/95 border border-gray-300 flex items-center justify-center hover:bg-gray-50"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </button>
@@ -202,8 +223,8 @@ export default function ProductCard({
         </div>
 
         {/* Product name */}
-        <h3 className="type-product-name mt-1 line-clamp-2">
-          {name}
+        <h3 className="type-product-name mt-1 line-clamp-2" title={name}>
+          {cardName(name)}
         </h3>
 
         {/* Category */}

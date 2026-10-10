@@ -21,8 +21,9 @@ class AdminReviewItem(BaseModel):
     id: int
     product_id: int
     product_name: str
-    user_id: int
+    user_id: int | None
     user_name: str
+    is_verified: bool = False
     rating: int
     title: str | None
     comment: str | None
@@ -58,7 +59,8 @@ async def list_reviews(
                 product_id=review.product_id,
                 product_name=review.product.name if review.product else "Unknown",
                 user_id=review.user_id,
-                user_name=review.user.first_name if review.user else "Unknown",
+                user_name=review.reviewer_name or (review.user.first_name if review.user else None) or "Unknown",
+                is_verified=bool(review.is_verified),
                 rating=review.rating,
                 title=review.title,
                 comment=review.comment,

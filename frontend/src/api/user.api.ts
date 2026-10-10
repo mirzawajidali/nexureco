@@ -32,6 +32,16 @@ export const reviewApi = {
     client.get(`/reviews/product/${productId}/summary`),
   create: (data: { product_id: number; rating: number; title?: string; comment?: string }) =>
     client.post('/reviews/', data),
+  /** Review without an account, proven by a delivered order's number and its email or phone */
+  createVerified: (data: {
+    product_id: number;
+    order_number: string;
+    contact: string;
+    name?: string;
+    rating: number;
+    title?: string;
+    comment?: string;
+  }) => client.post('/reviews/verified', data),
 };
 
 export const newsletterApi = {

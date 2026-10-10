@@ -11,6 +11,8 @@ class Banner(Base):
     subtitle = Column(String(300), nullable=True)
     image_url = Column(String(500), nullable=False)
     mobile_image_url = Column(String(500), nullable=True)
+    # Describes the photo for screen readers (alt text); blank = decorative
+    image_alt = Column(String(300), nullable=True)
     link_url = Column(String(500), nullable=True)
     button_text = Column(String(100), nullable=True)
     position = Column(Enum("hero", "promo", "announcement", name="banner_position"), default="hero", index=True)

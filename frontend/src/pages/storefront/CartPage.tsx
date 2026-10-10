@@ -264,7 +264,7 @@ export default function CartPage() {
                     {couponCode ? (
                       <div className="flex items-center justify-between bg-white border border-gray-200 px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 bg-brand-black text-white text-[10px] font-bold flex items-center justify-center">%</span>
+                          <span className="w-5 h-5 bg-brand-black text-white text-xs font-bold flex items-center justify-center">%</span>
                           <span className="text-sm font-bold">{couponCode}</span>
                         </div>
                         <button
@@ -304,7 +304,7 @@ export default function CartPage() {
                       </span>
                       <span className="text-xl font-bold">{formatPrice(grandTotal)}</span>
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Including all applicable taxes
                     </p>
                   </div>

@@ -38,7 +38,7 @@ export default function BrandStory() {
         <div className="relative flex items-center px-6 py-12 md:px-12 lg:px-16 xl:px-20">
           <div className="max-w-lg">
             {/* Eyebrow */}
-            <span className="inline-block text-[11px] font-heading font-bold uppercase tracking-[0.25em] text-gray-500 mb-5">
+            <span className="inline-block text-xs font-heading font-bold uppercase tracking-[0.25em] text-gray-500 mb-5">
               Our Story
             </span>
 

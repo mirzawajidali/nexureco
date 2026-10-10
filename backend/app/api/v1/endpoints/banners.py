@@ -36,6 +36,7 @@ async def get_active_banners(
             "subtitle": b.subtitle,
             "image_url": b.image_url,
             "mobile_image_url": b.mobile_image_url,
+            "image_alt": b.image_alt,
             "link_url": b.link_url,
             "button_text": b.button_text,
             "position": b.position,

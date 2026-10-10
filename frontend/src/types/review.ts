@@ -6,6 +6,8 @@ export interface Review {
   title: string | null;
   comment: string | null;
   is_approved: boolean;
+  /** The reviewer received this product in a delivered order */
+  is_verified?: boolean;
   helpful_count: number;
   images: ReviewImage[];
   created_at: string;

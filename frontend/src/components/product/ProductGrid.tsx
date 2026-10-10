@@ -10,9 +10,17 @@ interface ProductGridProps {
   columns?: 2 | 3 | 4;
   /** GA4 list (view_item_list / select_item) these products belong to */
   list?: ItemList;
+  /** Show each product's category under its name; off on a category's own page, where it's always the same */
+  showCategoryName?: boolean;
 }
 
-export default function ProductGrid({ products, isLoading = false, columns = 4, list }: ProductGridProps) {
+export default function ProductGrid({
+  products,
+  isLoading = false,
+  columns = 4,
+  list,
+  showCategoryName = true,
+}: ProductGridProps) {
   useViewItemList(products, list);
 
   const gridCols = {
@@ -53,7 +61,7 @@ export default function ProductGrid({ products, isLoading = false, columns = 4, 
           price={product.base_price}
           compareAtPrice={product.compare_at_price}
           image={product.primary_image}
-          categoryName={product.category_name}
+          categoryName={showCategoryName ? product.category_name : undefined}
           variantCount={product.variant_count}
           variantImages={product.variant_images}
           variantColors={product.variant_colors}

@@ -22,10 +22,10 @@ export default function OrderTrackingResult({ data }: { data: OrderResultData })
     <div className="border-2 border-brand-black overflow-hidden bg-white">
       {/* Header */}
       <div className="px-4 py-3 bg-brand-black text-white flex items-center justify-between">
-        <span className="text-[11px] font-heading font-bold uppercase tracking-[0.15em]">
+        <span className="text-xs font-heading font-bold uppercase tracking-[0.15em]">
           #{data.orderNumber}
         </span>
-        <span className={`${badgeClass} text-[9px]`}>
+        <span className={`${badgeClass} text-xs`}>
           {statusLabel}
         </span>
       </div>
@@ -47,7 +47,7 @@ export default function OrderTrackingResult({ data }: { data: OrderResultData })
         ))}
         {remaining > 0 && (
           <div className="px-4 py-2">
-            <span className="text-[11px] text-gray-400 uppercase tracking-wider">
+            <span className="text-xs text-gray-400 uppercase tracking-wider">
               +{remaining} more item{remaining > 1 ? 's' : ''}
             </span>
           </div>
@@ -57,13 +57,13 @@ export default function OrderTrackingResult({ data }: { data: OrderResultData })
       {/* Footer */}
       <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-heading font-bold uppercase tracking-[0.15em] text-gray-500">
+          <span className="text-xs font-heading font-bold uppercase tracking-[0.15em] text-gray-500">
             Total
           </span>
           <span className="text-sm font-heading font-bold">{formatPrice(data.total)}</span>
         </div>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] text-gray-400">
+          <span className="text-xs text-gray-400">
             Placed {formatDate(data.createdAt)}
           </span>
           {data.trackingUrl && (
@@ -71,7 +71,7 @@ export default function OrderTrackingResult({ data }: { data: OrderResultData })
               href={data.trackingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[10px] font-heading font-bold uppercase tracking-[0.1em] text-brand-black border-b border-brand-black hover:border-transparent transition-colors"
+              className="text-xs font-heading font-bold uppercase tracking-[0.1em] text-brand-black border-b border-brand-black hover:border-transparent transition-colors"
             >
               Track Package
             </a>

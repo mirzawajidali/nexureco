@@ -24,6 +24,7 @@ interface Review {
   comment: string | null;
   product_name: string;
   user_name: string;
+  is_verified?: boolean;
   is_approved: boolean;
   helpful_count: number;
   created_at: string;
@@ -206,6 +207,9 @@ export default function AdminReviewsPage() {
                         <div className="flex items-center gap-3 text-xs text-gray-400">
                           <span>
                             <span className="text-gray-600 font-medium">{review.user_name}</span>
+                            {review.is_verified && (
+                              <span className="ml-1.5 text-xs font-medium text-green-700 bg-green-50 px-1.5 py-0.5 rounded">Verified buyer</span>
+                            )}
                             {' '}on{' '}
                             <span className="text-gray-600">{review.product_name}</span>
                           </span>

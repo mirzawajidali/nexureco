@@ -1,5 +1,6 @@
 import random
 import string
+from urllib.parse import quote
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -132,7 +133,10 @@ async def _send_order_status_email(
             )).all()) if product_ids else {}
         for email_item, item in zip(email_items, order.items):
             slug = slugs.get(item.product_id)
-            email_item["review_url"] = f"{assets_base}/product/{slug}#reviews" if slug else None
+            # review_order pre-fills the order number in the product page's review form (no sign-in needed)
+            email_item["review_url"] = (
+                f"{assets_base}/product/{slug}?review_order={quote(order.order_number)}#reviews" if slug else None
+            )
     ctx = {
         "order_number": order.order_number,
         "customer_name": customer_name,

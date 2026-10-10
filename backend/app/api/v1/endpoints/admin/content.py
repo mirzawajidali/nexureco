@@ -47,6 +47,7 @@ async def create_banner(
         subtitle=data.subtitle,
         image_url=data.image_url,
         mobile_image_url=data.mobile_image_url,
+        image_alt=data.image_alt,
         link_url=data.link_url,
         button_text=data.button_text,
         position=data.position,

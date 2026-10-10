@@ -11,6 +11,8 @@ export interface BannerData {
   subtitle: string | null;
   image_url: string | null;
   mobile_image_url: string | null;
+  /** Alt text for the slide image; null/empty means decorative */
+  image_alt?: string | null;
   link_url: string | null;
   button_text: string | null;
   position: string;

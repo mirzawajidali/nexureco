@@ -11,7 +11,7 @@ interface NewsletterSectionProps {
 
 export default function NewsletterSection({
   title = 'Join the Club',
-  subtitle = 'Get early access to new releases, exclusive deals, and 10% off your first order.',
+  subtitle = 'Be first to know about new drops, restocks and limited releases.',
 }: NewsletterSectionProps) {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);

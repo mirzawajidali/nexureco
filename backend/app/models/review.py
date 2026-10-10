@@ -11,8 +11,11 @@ class Review(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Null for reviews left without an account (verified with the order number instead)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     order_id = Column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
+    reviewer_name = Column(String(100), nullable=True)  # shown when there's no account to take the name from
+    is_verified = Column(Boolean, default=False, nullable=False)  # reviewer received this product in a delivered order
     rating = Column(SmallInteger, nullable=False)
     title = Column(String(200), nullable=True)
     comment = Column(Text, nullable=True)

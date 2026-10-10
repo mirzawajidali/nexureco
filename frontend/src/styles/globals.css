@@ -324,6 +324,19 @@
   );
 }
 
+/* Phones: the slide copy sits in the bottom ~40% (see SlideContent), so darken that part more */
+@media (max-width: 767px) {
+  .hero-gradient {
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(0, 0, 0, 0.6) 30%,
+      rgba(0, 0, 0, 0.15) 55%,
+      transparent 75%
+    );
+  }
+}
+
 
 /* CTA buttons */
 .hero-btn {
@@ -402,6 +415,43 @@
 .hero-pagination .swiper-pagination-bullet-active {
   width: 40px;
   background: #fff;
+}
+
+/* Height of a sticky bar at the bottom of the screen (StickyAddToBag sets html.has-sticky-bar while it
+   shows); fixed buttons such as the chat launcher add it to their bottom offset to stay above the bar */
+html.has-sticky-bar {
+  --sticky-bar-height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ...and the page gets that much extra room at the bottom, so the bar never covers the footer */
+html.has-sticky-bar body {
+  padding-bottom: var(--sticky-bar-height);
+}
+
+/* Collections slider (mobile): brand-black bars instead of Swiper's default blue dots. The bullet is
+   a 24px-tall tap target; the visible 3px bar is drawn by ::after. */
+.collections-pagination .swiper-pagination-bullet {
+  position: relative;
+  width: 28px;
+  height: 24px;
+  margin: 0 !important;
+  border-radius: 0;
+  background: transparent;
+  opacity: 1;
+}
+
+.collections-pagination .swiper-pagination-bullet::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 3px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.collections-pagination .swiper-pagination-bullet-active::after {
+  background: #000;
 }
 
 @layer utilities {

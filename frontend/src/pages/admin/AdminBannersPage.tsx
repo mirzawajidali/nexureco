@@ -20,6 +20,7 @@ interface Banner {
   subtitle: string;
   image_url: string;
   mobile_image_url: string;
+  image_alt: string | null;
   link_url: string;
   button_text: string;
   position: 'hero' | 'promo' | 'announcement';
@@ -32,6 +33,7 @@ interface BannerFormData {
   subtitle: string;
   image_url: string;
   mobile_image_url: string;
+  image_alt: string;
   link_url: string;
   button_text: string;
   position: string;
@@ -44,6 +46,7 @@ const EMPTY_FORM: BannerFormData = {
   subtitle: '',
   image_url: '',
   mobile_image_url: '',
+  image_alt: '',
   link_url: '',
   button_text: '',
   position: 'hero',
@@ -176,6 +179,7 @@ export default function AdminBannersPage() {
       subtitle: banner.subtitle,
       image_url: banner.image_url,
       mobile_image_url: banner.mobile_image_url,
+      image_alt: banner.image_alt ?? '',
       link_url: banner.link_url,
       button_text: banner.button_text,
       position: banner.position,
@@ -530,6 +534,22 @@ export default function AdminBannersPage() {
                     e.target.value = '';
                   }}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="banner-image-alt" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Image description <span className="text-gray-400 font-normal">(alt text for screen readers)</span>
+                </label>
+                <input
+                  id="banner-image-alt"
+                  type="text"
+                  value={form.image_alt}
+                  onChange={(e) => setForm({ ...form, image_alt: e.target.value })}
+                  maxLength={300}
+                  placeholder="e.g. Model in a black Nexure CO T-shirt with the white logo"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                />
+                <p className="mt-1 text-xs text-gray-500">Describe what the photo shows. Leave blank if it's only decoration.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -183,7 +183,7 @@ export default function Header() {
             >
               <HeartIcon className="h-5 w-5" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-brand-black text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 bg-brand-black text-white text-xs font-bold min-w-5 h-5 px-1 flex items-center justify-center">
                   {wishlistCount > 99 ? '99+' : wishlistCount}
                 </span>
               )}
@@ -203,7 +203,7 @@ export default function Header() {
             >
               <ShoppingBagIcon className="h-5 w-5" />
               {cartItemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-brand-black text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 bg-brand-black text-white text-xs font-bold min-w-5 h-5 px-1 flex items-center justify-center">
                   {cartItemCount > 99 ? '99+' : cartItemCount}
                 </span>
               )}
