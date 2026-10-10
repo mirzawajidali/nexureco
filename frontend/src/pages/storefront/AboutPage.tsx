@@ -98,9 +98,8 @@ export default function AboutPage() {
               <div className="w-10 h-[3px] bg-brand-black mb-6" />
               <div className="space-y-4 text-gray-600 leading-relaxed">
                 <p>
-                  What started as a vision to redefine fashion has grown into a
-                  brand that thousands trust. We saw a gap — quality apparel that
-                  speaks to modern culture without the inflated price tags.
+                  Nexure CO started in Lahore with a simple idea. We saw a gap — quality
+                  apparel that speaks to modern culture without the inflated price tags.
                 </p>
                 <p>
                   Every collection is thoughtfully designed, from fabric selection

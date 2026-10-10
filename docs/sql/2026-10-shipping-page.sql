@@ -17,8 +17,8 @@ SET content = '<h2>Shipping Policy</h2>
   <li>Exchanges are available for a different size or colour (subject to availability)</li>
 </ul>
 <p>To start a return or exchange, <a href="/contact">contact us</a> with your order number.</p>',
-    meta_title = 'Shipping & Returns | Nexure CO',
-    meta_description = 'Nationwide delivery across Pakistan in 3-5 business days: Rs. 200, free on orders of Rs. 5,000 or more. 7-day returns and size or colour exchanges.'
+    meta_title = 'Shipping and Returns | Nexure CO Pakistan',
+    meta_description = 'Check Nexure CO delivery across Pakistan: 3-5 business days for Rs. 200, free on orders of Rs. 5,000 or more. 7-day returns and size or colour exchanges.'
 WHERE slug = 'shipping';
 SELECT slug, meta_title, LENGTH(content) AS content_length,
        content LIKE '%Rs. 5,000 or more%' AS has_5000, content LIKE '%3,000%' AS has_3000

@@ -25,6 +25,18 @@ function Lazy({ component: Component }: { component: React.ComponentType }) {
   );
 }
 
+// /page/<slug> URLs that redirect: CMS copies of /about and /contact (duplicate content) and the usual
+// names for a returns page. The server 301s the same list (backend sitemap_service REDIRECTED_PAGE_SLUGS).
+const PAGE_REDIRECTS: Record<string, string> = {
+  about: '/about',
+  contact: '/contact',
+  returns: '/page/shipping',
+  'return-policy': '/page/shipping',
+  'returns-policy': '/page/shipping',
+  'shipping-and-returns': '/page/shipping',
+  'shipping-policy': '/page/shipping',
+};
+
 // Helper: wrap element with ModuleRoute
 function M({ module, component: C }: { module: string; component: React.ComponentType }) {
   return (
@@ -116,9 +128,11 @@ export const router = createBrowserRouter([
       { path: '/about', element: <Lazy component={AboutPage} /> },
       { path: '/contact', element: <Lazy component={ContactPage} /> },
       { path: '/size-guide', element: <Lazy component={SizeGuidePage} /> },
-      // CMS copies of pages that have their own route would be duplicate content
-      { path: '/page/about', element: <Navigate to="/about" replace /> },
-      { path: '/page/contact', element: <Navigate to="/contact" replace /> },
+      // CMS copies of pages that have their own route, and returns-page aliases
+      ...Object.entries(PAGE_REDIRECTS).map(([slug, to]) => ({
+        path: `/page/${slug}`,
+        element: <Navigate to={to} replace />,
+      })),
       { path: '/page/:slug', element: <Lazy component={ContentPage} /> },
 
       { path: '*', element: <Lazy component={NotFoundPage} /> },

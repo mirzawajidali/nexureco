@@ -1,4 +1,11 @@
 import client from './client';
+import type { CouponCheck } from '@/types/coupon';
+
+export const couponApi = {
+  /** Works for guests and signed-in shoppers; checkout validates the code again. */
+  validate: (code: string, subtotal: number) =>
+    client.post<CouponCheck>('/coupons/validate', { code, subtotal }).then((res) => res.data),
+};
 
 export const cartApi = {
   get: () => client.get('/cart/'),

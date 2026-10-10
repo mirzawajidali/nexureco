@@ -26,6 +26,10 @@ FREE_SHIPPING_THRESHOLD = 5000
 STANDARD_SHIPPING_COST = 200
 # Returns/exchanges accepted within this many days of delivery (also stated on the Shipping & Returns page)
 RETURN_WINDOW_DAYS = 7
+# Sign-up offer: set a coupon code (e.g. "FIRST15") and the welcome email gives new accounts that coupon
+# while it's active in Admin > Coupons; its terms (percent, minimum, cap, expiry) come from the coupon.
+# None = no welcome discount (current store policy). If you turn it on, say so on the homepage members strip.
+WELCOME_COUPON_CODE: str | None = None
 
 
 def format_price(amount: float) -> str:

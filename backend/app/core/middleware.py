@@ -37,6 +37,8 @@ _RATE_RULES: list[tuple[str, str | None, int]] = [
     # No account needed, and each attempt checks an order number: keep guessing slow
     ("/api/v1/reviews/verified",      "POST", 5),
     ("/api/v1/reviews",               "POST", 10),
+    # Re-checked when the bag changes, but slow enough that codes can't be guessed
+    ("/api/v1/coupons/validate",      "POST", 20),
 
     # Admin — higher limits for authenticated work
     ("/api/v1/admin/",                None,   200),

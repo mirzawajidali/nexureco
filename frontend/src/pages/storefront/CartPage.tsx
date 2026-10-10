@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -14,8 +13,10 @@ import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatters';
 import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import CouponField from '@/components/cart/CouponField';
 import { useTrackOnce } from '@/hooks/useAnalytics';
-import { cartLineToItem, trackEvent, trackRemoveFromCart, trackViewCart } from '@/utils/analytics';
+import { useCoupon } from '@/hooks/useCoupon';
+import { cartLineToItem, trackRemoveFromCart, trackViewCart } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
 /* ── Single cart item row ── */
@@ -107,31 +108,15 @@ function CartItem({
 
 /* ── Main Page ── */
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, clearCart, couponCode, setCoupon, subtotal } =
-    useCartStore();
-  const [couponInput, setCouponInput] = useState(couponCode || '');
+  const { items, removeItem, updateQuantity, clearCart, subtotal } = useCartStore();
+  const { code: couponCode, discount } = useCoupon();
   const total = subtotal();
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  // Same rule as the server: free shipping goes by the subtotal before any discount
   const shipping = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
-  const grandTotal = total + shipping;
+  const grandTotal = total - discount + shipping;
 
   useTrackOnce(items.length ? 'view_cart' : '', () => trackViewCart(items.map((i) => cartLineToItem(i))));
-
-  const handleApplyCoupon = () => {
-    if (couponInput.trim()) {
-      const code = couponInput.trim().toUpperCase();
-      setCoupon(code);
-      trackEvent('apply_coupon', { coupon: code });
-      toast.success('Coupon applied');
-    }
-  };
-
-  const handleRemoveCoupon = () => {
-    trackEvent('remove_coupon', { coupon: couponCode });
-    setCoupon(null);
-    setCouponInput('');
-    toast.success('Coupon removed');
-  };
 
   return (
     <>
@@ -257,43 +242,17 @@ export default function CartPage() {
                         {shipping === 0 ? 'FREE' : formatPrice(shipping)}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Coupon */}
-                  <div className="mt-5 pt-5 border-t border-gray-200">
-                    {couponCode ? (
-                      <div className="flex items-center justify-between bg-white border border-gray-200 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 bg-brand-black text-white text-xs font-bold flex items-center justify-center">%</span>
-                          <span className="text-sm font-bold">{couponCode}</span>
-                        </div>
-                        <button
-                          onClick={handleRemoveCoupon}
-                          className="text-xs font-bold text-gray-500 hover:text-brand-accent transition-colors uppercase tracking-wider"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-0">
-                        <input
-                          type="text"
-                          aria-label="Promo code"
-                          autoComplete="off"
-                          value={couponInput}
-                          onChange={(e) => setCouponInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                          placeholder="Promo code"
-                          className="flex-1 border border-gray-300 border-r-0 px-4 py-3 text-sm focus:outline-none focus:border-brand-black transition-colors"
-                        />
-                        <button
-                          onClick={handleApplyCoupon}
-                          className="bg-brand-black text-white px-5 py-3 text-xs font-heading font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors"
-                        >
-                          Apply
-                        </button>
+                    {discount > 0 && (
+                      <div className="flex justify-between text-green-700">
+                        <span>Promo code ({couponCode})</span>
+                        <span className="font-bold">-{formatPrice(discount)}</span>
                       </div>
                     )}
+                  </div>
+
+                  {/* Promo code */}
+                  <div className="mt-5 pt-5 border-t border-gray-200">
+                    <CouponField />
                   </div>
 
                   {/* Grand total */}
@@ -322,7 +281,7 @@ export default function CartPage() {
                     <div className="flex items-center gap-3">
                       <TruckIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="text-xs text-gray-500">
-                        Free shipping on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}
+                        Free shipping on orders of {formatPrice(FREE_SHIPPING_THRESHOLD)} or more
                       </span>
                     </div>
                     <div className="flex items-center gap-3">

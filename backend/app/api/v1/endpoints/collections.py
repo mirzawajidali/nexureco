@@ -6,6 +6,7 @@ from app.schemas.collection import CollectionOut
 from app.schemas.product import PublicProductListItem
 from app.schemas.common import PaginatedResponse
 from app.services import collection_service, product_service
+from app.services.listing_service import get_listings_with_products
 
 router = APIRouter(prefix="/collections", tags=["Collections"])
 
@@ -30,6 +31,9 @@ async def featured_collections(db: AsyncSession = Depends(get_db)):
         return cached
 
     result = await collection_service.get_collections(db, featured_only=True)
+    # Like the menus and sitemap: an empty collection (e.g. last season's) isn't promoted on the homepage
+    _, stocked = await get_listings_with_products(db)
+    result = [c for c in result if c["slug"] in stocked]
     await CacheService.set(cache_key, result, CacheService.TTL_COLLECTIONS)
     return result
 

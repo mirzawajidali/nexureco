@@ -37,3 +37,9 @@ class CartOut(BaseModel):
 
 class ApplyCouponRequest(BaseModel):
     code: str = Field(min_length=1, max_length=50)
+
+
+class CouponCheckRequest(BaseModel):
+    """Coupon preview for the bag and checkout (guest or signed in); the order re-validates it."""
+    code: str = Field(min_length=1, max_length=50)
+    subtotal: float = Field(ge=0, le=10_000_000)

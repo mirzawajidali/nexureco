@@ -28,9 +28,9 @@ HTML_CACHE = "public, max-age=0, s-maxage=300, stale-while-revalidate=60"
 @router.api_route("/_render/{path:path}", methods=["GET", "HEAD"])
 async def render_page(path: str, request: Request, db: AsyncSession = Depends(get_db)):
     page_path = "/" + path.strip("/")
-    # CMS copies of built-in pages redirect to them (like routes/index.tsx does client-side)
+    # CMS copies of built-in pages and returns-page aliases redirect (like routes/index.tsx does client-side)
     if page_path.startswith("/page/") and page_path.removeprefix("/page/") in REDIRECTED_PAGE_SLUGS:
-        page_path = "/" + page_path.removeprefix("/page/")
+        page_path = REDIRECTED_PAGE_SLUGS[page_path.removeprefix("/page/")]
     if path != page_path.lstrip("/"):
         # One URL per page: /product/x/ -> /product/x
         query = f"?{request.url.query}" if request.url.query else ""

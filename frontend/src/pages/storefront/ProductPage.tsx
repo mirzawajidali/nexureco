@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
@@ -176,6 +176,25 @@ export default function ProductPage() {
 
   const [attemptedAdd, setAttemptedAdd] = useState(false);
 
+  // Open each product with a colour picked (the one in the main photo, else the first in stock), so a
+  // shopper only has to choose a size. Runs once per product, so a refetch doesn't undo their choice.
+  const preselectedFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!product || preselectedFor.current === product.id) return;
+    preselectedFor.current = product.id;
+    const colorInStock = (valueId: number) =>
+      !product.variants?.length ||
+      product.variants.some(
+        (v) => v.is_active && v.stock_quantity > 0 && v.option_values.some((ov) => ov.option_value_id === valueId),
+      );
+    const mainImage = product.images?.[0]?.url;
+    const pick =
+      colorVariantImages.find((cv) => cv.image && cv.image === mainImage && colorInStock(cv.valueId)) ??
+      colorVariantImages.find((cv) => colorInStock(cv.valueId));
+    setSelectedOptions(colorOption && pick ? { [colorOption.id]: pick.valueId } : {});
+    setAttemptedAdd(false);
+  }, [product, colorOption, colorVariantImages]);
+
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -287,7 +306,7 @@ export default function ProductPage() {
                   {cv.image ? (
                     <img
                       src={resizedImage(cv.image, 320)}
-                      alt=""
+                      alt={`${product!.name} in ${cv.label}`}
                       width={120}
                       height={160}
                       className="w-full h-full object-cover"

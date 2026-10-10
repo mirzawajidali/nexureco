@@ -13,7 +13,9 @@ import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constan
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import CouponField from '@/components/cart/CouponField';
 import { useTrackOnce } from '@/hooks/useAnalytics';
+import { useCoupon } from '@/hooks/useCoupon';
 import {
   cartLineToItem,
   trackAddPaymentInfo,
@@ -44,15 +46,19 @@ const STEPS = ['Shipping', 'Review', 'Confirmation'] as const;
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, couponCode, subtotal, clearCart } = useCartStore();
+  const { items, subtotal, clearCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CheckoutFormData | null>(null);
+  // Only a code the server currently accepts is sent with the order (and shown in the totals)
+  const { coupon, discount } = useCoupon();
+  const couponCode = coupon?.code;
 
   const total = subtotal();
+  // Same rule as the server: free shipping goes by the subtotal before any discount
   const shipping = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
-  const grandTotal = total + shipping;
+  const grandTotal = total - discount + shipping;
 
   const {
     register,
@@ -426,10 +432,15 @@ export default function CheckoutPage() {
                     {shipping === 0 ? 'FREE' : formatPrice(shipping)}
                   </span>
                 </div>
-                {couponCode && (
-                  <div className="flex justify-between text-success">
-                    <span>Coupon ({couponCode})</span>
-                    <span>Applied</span>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-700">
+                    <span>Promo code ({couponCode})</span>
+                    <span className="font-bold">-{formatPrice(discount)}</span>
+                  </div>
+                )}
+                {currentStep < 2 && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <CouponField />
                   </div>
                 )}
                 <div className="flex justify-between pt-3 border-t border-gray-200">

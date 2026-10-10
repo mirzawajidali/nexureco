@@ -56,10 +56,11 @@ export default function HomePage() {
 
       <HeroBanner slides={heroSlides} />
       <ShopByCollection />
+      {/* No welcome discount (store policy, backend WELCOME_COUPON_CODE): only promise what an account gives */}
       <PromoStrip
-        eyebrow="Members Only"
-        title="Unlock 15% Off Your First Drop"
-        subtitle="Join the club for early access, exclusive releases, and free delivery perks."
+        eyebrow="Members"
+        title="Join the Nexure CO Club"
+        subtitle="Track every order, save your delivery addresses and keep your wishlist on every device. Free to join."
         ctaText="Join free"
         ctaLink="/register"
         variant="accent"

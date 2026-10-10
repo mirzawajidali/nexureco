@@ -6,8 +6,18 @@ from app.models.collection import Collection
 from app.models.page import Page
 from app.services.listing_service import get_listings_with_products
 
-# CMS pages whose storefront URL redirects to a dedicated route (see frontend/src/routes/index.tsx)
-REDIRECTED_PAGE_SLUGS = frozenset({"about", "contact"})
+# /page/<slug> URLs that 301 elsewhere: CMS copies of the dedicated /about and /contact pages, and the
+# usual names for a returns page, which all live on Shipping & Returns. Keep in sync with
+# frontend/src/routes/index.tsx (PAGE_REDIRECTS), which does the same for in-app navigation.
+REDIRECTED_PAGE_SLUGS = {
+    "about": "/about",
+    "contact": "/contact",
+    "returns": "/page/shipping",
+    "return-policy": "/page/shipping",
+    "returns-policy": "/page/shipping",
+    "shipping-and-returns": "/page/shipping",
+    "shipping-policy": "/page/shipping",
+}
 
 
 async def get_sitemap_entries(db: AsyncSession) -> dict:

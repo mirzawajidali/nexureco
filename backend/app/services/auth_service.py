@@ -15,6 +15,7 @@ from app.core.exceptions import (
 )
 from app.config import get_settings
 from app.utils.email import send_email_background
+from app.services import coupon_service
 
 settings = get_settings()
 
@@ -65,12 +66,16 @@ async def register_user(
     await db.flush()
     await db.refresh(user)
 
-    # Send welcome email
+    # Send welcome email, with the sign-up coupon while it's active
+    welcome_offer = await coupon_service.get_welcome_offer(db)
     await send_email_background(
         to=user.email,
-        subject=f"Welcome to {settings.APP_NAME}",
+        subject=(
+            f"Welcome to {settings.APP_NAME}: {welcome_offer['headline']}"
+            if welcome_offer else f"Welcome to {settings.APP_NAME}"
+        ),
         template_name="welcome.html",
-        context={"first_name": user.first_name, "email": user.email},
+        context={"first_name": user.first_name, "email": user.email, "offer": welcome_offer},
     )
 
     # Send OTP verification email

@@ -246,7 +246,10 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
     coupon_code = data.coupon_code
     if coupon_code:
         user_id_for_coupon = user.id if user else None
-        coupon_info = await coupon_service.validate_coupon(db, coupon_code, user_id_for_coupon, subtotal)
+        coupon_info = await coupon_service.validate_coupon(
+            db, coupon_code, user_id_for_coupon, subtotal,
+            email=user.email if user else data.guest_email, phone=data.shipping_phone,
+        )
         discount_amount = coupon_info["discount_amount"]
         coupon_id = coupon_info["coupon_id"]
         coupon_code = coupon_info["code"]
@@ -292,8 +295,8 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
     db.add(OrderStatusHistory(order_id=order.id, status="pending", note="Order placed"))
 
     # Record coupon usage
-    if coupon_id and user:
-        await coupon_service.record_coupon_usage(db, coupon_id, user.id, order.id)
+    if coupon_id:
+        await coupon_service.record_coupon_usage(db, coupon_id, user.id if user else None, order.id)
 
     # Clear DB cart if logged in
     if user:

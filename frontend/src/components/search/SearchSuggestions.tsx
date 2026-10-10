@@ -14,9 +14,20 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
   const debouncedQuery = useDebounce(query, 300);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     inputRef.current?.focus();
+    // Esc closes the search bar (from the input or a suggestion) and puts focus back on the search button
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      onCloseRef.current();
+      opener?.focus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
   useEffect(() => {

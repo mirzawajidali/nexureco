@@ -162,6 +162,7 @@ export default function Header() {
               onClick={toggleSearch}
               className="p-2 hover:bg-gray-100 transition-colors"
               aria-label="Search"
+              aria-expanded={isSearchOpen}
             >
               <MagnifyingGlassIcon className="h-5 w-5" />
             </button>

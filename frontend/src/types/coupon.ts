@@ -1,3 +1,12 @@
+/** POST /coupons/validate: what a promo code takes off the current bag */
+export interface CouponCheck {
+  code: string;
+  type: 'percentage' | 'fixed_amount';
+  value: number;
+  discount_amount: number;
+  description: string | null;
+}
+
 export interface Coupon {
   id: number;
   code: string;
