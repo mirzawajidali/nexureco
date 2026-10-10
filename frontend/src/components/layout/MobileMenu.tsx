@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react';
 import {
@@ -11,27 +11,10 @@ import {
   ChatBubbleLeftEllipsisIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/hooks/useAuth';
 import { APP_NAME } from '@/utils/constants';
-import { menusApi, type MenuItemData } from '@/api/pages.api';
-
-interface NavLink {
-  label: string;
-  href: string;
-  accent?: boolean;
-  target?: '_blank';
-  children?: NavLink[];
-}
-
-// Only shown if the header menu can't be loaded; same links as Header.tsx
-const FALLBACK_NAV_LINKS: NavLink[] = [
-  { label: 'New Arrivals', href: '/collections/new-arrivals' },
-  { label: 'Best Sellers', href: '/collections/best-sellers' },
-  { label: 'Men', href: '/category/men' },
-  { label: 'Sale', href: '/collections/sale', accent: true },
-];
+import { megaColumns, useHeaderNav } from '@/utils/navigation';
 
 const SUPPORT_LINKS = [
   { label: 'Track Order', href: '/track-order', Icon: TruckIcon },
@@ -40,33 +23,11 @@ const SUPPORT_LINKS = [
   { label: 'About Us', href: '/about', Icon: InformationCircleIcon },
 ];
 
-function mapMenuItems(items: MenuItemData[]): NavLink[] {
-  return items.map((item) => ({
-    label: item.title,
-    href: item.url,
-    accent: item.url.includes('sale'),
-    target: item.open_in_new_tab ? '_blank' as const : undefined,
-    children: item.children?.length > 0 ? mapMenuItems(item.children) : undefined,
-  }));
-}
-
 export default function MobileMenu() {
   const { isMobileMenuOpen, setMobileMenuOpen } = useUIStore();
   const { isAuthenticated } = useAuth();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-
-  const { data: menuData } = useQuery({
-    queryKey: ['menu', 'header'],
-    queryFn: () => menusApi.getByHandle('header'),
-    staleTime: 10 * 60 * 1000,
-    retry: false,
-  });
-
-  const navLinks = useMemo(() => {
-    const items = menuData?.data?.items;
-    if (!items || items.length === 0) return FALLBACK_NAV_LINKS;
-    return mapMenuItems(items);
-  }, [menuData]);
+  const navLinks = useHeaderNav();
 
   return (
     <Transition show={isMobileMenuOpen} as={Fragment}>
@@ -108,13 +69,17 @@ export default function MobileMenu() {
 
             {/* Navigation */}
             <nav className="py-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-              {navLinks.map((link) => (
-                <div key={link.href}>
-                  {link.children ? (
+              {navLinks.map((link) => {
+                const columns = megaColumns(link);
+                const expanded = expandedItem === link.label;
+                const panelId = `mobile-nav-${link.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                return (
+                <div key={link.label}>
+                  {columns.length > 0 ? (
                     <>
                       <div className="flex items-center border-b border-gray-100">
                         <Link
-                          to={link.href}
+                          to={link.href ?? '#'}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`flex-1 block px-6 py-4 text-base font-heading font-bold uppercase tracking-wider hover:bg-gray-50 ${
                             link.accent ? 'text-brand-accent' : ''
@@ -123,35 +88,55 @@ export default function MobileMenu() {
                           {link.label}
                         </Link>
                         <button
-                          onClick={() => setExpandedItem(expandedItem === link.href ? null : link.href)}
+                          onClick={() => setExpandedItem(expanded ? null : link.label)}
                           className="px-4 py-4 hover:bg-gray-50"
+                          aria-label={`${link.label} menu`}
+                          aria-expanded={expanded}
+                          aria-controls={panelId}
                         >
                           <ChevronDownIcon
-                            className={`h-4 w-4 text-gray-400 transition-transform ${
-                              expandedItem === link.href ? 'rotate-180' : ''
-                            }`}
+                            className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
                           />
                         </button>
                       </div>
-                      {expandedItem === link.href && (
-                        <div className="bg-gray-50 border-b border-gray-100">
-                          {link.children.map((child) => (
-                            <Link
-                              key={child.href}
-                              to={child.href}
-                              target={child.target}
-                              onClick={() => setMobileMenuOpen(false)}
-                              className="block px-10 py-3 text-sm font-heading font-bold uppercase tracking-wider text-gray-600 hover:text-brand-black hover:bg-gray-100 transition-colors"
-                            >
-                              {child.label}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
+                      {/* Mega-menu columns as sections: heading, then its links */}
+                      <div id={panelId} hidden={!expanded} className="bg-gray-50 border-b border-gray-100 py-2">
+                        {columns.map((col, i) => (
+                          <div key={col.heading?.label ?? i} className="py-2">
+                            {col.heading &&
+                              (col.heading.href ? (
+                                <Link
+                                  to={col.heading.href}
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className="block px-10 pt-2 pb-1 text-xs font-heading font-bold uppercase tracking-wider text-gray-500 hover:text-brand-black"
+                                >
+                                  {col.heading.label}
+                                </Link>
+                              ) : (
+                                <p className="px-10 pt-2 pb-1 text-xs font-heading font-bold uppercase tracking-wider text-gray-500">
+                                  {col.heading.label}
+                                </p>
+                              ))}
+                            {col.links.map((child) => (
+                              <Link
+                                key={`${child.label}-${child.href}`}
+                                to={child.href!}
+                                target={child.target}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={`block px-10 py-2.5 text-sm hover:text-brand-black hover:bg-gray-100 transition-colors ${
+                                  child.accent ? 'text-brand-accent' : 'text-gray-700'
+                                }`}
+                              >
+                                {child.label}
+                              </Link>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     </>
                   ) : (
                     <Link
-                      to={link.href}
+                      to={link.href ?? '#'}
                       target={link.target}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`block px-6 py-4 text-base font-heading font-bold uppercase tracking-wider border-b border-gray-100 hover:bg-gray-50 ${
@@ -162,7 +147,8 @@ export default function MobileMenu() {
                     </Link>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </nav>
 
             {/* Account Links */}

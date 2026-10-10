@@ -37,6 +37,9 @@ def _build_item_tree(items, active_only: bool = False) -> list[dict]:
         d = item_map[item.id]
         if item.parent_id and item.parent_id in item_map:
             item_map[item.parent_id]["children"].append(d)
+        elif item.parent_id and active_only:
+            # Under an inactive item (e.g. a hidden mega-menu column): hidden with it, not promoted to the top level
+            continue
         else:
             roots.append(d)
 

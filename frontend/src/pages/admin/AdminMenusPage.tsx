@@ -305,8 +305,9 @@ export default function AdminMenusPage() {
   const isSavingMenu = createMenuMutation.isPending || updateMenuMutation.isPending;
   const isSavingItem = createItemMutation.isPending || updateItemMutation.isPending;
 
-  // Top-level items (for parent_id dropdown)
-  const topLevelItems = menuDetail?.items?.filter((i) => !i.parent_id) ?? [];
+  // Possible parents: top-level items and their children, so the header can nest
+  // top item → mega-menu column → links
+  const parentOptions = flattenItems(menuDetail?.items ?? []).filter((i) => i.depth < 2);
 
   return (
     <>
@@ -669,10 +670,10 @@ export default function AdminMenusPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 bg-white"
                   >
                     <option value="">None (top level)</option>
-                    {topLevelItems
-                      .filter((i) => i.id !== editingItem?.id)
+                    {parentOptions
+                      .filter((i) => i.id !== editingItem?.id && i.parent_id !== editingItem?.id)
                       .map((i) => (
-                        <option key={i.id} value={i.id}>{i.title}</option>
+                        <option key={i.id} value={i.id}>{i.depth ? `— ${i.title}` : i.title}</option>
                       ))}
                   </select>
                 </div>
