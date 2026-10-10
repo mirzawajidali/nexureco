@@ -19,6 +19,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Fail the image build (so nothing gets deployed) if any module doesn't compile on this Python version
+RUN python -m compileall -q app
+
 # Create uploads directory
 RUN mkdir -p /app/uploads
 

@@ -514,7 +514,9 @@ NOSCRIPT_MARKER = "<!--seo-noscript-->"
 
 def _json_ld_tag(data: dict, managed: bool) -> str:
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
-    return f'<script type="application/ld+json"{" data-rh=\"true\"" if managed else ""}>{payload}</script>'
+    # No backslashes inside f-string expressions: production runs Python 3.11
+    rh_attr = ' data-rh="true"' if managed else ""
+    return f'<script type="application/ld+json"{rh_attr}>{payload}</script>'
 
 
 def head_tags(head: PageHead, path: str, base_url: str) -> str:
