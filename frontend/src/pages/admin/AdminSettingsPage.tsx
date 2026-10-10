@@ -157,7 +157,7 @@ export default function AdminSettingsPage() {
                 type="email"
                 value={form.store_email}
                 onChange={handleChange}
-                placeholder="info@mybrand.com"
+                placeholder="support@nexureco.com"
                 className={inputClass}
               />
             </Field>
@@ -269,7 +269,7 @@ export default function AdminSettingsPage() {
                 name="social_facebook"
                 value={form.social_facebook}
                 onChange={handleChange}
-                placeholder="https://facebook.com/mybrand"
+                placeholder="https://facebook.com/nexure"
                 className={inputClass}
               />
             </Field>
@@ -278,7 +278,7 @@ export default function AdminSettingsPage() {
                 name="social_instagram"
                 value={form.social_instagram}
                 onChange={handleChange}
-                placeholder="https://instagram.com/mybrand"
+                placeholder="https://instagram.com/nexureco"
                 className={inputClass}
               />
             </Field>
@@ -287,7 +287,7 @@ export default function AdminSettingsPage() {
                 name="social_twitter"
                 value={form.social_twitter}
                 onChange={handleChange}
-                placeholder="https://x.com/mybrand"
+                placeholder="https://x.com/nexureco"
                 className={inputClass}
               />
             </Field>

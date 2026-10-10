@@ -10,7 +10,6 @@ import { useCartStore } from '@/store/cartStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { productsApi, type ProductListItem } from '@/api/products.api';
 import { formatPrice } from '@/utils/formatters';
-import { APP_NAME } from '@/utils/constants';
 import Button from '@/components/ui/Button';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Spinner from '@/components/ui/Spinner';
@@ -224,6 +223,7 @@ function RecentlyViewedSection({ excludeIds }: { excludeIds: number[] }) {
               categoryName={p.category_name}
               variantCount={p.variant_count}
               variantImages={p.variant_images}
+              variantColors={p.variant_colors}
             />
           ))}
         </div>
@@ -263,7 +263,7 @@ export default function WishlistPage() {
   return (
     <>
       <Helmet>
-        <title>Wishlist | {APP_NAME}</title>
+        <title>Wishlist</title>
       </Helmet>
 
       <div className="container-custom py-8">

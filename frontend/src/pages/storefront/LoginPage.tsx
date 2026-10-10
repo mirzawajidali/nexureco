@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { APP_NAME } from '@/utils/constants';
 import toast from 'react-hot-toast';
 
 const loginSchema = z.object({
@@ -48,7 +47,7 @@ export default function LoginPage() {
   return (
     <>
       <Helmet>
-        <title>Sign In | {APP_NAME}</title>
+        <title>Sign In</title>
       </Helmet>
 
       <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
@@ -66,6 +65,7 @@ export default function LoginPage() {
             <Input
               label="Email"
               type="email"
+              autoComplete="email"
               placeholder="your@email.com"
               error={errors.email?.message}
               {...register('email')}
@@ -73,6 +73,7 @@ export default function LoginPage() {
             <Input
               label="Password"
               type="password"
+              autoComplete="current-password"
               placeholder="Enter your password"
               error={errors.password?.message}
               {...register('password')}

@@ -19,8 +19,10 @@ import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import Spinner from '@/components/ui/Spinner';
 import Accordion from '@/components/ui/Accordion';
 import ZoomableImage from '@/components/ui/ZoomableImage';
-import { formatPrice } from '@/utils/formatters';
-import { APP_NAME } from '@/utils/constants';
+import { formatPrice, truncateText } from '@/utils/formatters';
+import { SITE_NAME } from '@/utils/constants';
+import { htmlToText, productStructuredData } from '@/utils/seo';
+import { resizedImage } from '@/utils/image';
 import ReviewSection from '@/components/product/ReviewSection';
 import ProductCard from '@/components/product/ProductCard';
 import { useTrackOnce, useViewItemList } from '@/hooks/useAnalytics';
@@ -230,6 +232,19 @@ export default function ProductPage() {
     if (product) trackEvent('view_size_guide', { item_id: String(product.id), item_name: product.name });
   };
 
+  // Whether some in-stock variant has this value, combined with what's selected for the other options
+  const isValueAvailable = (optionId: number, valueId: number) => {
+    if (!product?.variants?.length) return true;
+    const otherSelected = Object.entries(selectedOptions)
+      .filter(([id]) => Number(id) !== optionId)
+      .map(([, id]) => id);
+    return product.variants.some((v) => {
+      if (!v.is_active || v.stock_quantity <= 0) return false;
+      const ids = v.option_values.map((ov) => ov.option_value_id);
+      return ids.includes(valueId) && otherSelected.every((id) => ids.includes(id));
+    });
+  };
+
   // Render option selector — color uses thumbnail swatches, others use grid buttons
   const renderOptionSelector = (option: ProductOption) => {
     const isColor = colorOption?.id === option.id;
@@ -246,16 +261,22 @@ export default function ProductPage() {
 
         {isColor ? (
           <>
-            <div className="flex gap-1">
-              {colorVariantImages.map((cv) => (
+            <div className="flex gap-1" role="group" aria-label="Colors">
+              {colorVariantImages.map((cv) => {
+                const available = isValueAvailable(option.id, cv.valueId);
+                return (
                 <button
                   key={cv.valueId}
+                  type="button"
+                  aria-pressed={selectedValueId === cv.valueId}
+                  aria-label={available ? cv.label : `${cv.label} (sold out)`}
                   onClick={() => {
                     setSelectedOptions((prev) => ({ ...prev, [option.id]: cv.valueId }));
                     setAttemptedAdd(false);
                   }}
                   className={clsx(
                     'w-[120px] aspect-[3/4] overflow-hidden transition-all',
+                    !available && 'opacity-50',
                     selectedValueId === cv.valueId
                       ? 'border-b-[4px] border-brand-black'
                       : showError
@@ -264,40 +285,56 @@ export default function ProductPage() {
                   )}
                 >
                   {cv.image ? (
-                    <img src={cv.image} alt={cv.label} className="w-full h-full object-cover" />
+                    <img
+                      src={resizedImage(cv.image, 320)}
+                      alt=""
+                      width={120}
+                      height={160}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full bg-gray-100 flex items-center justify-center text-xs text-gray-500 font-medium">
                       {cv.label}
                     </div>
                   )}
                 </button>
-              ))}
+                );
+              })}
             </div>
             {selectedLabel && (
               <p className="text-sm text-brand-black mt-2">{selectedLabel}</p>
             )}
           </>
         ) : (
-          <div className="grid grid-cols-5 gap-[2px]">
-            {option.values.map((val) => (
+          <div className="grid grid-cols-5 gap-[2px]" role="group" aria-label={option.name}>
+            {option.values.map((val) => {
+              const available = isValueAvailable(option.id, val.id);
+              return (
               <button
                 key={val.id}
+                type="button"
+                aria-pressed={selectedValueId === val.id}
+                aria-label={available ? val.value : `${val.value} (sold out)`}
+                disabled={!available}
                 onClick={() => {
                   setSelectedOptions((prev) => ({ ...prev, [option.id]: val.id }));
                   setAttemptedAdd(false);
                 }}
                 className={clsx(
                   'h-12 text-sm font-medium transition-colors text-center',
-                  selectedValueId === val.id
-                    ? 'border border-brand-black bg-white text-brand-black'
-                    : showError
-                      ? 'border border-error bg-[#eceff1] text-brand-black'
-                      : 'border border-transparent bg-[#eceff1] hover:border-brand-black text-brand-black'
+                  !available
+                    ? 'border border-transparent bg-[#eceff1] text-gray-500 line-through cursor-not-allowed'
+                    : selectedValueId === val.id
+                      ? 'border border-brand-black bg-white text-brand-black'
+                      : showError
+                        ? 'border border-error bg-[#eceff1] text-brand-black'
+                        : 'border border-transparent bg-[#eceff1] hover:border-brand-black text-brand-black'
                 )}
               >
                 {val.value}
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -315,16 +352,29 @@ export default function ProductPage() {
   if (!product) {
     return (
       <div className="container-custom py-16 text-center">
+        <Helmet>
+          <title>Product Not Found</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
         <h1 className="text-heading-xl font-heading uppercase">Product Not Found</h1>
       </div>
     );
   }
 
+  const metaDescription =
+    product.meta_description ||
+    truncateText(
+      product.short_description || htmlToText(product.description || '') || `${product.name} at ${SITE_NAME}.`,
+      160,
+    );
+  const structuredData = productStructuredData(product);
+
   return (
     <>
       <Helmet>
-        <title>{product.meta_title || product.name} | {APP_NAME}</title>
-        {product.meta_description && <meta name="description" content={product.meta_description} />}
+        <title>{product.meta_title || `${product.name} – ${formatPrice(product.base_price)}`}</title>
+        <meta name="description" content={metaDescription} />
+        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
       </Helmet>
 
       {/* Full-width layout: images flush left, sidebar padded right */}
@@ -701,6 +751,8 @@ export default function ProductPage() {
                 </button>
                 <button
                   onClick={handleToggleWishlist}
+                  aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  aria-pressed={wishlisted}
                   className="w-[52px] h-[52px] flex items-center justify-center border border-gray-300 hover:border-brand-black transition-colors flex-shrink-0"
                 >
                   {wishlisted ? (
@@ -743,6 +795,7 @@ export default function ProductPage() {
                   categoryName={rp.category_name}
                   variantCount={rp.variant_count}
                   variantImages={rp.variant_images}
+                  variantColors={rp.variant_colors}
                 />
               ))}
             </div>
@@ -772,6 +825,7 @@ export default function ProductPage() {
                   categoryName={rp.category_name}
                   variantCount={rp.variant_count}
                   variantImages={rp.variant_images}
+                  variantColors={rp.variant_colors}
                 />
               ))}
             </div>
@@ -785,6 +839,7 @@ export default function ProductPage() {
           {/* Close button */}
           <button
             onClick={() => setLightboxIndex(null)}
+            aria-label="Close image viewer"
             className="absolute top-4 right-4 z-10 w-12 h-12 flex items-center justify-center border border-gray-400 bg-white hover:border-brand-black transition-colors"
           >
             <XMarkIcon className="h-6 w-6 text-brand-black" />
@@ -795,6 +850,7 @@ export default function ProductPage() {
             {/* Prev arrow */}
             <button
               onClick={goToPrev}
+              aria-label="Previous image"
               className="absolute left-4 z-10 w-12 h-12 flex items-center justify-center border border-gray-400 bg-white hover:border-brand-black transition-colors"
             >
               <ChevronLeftIcon className="h-5 w-5 text-brand-black" />
@@ -813,6 +869,7 @@ export default function ProductPage() {
             {/* Next arrow */}
             <button
               onClick={goToNext}
+              aria-label="Next image"
               className="absolute right-4 z-10 w-12 h-12 flex items-center justify-center border border-gray-400 bg-white hover:border-brand-black transition-colors"
             >
               <ChevronRightIcon className="h-5 w-5 text-brand-black" />
@@ -825,6 +882,8 @@ export default function ProductPage() {
               <button
                 key={img.id}
                 onClick={() => setLightboxIndex(idx)}
+                aria-label={`View image ${idx + 1} of ${allImages.length}`}
+                aria-current={lightboxIndex === idx ? 'true' : undefined}
                 className={clsx(
                   'w-16 h-16 flex-shrink-0 overflow-hidden border-2 transition-colors',
                   lightboxIndex === idx ? 'border-brand-black' : 'border-transparent hover:border-gray-300'

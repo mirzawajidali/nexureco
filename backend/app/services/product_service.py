@@ -22,15 +22,44 @@ def _product_eager_options():
     ]
 
 
-def _build_list_item(product: Product) -> dict:
+# How many top sellers get the "Best seller" badge, so it keeps its meaning
+BEST_SELLER_COUNT = 2
+
+
+async def get_best_seller_ids(db: AsyncSession) -> frozenset[int]:
+    """IDs of the top-selling active products (the ones that show a "Best seller" badge)."""
+    result = await db.execute(
+        select(Product.id)
+        .where(Product.status == "active", Product.total_sold > 0)
+        .order_by(Product.total_sold.desc())
+        .limit(BEST_SELLER_COUNT)
+    )
+    return frozenset(result.scalars())
+
+
+def _build_list_item(product: Product, best_seller_ids: frozenset[int] = frozenset()) -> dict:
     primary_img = next((img.url for img in (product.images or []) if img.is_primary), None)
     if not primary_img and product.images:
         primary_img = product.images[0].url
-    total_stock = sum(v.stock_quantity for v in (product.variants or []))
-    # Collect unique variant images for hover thumbnails
-    variant_images = list(dict.fromkeys(
-        v.image_url for v in (product.variants or []) if v.image_url
-    ))
+    variants = product.variants or []
+    total_stock = sum(v.stock_quantity for v in variants)
+    active_variants = [v for v in variants if v.is_active]
+    in_stock = any(v.stock_quantity > 0 for v in active_variants) if active_variants else True
+    # Unique variant images for hover thumbnails, plus each one's colour name for alt text
+    colour_names = {
+        value.id: value.value
+        for option in (product.options or []) if option.name.strip().lower() in ("color", "colour")
+        for value in (option.values or [])
+    }
+    variant_images: list[str] = []
+    variant_colors: list[str | None] = []
+    for v in variants:
+        if v.image_url and v.image_url not in variant_images:
+            variant_images.append(v.image_url)
+            variant_colors.append(next(
+                (colour_names[ov.option_value_id] for ov in (v.option_values or []) if ov.option_value_id in colour_names),
+                None,
+            ))
     variant_count = len(variant_images)
     return {
         "id": product.id,
@@ -50,6 +79,9 @@ def _build_list_item(product: Product) -> dict:
         "total_stock": total_stock,
         "variant_count": variant_count,
         "variant_images": variant_images,
+        "variant_colors": variant_colors,
+        "in_stock": in_stock,
+        "is_best_seller": product.id in best_seller_ids,
         "tags": product.tags,
         "created_at": product.created_at.isoformat() if product.created_at else None,
     }
@@ -173,7 +205,8 @@ async def list_products(
     query = query.order_by(sort_map.get(sort, Product.created_at.desc()))
 
     result = await paginate(db, query, page, page_size)
-    result["items"] = [_build_list_item(p) for p in result["items"]]
+    best_seller_ids = await get_best_seller_ids(db)
+    result["items"] = [_build_list_item(p, best_seller_ids) for p in result["items"]]
     return result
 
 
@@ -499,7 +532,8 @@ async def get_products_by_category(
     query = query.order_by(sort_map.get(sort, Product.created_at.desc()))
 
     result = await paginate(db, query, page, page_size)
-    result["items"] = [_build_list_item(p) for p in result["items"]]
+    best_seller_ids = await get_best_seller_ids(db)
+    result["items"] = [_build_list_item(p, best_seller_ids) for p in result["items"]]
     return result
 
 
@@ -531,5 +565,6 @@ async def get_products_by_collection(
     query = query.order_by(sort_map.get(sort, Product.created_at.desc()))
 
     result = await paginate(db, query, page, page_size)
-    result["items"] = [_build_list_item(p) for p in result["items"]]
+    best_seller_ids = await get_best_seller_ids(db)
+    result["items"] = [_build_list_item(p, best_seller_ids) for p in result["items"]]
     return result

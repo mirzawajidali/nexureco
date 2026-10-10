@@ -8,8 +8,10 @@ import ProductGrid from '@/components/product/ProductGrid';
 import FilterSidebar from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
-import { APP_NAME } from '@/utils/constants';
 import { trackFilters } from '@/utils/analytics';
+import ComingSoon from '@/components/product/ComingSoon';
+import { APP_DESCRIPTION, SITE_NAME } from '@/utils/constants';
+import { truncateText } from '@/utils/formatters';
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -67,11 +69,21 @@ export default function CollectionPage() {
   };
 
   const productIds = products.map((p) => p.id);
+  // Nothing in the collection yet (as opposed to a price filter that matched nothing)
+  const isEmpty = !isLoading && total === 0 && minPrice === undefined && maxPrice === undefined;
+  const description =
+    col?.meta_description ||
+    (col?.description
+      ? truncateText(col.description, 160)
+      : `Shop the ${collectionName} collection at ${SITE_NAME}. ${APP_DESCRIPTION}.`);
 
   return (
     <>
-      <Helmet>
-        <title>{collectionName} | {APP_NAME}</title>
+      {/* A custom meta title is used as-is (it usually already names the brand) */}
+      <Helmet {...(col?.meta_title ? { titleTemplate: '%s' } : {})}>
+        <title>{col?.meta_title || collectionName}</title>
+        <meta name="description" content={description} />
+        {isEmpty && <meta name="robots" content="noindex, follow" />}
       </Helmet>
 
       <div className="container-custom py-6 sm:py-8">
@@ -87,7 +99,7 @@ export default function CollectionPage() {
           <nav className="flex items-center gap-1 text-gray-500">
             <Link to="/" className="hover:text-brand-black transition-colors underline">Home</Link>
             <span className="mx-1">/</span>
-            <Link to="/collections" className="hover:text-brand-black transition-colors underline">Collections</Link>
+            <span>Collections</span>
             <span className="mx-1">/</span>
             <span className="text-brand-black">{collectionName}</span>
           </nav>
@@ -118,6 +130,10 @@ export default function CollectionPage() {
           </p>
         )}
 
+        {isEmpty ? (
+          <ComingSoon name={collectionName} />
+        ) : (
+        <>
         {/* Filter & Sort bar */}
         <div className="flex items-center justify-end border-b border-gray-200 mb-8 pb-0">
           <button
@@ -138,6 +154,8 @@ export default function CollectionPage() {
             onPageChange={(p) => updateFilters({ page: p })}
           />
         </div>
+        </>
+        )}
 
         {/* Recently Viewed */}
         <RecentlyViewedSection excludeIds={productIds} />

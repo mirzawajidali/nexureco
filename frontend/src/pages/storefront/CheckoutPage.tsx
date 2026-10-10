@@ -9,7 +9,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { orderApi } from '@/api/cart.api';
 import { formatPrice } from '@/utils/formatters';
-import { APP_NAME, FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
+import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Breadcrumb from '@/components/ui/Breadcrumb';
@@ -140,7 +140,7 @@ export default function CheckoutPage() {
   return (
     <>
       <Helmet>
-        <title>Checkout | {APP_NAME}</title>
+        <title>Checkout</title>
       </Helmet>
 
       <div className="container-custom py-8">
@@ -201,6 +201,7 @@ export default function CheckoutPage() {
                         label="Email Address"
                         type="email"
                         placeholder="your@email.com"
+                        autoComplete="email"
                         {...register('guest_email')}
                         error={errors.guest_email?.message}
                       />
@@ -213,50 +214,60 @@ export default function CheckoutPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       label="First Name"
+                      autoComplete="shipping given-name"
                       {...register('shipping_first_name')}
                       error={errors.shipping_first_name?.message}
                     />
                     <Input
                       label="Last Name"
+                      autoComplete="shipping family-name"
                       {...register('shipping_last_name')}
                       error={errors.shipping_last_name?.message}
                     />
                   </div>
                   <Input
                     label="Phone Number"
+                    type="tel"
+                    autoComplete="shipping tel"
                     {...register('shipping_phone')}
                     error={errors.shipping_phone?.message}
                   />
                   <Input
                     label="Address"
+                    autoComplete="shipping address-line1"
                     {...register('shipping_address1')}
                     error={errors.shipping_address1?.message}
                   />
                   <Input
                     label="Apartment, suite, etc. (optional)"
+                    autoComplete="shipping address-line2"
                     {...register('shipping_address2')}
                   />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       label="City"
+                      autoComplete="shipping address-level2"
                       {...register('shipping_city')}
                       error={errors.shipping_city?.message}
                     />
                     <Input
                       label="State / Province"
+                      autoComplete="shipping address-level1"
                       {...register('shipping_state')}
                       error={errors.shipping_state?.message}
                     />
                     <Input
                       label="Postal Code"
+                      autoComplete="shipping postal-code"
                       {...register('shipping_postal_code')}
                       error={errors.shipping_postal_code?.message}
                     />
                   </div>
-                  <Input label="Country" {...register('shipping_country')} disabled />
+                  <Input label="Country" autoComplete="shipping country-name" {...register('shipping_country')} disabled />
                   <div>
-                    <label className="input-label">Order Notes (optional)</label>
+                    <label htmlFor="customer-note" className="input-label">Order Notes (optional)</label>
                     <textarea
+                      id="customer-note"
                       {...register('customer_note')}
                       rows={3}
                       className="input-field resize-none"

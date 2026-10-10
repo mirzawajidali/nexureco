@@ -295,3 +295,30 @@
     overflow: hidden;
   }
 }
+
+/* Respect "reduce motion": stop the scrolling marquee and other decorative animation (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-fast {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keyboard focus indicator (WCAG 2.4.7). Many controls use focus:outline-none, which only suits mouse
+   users. :focus-visible doesn't match mouse clicks on links and buttons, so this restores a visible ring
+   for keyboard users without changing how clicks look. The blue keeps at least 3:1 contrast on both the
+   white and black backgrounds used across the site. Elements focused only by script (tabindex="-1",
+   e.g. <main> after "Skip to main content") are left alone. */
+:focus-visible:not([tabindex='-1']) {
+  outline: 2px solid #2563eb !important;
+  outline-offset: 2px !important;
+}

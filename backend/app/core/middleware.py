@@ -124,7 +124,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
         self._buckets[general_key].append(now)
 
-        return await call_next(request)
+        response = await call_next(request)
+
+        # Advertise whichever applicable limit has the least headroom left
+        windows = [(self._general_limit, len(self._buckets[general_key]))]
+        if match:
+            windows.append((match[1], len(self._buckets[(client_ip, match[0])])))
+        limit, used = min(windows, key=lambda w: w[0] - w[1])
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - used))
+        return response
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +150,39 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         elapsed = time.perf_counter() - start
         response.headers["X-Process-Time"] = f"{elapsed:.4f}"
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Browser/CDN caching for the public catalog API
+# ---------------------------------------------------------------------------
+
+# Read-only endpoints whose responses are the same for every visitor
+_PUBLIC_CACHE_PREFIXES = tuple(
+    f"/api/v1/{name}" for name in ("products", "categories", "collections", "menus", "banners", "pages")
+)
+_PUBLIC_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300"
+
+
+class PublicCacheMiddleware(BaseHTTPMiddleware):
+    """Lets browsers and Cloudflare reuse catalog responses for a minute (stale for 5 more while revalidating).
+
+    Admin edits therefore show up on the storefront within about a minute. Signed-in requests and
+    responses that already set Cache-Control are left alone.
+    """
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+        if (
+            request.method in ("GET", "HEAD")
+            and response.status_code == 200
+            and request.url.path.startswith(_PUBLIC_CACHE_PREFIXES)
+            and "authorization" not in request.headers
+            and "cache-control" not in response.headers
+        ):
+            response.headers["Cache-Control"] = _PUBLIC_CACHE_CONTROL
         return response
 
 
@@ -175,3 +217,6 @@ def setup_middleware(app: FastAPI) -> None:
 
     # 4. Request timing (innermost – wraps the actual route handler)
     app.add_middleware(RequestTimingMiddleware)
+
+    # 5. Cache headers for public catalog GETs
+    app.add_middleware(PublicCacheMiddleware)

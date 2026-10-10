@@ -4,6 +4,7 @@ import {
   STORE_HOURS,
   FREE_SHIPPING_THRESHOLD,
   STANDARD_SHIPPING_COST,
+  RETURN_POLICY_SUMMARY,
 } from '@/utils/constants';
 import { formatPrice } from '@/utils/formatters';
 
@@ -38,7 +39,7 @@ export const FLOW_STEPS: Record<string, FlowStep> = {
   // ── Order Tracking Flow ──
   track_order_start: {
     botMessage:
-      "I can help you track your order! Please enter your order number (e.g., MB-12345678):",
+      "I can help you track your order! Please enter your order number (e.g., NX-12345678):",
     type: 'input',
     inputField: {
       placeholder: 'Enter order number',
@@ -102,8 +103,7 @@ export const FLOW_STEPS: Record<string, FlowStep> = {
   },
 
   faq_return_policy: {
-    botMessage:
-      'We offer hassle-free returns within 30 days of delivery. Items must be unworn, unwashed, and in their original packaging with tags attached. Sale items and underwear are final sale.',
+    botMessage: RETURN_POLICY_SUMMARY,
     type: 'options',
     options: [
       { label: 'Start a Return', action: 'faq_start_return' },

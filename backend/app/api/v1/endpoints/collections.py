@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.db.redis import CacheService
 from app.schemas.collection import CollectionOut
-from app.schemas.product import ProductListItem
+from app.schemas.product import PublicProductListItem
 from app.schemas.common import PaginatedResponse
 from app.services import collection_service, product_service
 
@@ -41,11 +41,11 @@ async def get_collection(slug: str, db: AsyncSession = Depends(get_db)):
     return col
 
 
-@router.get("/{slug}/products", response_model=PaginatedResponse[ProductListItem])
+@router.get("/{slug}/products", response_model=PaginatedResponse[PublicProductListItem])
 async def get_collection_products(
     slug: str,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=50),  # capped to make bulk scraping slower
     sort: str = "newest",
     db: AsyncSession = Depends(get_db),
 ):

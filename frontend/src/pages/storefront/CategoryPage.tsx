@@ -8,7 +8,9 @@ import ProductGrid from '@/components/product/ProductGrid';
 import FilterSidebar from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
 import RecentlyViewedSection from '@/components/product/RecentlyViewedSection';
-import { APP_NAME } from '@/utils/constants';
+import ComingSoon from '@/components/product/ComingSoon';
+import { APP_DESCRIPTION, SITE_NAME } from '@/utils/constants';
+import { truncateText } from '@/utils/formatters';
 import { trackFilters } from '@/utils/analytics';
 import { clsx } from 'clsx';
 
@@ -44,7 +46,7 @@ export default function CategoryPage() {
 
   // Fetch parent category for breadcrumbs if this is a subcategory
   const parentId = category?.data?.parent_id;
-  const { data: allCategories } = useQuery({
+  const { data: allCategories, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesApi.list(),
     staleTime: 5 * 60 * 1000,
@@ -96,11 +98,36 @@ export default function CategoryPage() {
   };
 
   const productIds = products.map((p) => p.id);
+  // Nothing stocked in this category or any subcategory yet (as opposed to a price filter that
+  // matched nothing). Same rule as backend listing_service, which hides it from menus and the sitemap.
+  const subtreeProductCount = (() => {
+    type Node = { slug: string; product_count?: number; children?: Node[] };
+    const count = (n: Node): number => (n.product_count ?? 0) + (n.children ?? []).reduce((s, c) => s + count(c), 0);
+    const find = (nodes: Node[]): Node | undefined => {
+      for (const n of nodes) {
+        if (n.slug === slug) return n;
+        const hit = find(n.children ?? []);
+        if (hit) return hit;
+      }
+    };
+    const node = find((allCategories?.data as Node[] | undefined) ?? []);
+    return node ? count(node) : undefined;
+  })();
+  const isEmpty =
+    !isLoading && !categoriesLoading && total === 0 && minPrice === undefined && maxPrice === undefined &&
+    !subtreeProductCount;
+  const description =
+    cat?.meta_description ||
+    (cat?.description ? truncateText(cat.description, 160) : `Shop ${categoryName} at ${SITE_NAME}. ${APP_DESCRIPTION}.`);
 
   return (
     <>
-      <Helmet>
-        <title>{categoryName} | {APP_NAME}</title>
+      {/* A custom meta title is used as-is (it usually already names the brand) */}
+      <Helmet {...(cat?.meta_title ? { titleTemplate: '%s' } : {})}>
+        <title>{cat?.meta_title || categoryName}</title>
+        <meta name="description" content={description} />
+        {/* Thin "coming soon" pages shouldn't be indexed; links on them are still followed */}
+        {isEmpty && <meta name="robots" content="noindex, follow" />}
       </Helmet>
 
       <div className="container-custom py-6 sm:py-8">
@@ -151,6 +178,10 @@ export default function CategoryPage() {
           </p>
         )}
 
+        {isEmpty ? (
+          <ComingSoon name={categoryName} />
+        ) : (
+        <>
         {/* Sub-category tabs + Filter & Sort */}
         <div className="flex items-center justify-between border-b border-gray-200 mb-8 gap-4">
           {/* Tabs (scrollable) */}
@@ -190,6 +221,8 @@ export default function CategoryPage() {
             onPageChange={(p) => updateFilters({ page: p })}
           />
         </div>
+        </>
+        )}
 
         {/* Recently Viewed */}
         <RecentlyViewedSection excludeIds={productIds} />
@@ -200,7 +233,7 @@ export default function CategoryPage() {
             <h2 className="font-heading font-black uppercase tracking-tight mb-8"
               style={{ fontSize: 'clamp(1.25rem, 2vw, 1.75rem)' }}
             >
-              {(parent?.name || categoryName) + "'s Clothing And Shoe Categories"}
+              Shop by Category
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-1">
               {linkGroups.map((grp) => (
@@ -235,7 +268,7 @@ export default function CategoryPage() {
             <h2 className="font-heading font-black uppercase tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.25rem, 2vw, 1.75rem)' }}
             >
-              {APP_NAME} {categoryName}
+              {`Shop ${categoryName} at ${SITE_NAME}`}
             </h2>
             <div className="text-sm text-gray-600 leading-relaxed max-w-4xl whitespace-pre-line">
               {cat.description}

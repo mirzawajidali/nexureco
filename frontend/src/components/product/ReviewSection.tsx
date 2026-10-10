@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,24 @@ type ReviewFormData = z.infer<typeof reviewSchema>;
 
 export default function ReviewSection({ productId }: ReviewSectionProps) {
   const { user } = useAuthStore();
-  const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+  // Review-request emails link to /product/<slug>#reviews: open the panel and scroll to it
+  const linkedToReviews = location.hash === '#reviews';
+  const [isOpen, setIsOpen] = useState(linkedToReviews);
+  useEffect(() => {
+    if (!linkedToReviews) return;
+    const timer = setTimeout(() => document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' }), 100);
+    return () => clearTimeout(timer);
+  }, [linkedToReviews]);
+  const signInToReview = (
+    <Link
+      to="/login"
+      state={{ from: { pathname: `${location.pathname}#reviews` } }}
+      className="text-sm font-bold underline hover:text-gray-600"
+    >
+      Sign in to write a review
+    </Link>
+  );
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
@@ -97,7 +115,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
     });
 
   return (
-    <div className="border-t border-gray-200">
+    <div id="reviews" className="border-t border-gray-200">
       {/* Accordion header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -139,10 +157,12 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
         {totalReviews === 0 && !showForm ? (
           <div className="text-center py-8 bg-gray-50">
             <p className="text-sm text-gray-500 mb-4">No reviews yet. Be the first to review!</p>
-            {user && (
+            {user ? (
               <Button size="sm" variant="secondary" onClick={() => setShowForm(true)}>
                 Write a Review
               </Button>
+            ) : (
+              signInToReview
             )}
           </div>
         ) : (
@@ -175,6 +195,7 @@ export default function ReviewSection({ productId }: ReviewSectionProps) {
                     <span className="text-lg">&rarr;</span>
                   </button>
                 )}
+                {!user && signInToReview}
               </div>
             )}
 

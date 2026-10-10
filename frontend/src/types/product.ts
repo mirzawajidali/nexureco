@@ -24,7 +24,7 @@ export interface Product {
   short_description: string | null;
   base_price: number;
   compare_at_price: number | null;
-  cost_price: number | null;
+  cost_price?: number | null; // admin API only
   sku: string | null;
   barcode: string | null;
   weight: number | null;
@@ -37,7 +37,7 @@ export interface Product {
   size_and_fit: SizeAndFit | null;
   care_instructions: CareInstructions | null;
   material_info: MaterialInfo | null;
-  total_sold: number;
+  total_sold?: number; // admin API only
   avg_rating: number;
   review_count: number;
   images: ProductImage[];
@@ -62,15 +62,22 @@ export interface ProductListItem {
   is_featured: boolean;
   avg_rating: number;
   review_count: number;
-  total_sold: number;
+  total_sold?: number; // admin API only
   primary_image: string | null;
   category_name: string | null;
-  total_stock: number;
+  total_stock?: number; // admin API only
   variant_count: number;
   variant_images: string[];
+  // Storefront API: colour name per variant image, stock and badge flags (sales/stock counts stay private)
+  variant_colors?: (string | null)[];
+  in_stock?: boolean;
+  is_best_seller?: boolean;
   tags: string[] | null;
   created_at: string;
 }
+
+/** Admin API list item, which also carries sales and stock counts */
+export type AdminProductListItem = ProductListItem & { total_sold: number; total_stock: number };
 
 export interface ProductImage {
   id: number;
@@ -125,6 +132,8 @@ export interface Collection {
   image_url: string | null;
   is_featured: boolean;
   is_active: boolean;
+  meta_title?: string | null;
+  meta_description?: string | null;
 }
 
 export interface ProductFilters {

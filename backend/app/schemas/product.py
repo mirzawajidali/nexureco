@@ -24,18 +24,26 @@ class VariantOptionValueOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class VariantOut(BaseModel):
+class _VariantBase(BaseModel):
     id: int
     sku: str | None
     price: float | None
     compare_at_price: float | None
-    cost_price: float | None = None
     stock_quantity: int
     low_stock_threshold: int
     is_active: bool
     image_url: str | None
     option_values: list[VariantOptionValueOut] = []
     model_config = {"from_attributes": True}
+
+
+class VariantOut(_VariantBase):
+    """Admin view, including cost."""
+    cost_price: float | None = None
+
+
+class PublicVariantOut(_VariantBase):
+    """Storefront view: no cost price."""
 
 
 class ImageOut(BaseModel):
@@ -49,7 +57,7 @@ class ImageOut(BaseModel):
 
 # --- Product Schemas ---
 
-class ProductListItem(BaseModel):
+class _ProductListBase(BaseModel):
     id: int
     name: str
     slug: str
@@ -61,10 +69,8 @@ class ProductListItem(BaseModel):
     is_featured: bool
     avg_rating: float
     review_count: int
-    total_sold: int
     primary_image: str | None = None
     category_name: str | None = None
-    total_stock: int = 0
     variant_count: int = 0
     variant_images: list[str] = []
     tags: list[str] | None = None
@@ -72,7 +78,21 @@ class ProductListItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ProductDetail(BaseModel):
+class ProductListItem(_ProductListBase):
+    """Admin view, including sales volume and stock."""
+    total_sold: int
+    total_stock: int = 0
+
+
+class PublicProductListItem(_ProductListBase):
+    """Storefront view: sales volume and stock levels stay private, so competitors can't track them."""
+    in_stock: bool = True
+    is_best_seller: bool = False
+    # Colour name of each variant_images entry (None when the variant has no colour option)
+    variant_colors: list[str | None] = []
+
+
+class _ProductDetailBase(BaseModel):
     id: int
     category_id: int | None
     name: str
@@ -81,7 +101,6 @@ class ProductDetail(BaseModel):
     short_description: str | None
     base_price: float
     compare_at_price: float | None
-    cost_price: float | None = None
     sku: str | None
     barcode: str | None = None
     weight: float | None = None
@@ -96,15 +115,25 @@ class ProductDetail(BaseModel):
     material_info: dict | None = None
     avg_rating: float
     review_count: int
-    total_sold: int
     images: list[ImageOut] = []
     options: list[OptionOut] = []
-    variants: list[VariantOut] = []
     category_name: str | None = None
     category_slug: str | None = None
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
+
+
+class ProductDetail(_ProductDetailBase):
+    """Admin view, including cost and sales volume."""
+    cost_price: float | None = None
+    total_sold: int
+    variants: list[VariantOut] = []
+
+
+class PublicProductDetail(_ProductDetailBase):
+    """Storefront view: no cost price or sales volume."""
+    variants: list[PublicVariantOut] = []
 
 
 # --- Admin Create/Update ---

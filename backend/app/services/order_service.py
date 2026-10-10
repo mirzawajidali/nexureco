@@ -13,16 +13,24 @@ from app.models.user import User
 from app.schemas.order import CheckoutRequest, TrackOrderRequest
 from app.services import coupon_service
 from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.store import FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST
+from app.utils.image_variants import jpeg_url
 from app.utils.pagination import paginate
 from app.utils.email import send_email_background
 from app.config import get_settings
+from app.db.database import AsyncSessionLocal
 
 _settings = get_settings()
 
 
+# Orders placed before October 2026 use the old template prefix "MB-"; lookups match the full
+# number, so they keep working.
+ORDER_NUMBER_PREFIX = "NX-"
+
+
 def _generate_order_number() -> str:
     num = "".join(random.choices(string.digits, k=8))
-    return f"MB-{num}"
+    return f"{ORDER_NUMBER_PREFIX}{num}"
 
 
 def _build_shipping_address(order: Order) -> str:
@@ -34,17 +42,18 @@ def _build_shipping_address(order: Order) -> str:
     return ", ".join(p for p in parts if p)
 
 
+def _email_image_url(img: str | None) -> str:
+    """Absolute URL of an item image for emails, as a JPEG: most mail clients can't show AVIF/WebP."""
+    if not img:
+        return ""
+    img = jpeg_url(img, "email") or img
+    return f"https://nexureco.com{img}" if img.startswith("/") else img
+
+
 def _build_order_email_context(order: Order, order_items: list[dict]) -> dict:
     customer_name = f"{order.shipping_first_name or ''} {order.shipping_last_name or ''}".strip()
-    assets_base = "https://nexureco.com"
     # Build email-friendly items with full image URLs
-    email_items = []
-    for item in order_items:
-        img = item.get("image_url") or ""
-        email_items.append({
-            **item,
-            "image_url": f"{assets_base}{img}" if img and img.startswith("/") else img,
-        })
+    email_items = [{**item, "image_url": _email_image_url(item.get("image_url"))} for item in order_items]
     return {
         "order_number": order.order_number,
         "customer_name": customer_name or "Customer",
@@ -112,8 +121,18 @@ async def _send_order_status_email(
                 "quantity": item.quantity,
                 "unit_price": float(item.unit_price),
                 "total_price": float(item.total_price),
-                "image_url": f"{assets_base}{img}" if img and img.startswith("/") else img,
+                "image_url": _email_image_url(img),
             })
+    if status == "delivered" and order.items:
+        # Review request: link each item to its product page's review section
+        product_ids = [item.product_id for item in order.items if item.product_id]
+        async with AsyncSessionLocal() as db:
+            slugs = dict((await db.execute(
+                select(Product.id, Product.slug).where(Product.id.in_(product_ids), Product.status == "active")
+            )).all()) if product_ids else {}
+        for email_item, item in zip(email_items, order.items):
+            slug = slugs.get(item.product_id)
+            email_item["review_url"] = f"{assets_base}/product/{slug}#reviews" if slug else None
     ctx = {
         "order_number": order.order_number,
         "customer_name": customer_name,
@@ -229,7 +248,7 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
         coupon_code = coupon_info["code"]
 
     # Calculate totals
-    shipping_cost = 0 if subtotal >= 5000 else 200  # Free shipping over 5000
+    shipping_cost = 0 if subtotal >= FREE_SHIPPING_THRESHOLD else STANDARD_SHIPPING_COST
     total = subtotal - discount_amount + shipping_cost
 
     # Create order

@@ -4,6 +4,10 @@ from app.models.product import Product
 from app.models.category import Category
 from app.models.collection import Collection
 from app.models.page import Page
+from app.services.listing_service import get_listings_with_products
+
+# CMS pages whose storefront URL redirects to a dedicated route (see frontend/src/routes/index.tsx)
+REDIRECTED_PAGE_SLUGS = frozenset({"about", "contact"})
 
 
 async def get_sitemap_entries(db: AsyncSession) -> dict:
@@ -39,7 +43,17 @@ async def get_sitemap_entries(db: AsyncSession) -> dict:
         .where(Page.is_published == True)
         .order_by(Page.updated_at.desc())
     )
-    pages = [{"slug": r.slug, "updated_at": r.updated_at} for r in pages_result]
+    # /page/about and /page/contact redirect to the dedicated /about and /contact pages
+    pages = [
+        {"slug": r.slug, "updated_at": r.updated_at}
+        for r in pages_result
+        if r.slug not in REDIRECTED_PAGE_SLUGS
+    ]
+
+    # Empty category/collection pages are noindex'd on the storefront, so leave them out
+    category_slugs, collection_slugs = await get_listings_with_products(db)
+    categories = [c for c in categories if c["slug"] in category_slugs]
+    collections = [c for c in collections if c["slug"] in collection_slugs]
 
     return {
         "products": products,

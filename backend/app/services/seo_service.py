@@ -1,0 +1,575 @@
+"""Per-URL <head> tags, HTTP status and a no-JavaScript content fallback for storefront pages.
+
+nginx hands every storefront page request to app/api/storefront.py, which renders the result of
+build_page_head() into the built index.html. Crawlers that don't run JavaScript (WhatsApp, Facebook
+and Instagram link previews, AI assistants, shopping surfaces) then get each URL's real title,
+description, canonical, Open Graph tags, structured data and status (404 for unknown URLs)
+instead of the bare SPA shell.
+
+Once the app loads, react-helmet takes over every tag marked data-rh="true", so the title,
+description, canonical and robots rules here mirror the storefront — keep them in sync:
+  frontend/src/components/layout/Layout.tsx   site-wide defaults and canonical
+  frontend/src/pages/storefront/*Page.tsx      per-page <title>, description and robots
+  frontend/src/utils/seo.ts                    product JSON-LD and htmlToText()
+"""
+import html
+import json
+import re
+from dataclasses import dataclass, field
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.store import (
+    CURRENCY,
+    DEFAULT_DESCRIPTION,
+    FREE_SHIPPING_THRESHOLD,
+    SITE_NAME,
+    STORE_ADDRESS,
+    STORE_EMAIL,
+    STORE_HOURS,
+    STORE_PHONE,
+    TAGLINE,
+    format_price,
+)
+from app.models.banner import Banner
+from app.models.category import Category
+from app.models.collection import Collection, CollectionProduct
+from app.models.page import Page
+from app.models.product import Product
+from app.services.listing_service import get_listings_with_products
+from app.services.product_service import _product_eager_options
+from app.utils.image_variants import JPEG_PRESETS, jpeg_url
+
+# Same text as HOME_DESCRIPTION in frontend/src/utils/constants.ts
+HOME_DESCRIPTION = (
+    f"Shop premium 100% cotton T-shirts at {SITE_NAME}: oversized, regular fit and embroidered tees. "
+    f"Cash on delivery across Pakistan, free shipping over {format_price(FREE_SHIPPING_THRESHOLD)}."
+)
+ABOUT_DESCRIPTION = (
+    f"Learn about {SITE_NAME} — our story, mission, and the values that drive everything we create."
+)
+CONTACT_DESCRIPTION = (
+    f"Contact {SITE_NAME} for help with orders, delivery, returns and sizing. "
+    f"Call {STORE_PHONE} or email {STORE_EMAIL}, {STORE_HOURS}."
+)
+SIZE_GUIDE_DESCRIPTION = (
+    "Find your perfect fit with our comprehensive size guide. "
+    "Size charts for men's, women's, and kids' clothing and footwear."
+)
+DEFAULT_IMAGE = "/static/images/logo.png"
+LISTING_LIMIT = 48  # products listed in a category/collection's no-JS fallback
+
+# Indexable pages with fixed content: path -> (title, description)
+_STATIC_PAGES: dict[str, tuple[str | None, str]] = {
+    "/": (None, HOME_DESCRIPTION),
+    "/about": ("About Us", ABOUT_DESCRIPTION),
+    "/contact": ("Contact Us", CONTACT_DESCRIPTION),
+    "/size-guide": ("Size Guide", SIZE_GUIDE_DESCRIPTION),
+}
+
+# Account, cart and checkout pages: path -> title. Rendered, but never indexed.
+_PRIVATE_PAGES: dict[str, str] = {
+    "/cart": "Shopping Bag",
+    "/wishlist": "Wishlist",
+    "/checkout": "Checkout",
+    "/login": "Sign In",
+    "/register": "Create Account",
+    "/forgot-password": "Forgot Password",
+    "/track-order": "Track Your Order",
+}
+# Private pages under a path prefix: (prefix, title); the prefix itself matches too ("/account")
+_PRIVATE_PREFIXES: list[tuple[str, str]] = [
+    ("/account", "My Account"),
+    ("/track-order", "Track Your Order"),
+    ("/order-confirmation", "Order Confirmed"),
+    ("/admin", "Admin"),
+]
+
+_DETAIL_PATH = re.compile(r"^/(category|collections|product|page)/([^/]+)$")
+_BLOCK_TAG = re.compile(r"</?(p|div|br|li|ul|ol|h[1-6]|tr|td|th|blockquote)\b[^>]*>", re.I)
+_UNSAFE_BLOCK = re.compile(r"<(script|style|iframe|noscript)\b.*?</\1\s*>", re.I | re.S)
+
+
+@dataclass
+class PageHead:
+    title: str  # the full <title>, brand included
+    description: str = DEFAULT_DESCRIPTION
+    status: int = 200
+    robots: str | None = None
+    og_title: str | None = None  # defaults to the title without the brand suffix
+    og_type: str = "website"
+    image: str | None = None  # share image: /uploads/... or site path
+    image_size: tuple[int, int] | None = None
+    image_alt: str | None = None
+    product_tags: dict[str, str] = field(default_factory=dict)  # product:* Open Graph tags
+    # JSON-LD the client renders too (replaced on hydration) / only rendered here (kept)
+    json_ld: list[dict] = field(default_factory=list)
+    static_json_ld: list[dict] = field(default_factory=list)
+    noscript: str = ""  # HTML shown to crawlers that don't run JavaScript
+
+
+# ── Text helpers (mirror frontend/src/utils) ─────────────────────────────────
+
+
+def html_to_text(markup: str) -> str:
+    """Plain text from rich-text HTML; same as htmlToText() in frontend/src/utils/seo.ts."""
+    markup = re.sub(r"<!--.*?-->", "", markup, flags=re.S)
+    # Pad block-level tags with spaces so "<h3>Title</h3><p>Text" doesn't become "TitleText"
+    text = re.sub(r"<[^>]*>", "", _BLOCK_TAG.sub(r" \g<0> ", markup))
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+
+
+def truncate_text(text: str, max_length: int) -> str:
+    """Same as truncateText() in frontend/src/utils/formatters.ts."""
+    if len(text) <= max_length:
+        return text
+    return text[:max_length].strip() + "..."
+
+
+def in_stock(product: Product) -> bool:
+    """Stock rule of productStructuredData(): any active variant in stock (no variants = in stock)."""
+    variants = [v for v in product.variants if v.is_active]
+    return any(v.stock_quantity > 0 for v in variants) if variants else True
+
+
+def sorted_images(product: Product) -> list:
+    """Primary image first, then display order."""
+    return sorted(product.images, key=lambda img: (not img.is_primary, img.display_order))
+
+
+async def active_products(db: AsyncSession) -> list[Product]:
+    """Every active product with images, options, variants and category loaded, newest first."""
+    return list((await db.execute(
+        select(Product)
+        .options(*_product_eager_options())
+        .where(Product.status == "active")
+        .order_by(Product.created_at.desc())
+    )).scalars())
+
+
+def _branded(title: str | None) -> str:
+    """Layout.tsx's titleTemplate / defaultTitle."""
+    return f"{title} | {SITE_NAME}" if title else f"{SITE_NAME} | {TAGLINE}"
+
+
+def _e(value: str) -> str:
+    return html.escape(value, quote=True)
+
+
+def _absolute(base_url: str, url: str) -> str:
+    return url if re.match(r"^https?://", url) else f"{base_url}{url}"
+
+
+def _social_image(url: str | None) -> tuple[str | None, tuple[int, int] | None]:
+    """The 1200x630 JPEG card for an uploaded image (or the image itself if it isn't an upload)."""
+    card = jpeg_url(url, "social")
+    if card:
+        width, height, _ = JPEG_PRESETS["social"]
+        return card, (width, height)
+    return url, None
+
+
+def _product_list(products, base_url: str) -> str:
+    items = "".join(
+        f'<li><a href="{_e(base_url)}/product/{_e(p.slug)}">{_e(p.name)}</a> – {_e(format_price(float(p.base_price)))}</li>'
+        for p in products
+    )
+    return f"<ul>{items}</ul>" if items else ""
+
+
+# ── Page resolution ──────────────────────────────────────────────────────────
+
+
+async def build_page_head(db: AsyncSession, path: str, query: dict[str, str], base_url: str) -> PageHead:
+    """Resolve a storefront path (no trailing slash) to its head tags and status.
+
+    The route table mirrors frontend/src/routes/index.tsx; anything else is a 404.
+    """
+    if path in _STATIC_PAGES:
+        title, description = _STATIC_PAGES[path]
+        if path == "/":
+            return await _home_head(db, base_url)
+        head = PageHead(title=_branded(title), description=description)
+        head.noscript = f"<h1>{_e(title)}</h1><p>{_e(description)}</p>"
+        if path == "/contact":
+            head.noscript += (
+                f"<p>Phone: {_e(STORE_PHONE)}<br>Email: {_e(STORE_EMAIL)}<br>"
+                f"Address: {_e(STORE_ADDRESS)}<br>Hours: {_e(STORE_HOURS)}</p>"
+            )
+        return head
+
+    if path == "/search":
+        return PageHead(title=_branded(f"Search: {query.get('q', '')}"), robots="noindex")
+    if path in _PRIVATE_PAGES:
+        return PageHead(title=_branded(_PRIVATE_PAGES[path]), robots="noindex")
+    for prefix, title in _PRIVATE_PREFIXES:
+        if path == prefix or path.startswith(prefix + "/"):
+            return PageHead(title=_branded(title), robots="noindex")
+
+    match = _DETAIL_PATH.match(path)
+    if match:
+        kind, slug = match.groups()
+        builder = {
+            "product": _product_head,
+            "category": _category_head,
+            "collections": _collection_head,
+            "page": _content_page_head,
+        }[kind]
+        head = await builder(db, slug, base_url)
+        if head:
+            return head
+        if kind == "product":
+            return not_found_head(base_url, "Product Not Found")
+
+    return not_found_head(base_url)
+
+
+def not_found_head(base_url: str, title: str = "Page Not Found") -> PageHead:
+    """NotFoundPage.tsx (and the not-found states of the product and content pages)."""
+    return PageHead(
+        title=_branded(title),
+        status=404,
+        robots="noindex",
+        noscript=f'<h1>Page Not Found</h1><p><a href="{_e(base_url)}/">Back to {_e(SITE_NAME)}</a></p>',
+    )
+
+
+async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
+    banner_image = (await db.execute(
+        select(Banner.image_url)
+        .where(Banner.position == "hero", Banner.is_active == True)
+        .order_by(Banner.display_order)
+        .limit(1)
+    )).scalar_one_or_none()
+    categories = (await db.execute(
+        select(Category.name, Category.slug)
+        .where(
+            Category.is_active == True,
+            Category.id.in_(select(Product.category_id).where(Product.status == "active")),
+        )
+        .order_by(Category.display_order)
+    )).all()
+    products = (await db.execute(
+        select(Product.name, Product.slug, Product.base_price)
+        .where(Product.status == "active")
+        .order_by(Product.created_at.desc())
+        .limit(24)
+    )).all()
+
+    image, image_size = _social_image(banner_image)
+    category_links = "".join(
+        f'<li><a href="{_e(base_url)}/category/{_e(c.slug)}">{_e(c.name)}</a></li>' for c in categories
+    )
+    return PageHead(
+        title=_branded(None),
+        description=HOME_DESCRIPTION,
+        og_title=f"{SITE_NAME} | {TAGLINE}",
+        image=image,
+        image_size=image_size,
+        image_alt=SITE_NAME,
+        static_json_ld=[{
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "Organization",
+                    "@id": f"{base_url}/#organization",
+                    "name": SITE_NAME,
+                    "url": f"{base_url}/",
+                    "logo": f"{base_url}{DEFAULT_IMAGE}",
+                    "email": STORE_EMAIL,
+                    "telephone": STORE_PHONE,
+                    "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": "Ferozepur Road, Ichhra",
+                        "addressLocality": "Lahore",
+                        "addressCountry": "PK",
+                    },
+                },
+                {
+                    "@type": "WebSite",
+                    "@id": f"{base_url}/#website",
+                    "name": SITE_NAME,
+                    "url": f"{base_url}/",
+                    "publisher": {"@id": f"{base_url}/#organization"},
+                },
+            ],
+        }],
+        noscript=(
+            f"<h1>{_e(SITE_NAME)} — Premium Cotton T-Shirts in Pakistan</h1><p>{_e(HOME_DESCRIPTION)}</p>"
+            + (f"<h2>Shop by category</h2><ul>{category_links}</ul>" if category_links else "")
+            + (f"<h2>Latest products</h2>{_product_list(products, base_url)}" if products else "")
+        ),
+    )
+
+
+async def _product_head(db: AsyncSession, slug: str, base_url: str) -> PageHead | None:
+    """ProductPage.tsx and productStructuredData() in utils/seo.ts."""
+    product = (await db.execute(
+        select(Product)
+        .options(*_product_eager_options())
+        .where(Product.slug == slug, Product.status == "active")
+    )).scalar_one_or_none()
+    if not product:
+        return None
+
+    url = f"{base_url}/product/{product.slug}"
+    price = float(product.base_price)
+    stocked = in_stock(product)
+    images = sorted_images(product)
+    text = product.short_description or html_to_text(product.description or "")
+    description = product.meta_description or truncate_text(text or f"{product.name} at {SITE_NAME}.", 160)
+    page_title = product.meta_title or f"{product.name} – {format_price(price)}"
+    category = product.category
+
+    breadcrumbs = [{"name": "Home", "url": f"{base_url}/"}]
+    if category:
+        breadcrumbs.append({"name": category.name or category.slug, "url": f"{base_url}/category/{category.slug}"})
+    breadcrumbs.append({"name": product.name, "url": url})
+
+    offer = {
+        "@type": "Offer",
+        "url": url,
+        "price": price,
+        "priceCurrency": CURRENCY,
+        "availability": f"https://schema.org/{'InStock' if stocked else 'OutOfStock'}",
+        "itemCondition": "https://schema.org/NewCondition",
+        "seller": {"@type": "Organization", "name": SITE_NAME},
+    }
+    product_ld = {
+        "@type": "Product",
+        "@id": f"{url}#product",
+        "name": product.name,
+        "url": url,
+        "image": [_absolute(base_url, img.url) for img in images],
+        **({"description": truncate_text(text, 5000)} if text else {}),
+        "sku": product.sku or str(product.id),
+        "brand": {"@type": "Brand", "name": SITE_NAME},
+        **({"category": category.name} if category and category.name else {}),
+        "offers": offer,
+    }
+    if product.review_count > 0:
+        product_ld["aggregateRating"] = {
+            "@type": "AggregateRating",
+            "ratingValue": float(product.avg_rating),
+            "reviewCount": product.review_count,
+        }
+
+    image, image_size = _social_image(images[0].url if images else None)
+    compare_at = float(product.compare_at_price) if product.compare_at_price else None
+    options = "".join(
+        f"<li>{_e(opt.name)}: {_e(', '.join(v.value for v in sorted(opt.values, key=lambda v: v.display_order)))}</li>"
+        for opt in sorted(product.options, key=lambda o: o.display_order)
+        if opt.values
+    )
+    crumb_links = " › ".join(f'<a href="{_e(c["url"])}">{_e(c["name"])}</a>' for c in breadcrumbs[:-1])
+    noscript = (
+        f"<nav>{crumb_links}</nav><h1>{_e(product.name)}</h1>"
+        f"<p>{_e(format_price(price))}"
+        + (f" <s>{_e(format_price(compare_at))}</s>" if compare_at and compare_at > price else "")
+        + f" · {'In stock' if stocked else 'Out of stock'}"
+        + f" · Cash on delivery · Free shipping over {_e(format_price(FREE_SHIPPING_THRESHOLD))}</p>"
+        + (f"<ul>{options}</ul>" if options else "")
+        + (f"<p>{_e(html_to_text(product.description))}</p>" if product.description else "")
+    )
+
+    return PageHead(
+        title=_branded(page_title),
+        description=description,
+        og_title=page_title,
+        og_type="product",
+        image=image,
+        image_size=image_size,
+        image_alt=(images[0].alt_text or product.name) if images else None,
+        product_tags={
+            "product:retailer_item_id": str(product.id),
+            "product:brand": SITE_NAME,
+            "product:price:amount": f"{price:.2f}",
+            "product:price:currency": CURRENCY,
+            "product:availability": "in stock" if stocked else "out of stock",
+            "product:condition": "new",
+        },
+        json_ld=[{
+            "@context": "https://schema.org",
+            "@graph": [
+                product_ld,
+                {
+                    "@type": "BreadcrumbList",
+                    "itemListElement": [
+                        {"@type": "ListItem", "position": i + 1, "name": c["name"], "item": c["url"]}
+                        for i, c in enumerate(breadcrumbs)
+                    ],
+                },
+            ],
+        }],
+        noscript=noscript,
+    )
+
+
+async def _is_empty_listing(db: AsyncSession, kind: str, slug: str) -> bool:
+    """Same "coming soon" rule as the storefront pages, menus and sitemap (listing_service)."""
+    category_slugs, collection_slugs = await get_listings_with_products(db)
+    return slug not in (category_slugs if kind == "category" else collection_slugs)
+
+
+async def _category_head(db: AsyncSession, slug: str, base_url: str) -> PageHead | None:
+    """CategoryPage.tsx. The no-JS fallback lists the products directly in the category, like the page."""
+    category = (await db.execute(
+        select(Category).where(Category.slug == slug, Category.is_active == True)
+    )).scalar_one_or_none()
+    if not category:
+        return None
+
+    products = (await db.execute(
+        select(Product.name, Product.slug, Product.base_price)
+        .where(Product.category_id == category.id, Product.status == "active")
+        .order_by(Product.created_at.desc())
+        .limit(LISTING_LIMIT)
+    )).all()
+    description = category.meta_description or (
+        truncate_text(category.description, 160)
+        if category.description
+        else f"Shop {category.name} at {SITE_NAME}. {TAGLINE}."
+    )
+    image, image_size = _social_image(category.image_url)
+    return PageHead(
+        # A custom meta title is used as-is (titleTemplate '%s')
+        title=category.meta_title or _branded(category.name),
+        description=description,
+        og_title=category.meta_title or category.name,
+        # Thin "coming soon" pages aren't indexed; links on them are still followed
+        robots="noindex, follow" if await _is_empty_listing(db, "category", slug) else None,
+        image=image,
+        image_size=image_size,
+        image_alt=category.name,
+        noscript=(
+            f"<h1>{_e(category.name)}</h1>"
+            + (f"<p>{_e(category.description)}</p>" if category.description else "")
+            + _product_list(products, base_url)
+        ),
+    )
+
+
+async def _collection_head(db: AsyncSession, slug: str, base_url: str) -> PageHead | None:
+    """CollectionPage.tsx."""
+    collection = (await db.execute(
+        select(Collection).where(Collection.slug == slug, Collection.is_active == True)
+    )).scalar_one_or_none()
+    if not collection:
+        return None
+
+    products = (await db.execute(
+        select(Product.name, Product.slug, Product.base_price)
+        .join(CollectionProduct, CollectionProduct.product_id == Product.id)
+        .where(CollectionProduct.collection_id == collection.id, Product.status == "active")
+        .order_by(Product.created_at.desc())
+        .limit(LISTING_LIMIT)
+    )).all()
+    description = collection.meta_description or (
+        truncate_text(collection.description, 160)
+        if collection.description
+        else f"Shop the {collection.name} collection at {SITE_NAME}. {TAGLINE}."
+    )
+    image, image_size = _social_image(collection.image_url)
+    return PageHead(
+        title=collection.meta_title or _branded(collection.name),
+        description=description,
+        og_title=collection.meta_title or collection.name,
+        robots="noindex, follow" if await _is_empty_listing(db, "collections", slug) else None,
+        image=image,
+        image_size=image_size,
+        image_alt=collection.name,
+        noscript=(
+            f"<h1>{_e(collection.name)}</h1>"
+            + (f"<p>{_e(collection.description)}</p>" if collection.description else "")
+            + _product_list(products, base_url)
+        ),
+    )
+
+
+async def _content_page_head(db: AsyncSession, slug: str, base_url: str) -> PageHead | None:
+    """ContentPage.tsx."""
+    page = (await db.execute(
+        select(Page).where(Page.slug == slug, Page.is_published == True)
+    )).scalar_one_or_none()
+    if not page:
+        return None
+
+    text = html_to_text(page.content or "")
+    # Admin-written rich text; drop anything executable and keep it from closing the <noscript>
+    content = _UNSAFE_BLOCK.sub("", page.content or "").replace("</noscript", "&lt;/noscript")
+    return PageHead(
+        title=page.meta_title or _branded(page.title),
+        description=page.meta_description or (truncate_text(text, 160) if text else DEFAULT_DESCRIPTION),
+        og_title=page.meta_title or page.title,
+        noscript=f"<h1>{_e(page.title)}</h1>{content}",
+    )
+
+
+# ── Rendering ────────────────────────────────────────────────────────────────
+
+_SEO_BLOCK = re.compile(r"<!--seo-->.*?<!--/seo-->", re.S)
+NOSCRIPT_MARKER = "<!--seo-noscript-->"
+
+
+def _json_ld_tag(data: dict, managed: bool) -> str:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+    return f'<script type="application/ld+json"{" data-rh=\"true\"" if managed else ""}>{payload}</script>'
+
+
+def head_tags(head: PageHead, path: str, base_url: str) -> str:
+    """The <head> tags for a page. data-rh="true" marks tags react-helmet replaces once the app loads."""
+    canonical = f"{base_url}{path}"  # Layout.tsx: SITE_URL + pathname
+    description = head.description
+    og_title = head.og_title or head.title.removesuffix(f" | {SITE_NAME}")
+    tags = [
+        f"<title>{_e(head.title)}</title>",
+        f'<meta name="description" content="{_e(description)}" data-rh="true" />',
+        f'<link rel="canonical" href="{_e(canonical)}" data-rh="true" />',
+    ]
+    if head.robots:
+        tags.append(f'<meta name="robots" content="{_e(head.robots)}" data-rh="true" />')
+
+    if head.status == 200:
+        image = _absolute(base_url, head.image or DEFAULT_IMAGE)
+        og = [
+            ("og:site_name", SITE_NAME),
+            ("og:type", head.og_type),
+            ("og:title", og_title),
+            ("og:description", description),
+            ("og:url", canonical),
+            ("og:locale", "en_PK"),
+            ("og:image", image),
+        ]
+        if head.image_size:
+            og += [("og:image:width", str(head.image_size[0])), ("og:image:height", str(head.image_size[1]))]
+        if head.image_alt:
+            og.append(("og:image:alt", head.image_alt))
+        og += list(head.product_tags.items())
+        tags += [f'<meta property="{k}" content="{_e(v)}" data-rh="true" />' for k, v in og]
+
+        twitter = [
+            ("twitter:card", "summary_large_image" if head.image_size else "summary"),
+            ("twitter:title", og_title),
+            ("twitter:description", description),
+            ("twitter:image", image),
+        ]
+        if head.image_alt:
+            twitter.append(("twitter:image:alt", head.image_alt))
+        tags += [f'<meta name="{k}" content="{_e(v)}" data-rh="true" />' for k, v in twitter]
+
+    tags += [_json_ld_tag(data, managed=True) for data in head.json_ld]
+    tags += [_json_ld_tag(data, managed=False) for data in head.static_json_ld]
+    return "\n    ".join(tags)
+
+
+def render_html(shell: str, head: PageHead, path: str, base_url: str) -> str:
+    """Put ``head`` into the built index.html (between its <!--seo--> markers)."""
+    tags = head_tags(head, path, base_url)
+    if _SEO_BLOCK.search(shell):
+        shell = _SEO_BLOCK.sub(lambda _: tags, shell, count=1)
+    else:
+        shell = shell.replace("</head>", f"    {tags}\n  </head>", 1)
+    if head.noscript:
+        shell = shell.replace(NOSCRIPT_MARKER, f"<noscript>{head.noscript}</noscript>", 1)
+    return shell

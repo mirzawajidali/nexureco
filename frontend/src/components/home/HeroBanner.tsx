@@ -46,7 +46,7 @@ const defaultSlides: HeroBannerSlide[] = [
     title: 'THE NEW\nCOLLECTION',
     subtitle: 'Discover the latest styles designed for those who dare to stand out.',
     imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80',
-    linkUrl: '/category/new-arrivals',
+    linkUrl: '/collections/new-arrivals',
     buttonText: 'Shop Now',
   },
 ];
@@ -182,7 +182,11 @@ function SlideContent({
 export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 5000 }: HeroBannerProps) {
   const swiperRef = useRef<SwiperType | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  // With "reduce motion" on, slides don't advance on their own (the play button still starts them)
+  const [prefersReducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  );
+  const [isPlaying, setIsPlaying] = useState(!prefersReducedMotion);
   // With the fade effect every slide sits in the viewport, so lazy-loading can't hold back
   // slides 2+. Render their media only once the first slide's image is done.
   const [firstImageDone, setFirstImageDone] = useState(false);
@@ -229,7 +233,10 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
         speed={800}
         autoplay={singleSlide ? false : { delay: autoplayDelay, disableOnInteraction: false, pauseOnMouseEnter: true }}
         loop={!singleSlide}
-        onSwiper={(swiper) => { swiperRef.current = swiper; }}
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
+          if (prefersReducedMotion) swiper.autoplay?.stop();
+        }}
         onSlideChange={onSlideChange}
         className="h-full"
       >

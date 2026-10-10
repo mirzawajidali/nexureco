@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.db.redis import CacheService
-from app.schemas.product import ProductListItem
+from app.schemas.product import PublicProductListItem
 from app.schemas.common import PaginatedResponse
 from app.services import product_service
 from app.services import es_search_service
@@ -10,11 +10,11 @@ from app.services import es_search_service
 router = APIRouter(prefix="/search", tags=["Search"])
 
 
-@router.get("/", response_model=PaginatedResponse[ProductListItem])
+@router.get("/", response_model=PaginatedResponse[PublicProductListItem])
 async def search_products(
     q: str = Query(min_length=1),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=50),  # capped to make bulk scraping slower
     category: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,

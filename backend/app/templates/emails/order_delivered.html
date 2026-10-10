@@ -85,6 +85,9 @@
             {% endif %}
             <span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#666666;display:block;margin-bottom:6px;">Qty: {{ item.quantity }}</span>
             <span style="font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:900;color:#000000;">Rs. {{ "%.0f"|format(item.total_price) }}</span>
+            {% if item.review_url %}
+            <a href="{{ item.review_url }}" style="display:inline-block;margin-top:10px;font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;text-decoration:underline;">Write a review &rarr;</a>
+            {% endif %}
           </td>
         </tr>
       </table>

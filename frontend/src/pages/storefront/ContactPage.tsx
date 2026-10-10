@@ -15,7 +15,14 @@ import {
 } from '@heroicons/react/24/outline';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import { contactApi, type ContactFormData } from '@/api/contact.api';
-import { APP_NAME, STORE_EMAIL, STORE_PHONE, STORE_ADDRESS, STORE_HOURS } from '@/utils/constants';
+import {
+  RETURN_POLICY_SUMMARY,
+  SITE_NAME,
+  STORE_EMAIL,
+  STORE_PHONE,
+  STORE_ADDRESS,
+  STORE_HOURS,
+} from '@/utils/constants';
 import { trackGenerateLead } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
@@ -55,7 +62,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What is your return policy?',
-    a: 'We offer hassle-free returns within 30 days of delivery. Items must be unworn, unwashed, and in their original packaging with tags attached.',
+    a: RETURN_POLICY_SUMMARY,
   },
   {
     q: 'How long does delivery take?',
@@ -140,8 +147,10 @@ function ContactForm() {
     <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
-          <label className="input-label">First Name</label>
+          <label htmlFor="contact-first-name" className="input-label">First Name</label>
           <input
+            id="contact-first-name"
+            autoComplete="given-name"
             {...register('first_name', { required: 'First name is required' })}
             className="input-field"
             placeholder="John"
@@ -149,8 +158,10 @@ function ContactForm() {
           {errors.first_name && <p className="text-xs text-error mt-1">{errors.first_name.message}</p>}
         </div>
         <div>
-          <label className="input-label">Last Name</label>
+          <label htmlFor="contact-last-name" className="input-label">Last Name</label>
           <input
+            id="contact-last-name"
+            autoComplete="family-name"
             {...register('last_name', { required: 'Last name is required' })}
             className="input-field"
             placeholder="Doe"
@@ -159,9 +170,11 @@ function ContactForm() {
         </div>
       </div>
       <div>
-        <label className="input-label">Email</label>
+        <label htmlFor="contact-email" className="input-label">Email</label>
         <input
+          id="contact-email"
           type="email"
+          autoComplete="email"
           {...register('email', { required: 'Email is required' })}
           className="input-field"
           placeholder="john@example.com"
@@ -169,16 +182,23 @@ function ContactForm() {
         {errors.email && <p className="text-xs text-error mt-1">{errors.email.message}</p>}
       </div>
       <div>
-        <label className="input-label">Order Number (optional)</label>
+        <label htmlFor="contact-order-number" className="input-label">Order Number (optional)</label>
         <input
+          id="contact-order-number"
+          autoComplete="off"
           {...register('order_number')}
           className="input-field"
           placeholder="#100001"
         />
       </div>
       <div>
-        <label className="input-label">Subject</label>
-        <select {...register('subject', { required: 'Please select a subject' })} className="input-field" defaultValue="">
+        <label htmlFor="contact-subject" className="input-label">Subject</label>
+        <select
+          id="contact-subject"
+          {...register('subject', { required: 'Please select a subject' })}
+          className="input-field"
+          defaultValue=""
+        >
           <option value="" disabled>
             Select a topic
           </option>
@@ -192,8 +212,9 @@ function ContactForm() {
         {errors.subject && <p className="text-xs text-error mt-1">{errors.subject.message}</p>}
       </div>
       <div>
-        <label className="input-label">Message</label>
+        <label htmlFor="contact-message" className="input-label">Message</label>
         <textarea
+          id="contact-message"
           {...register('message', { required: 'Message is required' })}
           rows={5}
           className="input-field resize-none"
@@ -217,10 +238,10 @@ export default function ContactPage() {
   return (
     <>
       <Helmet>
-        <title>Contact Us | {APP_NAME}</title>
+        <title>Contact Us</title>
         <meta
           name="description"
-          content="Get in touch with our support team. We're here to help with orders, returns, products, and more."
+          content={`Contact ${SITE_NAME} for help with orders, delivery, returns and sizing. Call ${STORE_PHONE} or email ${STORE_EMAIL}, ${STORE_HOURS}.`}
         />
       </Helmet>
 

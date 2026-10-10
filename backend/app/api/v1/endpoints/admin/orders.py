@@ -1,7 +1,5 @@
 import csv
 import io
-import random
-import string
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -20,7 +18,7 @@ from app.models.media import InventoryLog
 from app.schemas.order import OrderOut, OrderListItem
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.utils.pagination import paginate
-from app.services.order_service import _send_order_status_email
+from app.services.order_service import _generate_order_number, _send_order_status_email
 
 router = APIRouter(prefix="/admin/orders", tags=["Admin Orders"])
 
@@ -63,11 +61,6 @@ class AdminOrderCreate(BaseModel):
     admin_note: str | None = None
     discount_amount: float = 0
     shipping_cost: float = 0
-
-
-def _generate_order_number() -> str:
-    num = "".join(random.choices(string.digits, k=8))
-    return f"MB-{num}"
 
 
 def _build_customer_name(order: Order) -> str | None:

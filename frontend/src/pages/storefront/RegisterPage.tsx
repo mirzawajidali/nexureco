@@ -61,7 +61,7 @@ export default function RegisterPage() {
   return (
     <>
       <Helmet>
-        <title>Create Account | {APP_NAME}</title>
+        <title>Create Account</title>
       </Helmet>
 
       <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
@@ -79,12 +79,14 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="First Name"
+                autoComplete="given-name"
                 placeholder="John"
                 error={errors.first_name?.message}
                 {...register('first_name')}
               />
               <Input
                 label="Last Name"
+                autoComplete="family-name"
                 placeholder="Doe"
                 error={errors.last_name?.message}
                 {...register('last_name')}
@@ -94,6 +96,7 @@ export default function RegisterPage() {
             <Input
               label="Email"
               type="email"
+              autoComplete="email"
               placeholder="your@email.com"
               error={errors.email?.message}
               {...register('email')}
@@ -102,6 +105,7 @@ export default function RegisterPage() {
             <Input
               label="Phone (optional)"
               type="tel"
+              autoComplete="tel"
               placeholder="+92 300 1234567"
               error={errors.phone?.message}
               {...register('phone')}
@@ -110,6 +114,8 @@ export default function RegisterPage() {
             <Input
               label="Password"
               type="password"
+              autoComplete="new-password"
+              minLength={8}
               placeholder="At least 8 characters"
               error={errors.password?.message}
               {...register('password')}
@@ -118,6 +124,8 @@ export default function RegisterPage() {
             <Input
               label="Confirm Password"
               type="password"
+              autoComplete="new-password"
+              minLength={8}
               placeholder="Re-enter your password"
               error={errors.confirm_password?.message}
               {...register('confirm_password')}

@@ -113,6 +113,7 @@ async def es_search_products(
                 "primary_image": src.get("primary_image"),
                 "category_name": src.get("category_name"),
                 "total_stock": src.get("total_stock", 0),
+                "in_stock": src.get("total_stock", 0) > 0,
                 "variant_count": src.get("variant_count", 0),
                 "variant_images": src.get("variant_images", []),
                 "tags": src.get("tags"),

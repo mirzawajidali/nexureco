@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { authApi } from '@/api/auth.api';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { APP_NAME } from '@/utils/constants';
 
 const schema = z.object({
   email: z.string().email('Invalid email address'),
@@ -43,7 +42,7 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <Helmet>
-        <title>Forgot Password | {APP_NAME}</title>
+        <title>Forgot Password</title>
       </Helmet>
 
       <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
@@ -72,6 +71,7 @@ export default function ForgotPasswordPage() {
                 <Input
                   label="Email"
                   type="email"
+                  autoComplete="email"
                   placeholder="your@email.com"
                   error={errors.email?.message}
                   {...register('email')}

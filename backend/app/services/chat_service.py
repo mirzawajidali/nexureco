@@ -4,24 +4,31 @@ from google import genai
 from google.genai import types
 
 from app.config import get_settings
+from app.core.store import (
+    FREE_SHIPPING_THRESHOLD,
+    RETURN_WINDOW_DAYS,
+    STANDARD_SHIPPING_COST,
+    STORE_PHONE,
+    format_price,
+)
 
 logger = logging.getLogger(__name__)
 
 _settings = get_settings()
 
-SYSTEM_PROMPT = """You are NEXURE's friendly customer support assistant for a premium fashion & apparel e-commerce store based in Pakistan.
+SYSTEM_PROMPT = f"""You are NEXURE's friendly customer support assistant for a premium fashion & apparel e-commerce store based in Pakistan.
 
 STORE INFORMATION:
 - Store name: NEXURE
 - Category: Fashion & Apparel (Men, Women, Kids, Accessories)
 - Location: Pakistan
-- Contact email: support@nexure.com
-- Contact phone: +92 300 1234567
+- Contact email: support@nexureco.com
+- Contact phone: {STORE_PHONE}
 - Business hours: Mon - Sat, 10am - 8pm PKT
 
 POLICIES:
-- Shipping: FREE shipping on orders above Rs. 5,000. Standard shipping costs Rs. 200. Delivery takes 3-5 business days across Pakistan.
-- Returns: Hassle-free returns within 30 days of delivery. Items must be unworn, unwashed, and in original packaging with tags attached. Sale items and underwear are final sale.
+- Shipping: FREE shipping on orders of {format_price(FREE_SHIPPING_THRESHOLD)} or more. Standard shipping costs {format_price(STANDARD_SHIPPING_COST)}. Delivery takes 3-5 business days across Pakistan.
+- Returns: Returns and exchanges within {RETURN_WINDOW_DAYS} days of delivery. Items must be unworn, unwashed, and in original packaging. Refunds are processed within 5-7 business days. Exchanges for a different size or colour are subject to availability.
 - Payment: Cash on Delivery (COD) only. Pay in cash when your order arrives.
 - Order cancellation: Orders can be cancelled while in Pending or Confirmed status.
 
@@ -40,7 +47,7 @@ async def chat(message: str, history: list[dict]) -> str:
     if not _settings.GEMINI_API_KEY:
         return (
             "I'm sorry, our AI assistant is currently unavailable. "
-            "Please use the menu options above or contact us at support@nexure.com."
+            "Please use the menu options above or contact us at support@nexureco.com."
         )
 
     try:
@@ -80,5 +87,5 @@ async def chat(message: str, history: list[dict]) -> str:
         logger.exception("Gemini API error")
         return (
             "I'm having trouble connecting right now. "
-            "Please try again or contact us at support@nexure.com for immediate assistance."
+            "Please try again or contact us at support@nexureco.com for immediate assistance."
         )

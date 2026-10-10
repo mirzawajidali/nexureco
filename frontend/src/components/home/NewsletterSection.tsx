@@ -4,7 +4,15 @@ import Button from '@/components/ui/Button';
 import { trackGenerateLead } from '@/utils/analytics';
 import toast from 'react-hot-toast';
 
-export default function NewsletterSection() {
+interface NewsletterSectionProps {
+  title?: string;
+  subtitle?: string;
+}
+
+export default function NewsletterSection({
+  title = 'Join the Club',
+  subtitle = 'Get early access to new releases, exclusive deals, and 10% off your first order.',
+}: NewsletterSectionProps) {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,10 +38,10 @@ export default function NewsletterSection() {
     <section className="bg-gray-100 section-padding">
       <div className="container-custom text-center">
         <h2 className="text-heading-xl font-heading uppercase mb-3">
-          Join the Club
+          {title}
         </h2>
         <p className="text-gray-600 text-sm max-w-md mx-auto mb-8">
-          Get early access to new releases, exclusive deals, and 10% off your first order.
+          {subtitle}
         </p>
 
         {submitted ? (
@@ -46,6 +54,8 @@ export default function NewsletterSection() {
           <form onSubmit={handleSubmit} className="flex gap-0 max-w-md mx-auto">
             <input
               type="email"
+              aria-label="Email address"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your email address"

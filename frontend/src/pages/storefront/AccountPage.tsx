@@ -1,7 +1,6 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { UserIcon, MapPinIcon, ShoppingBagIcon, KeyIcon } from '@heroicons/react/24/outline';
-import { APP_NAME } from '@/utils/constants';
 import { clsx } from 'clsx';
 import AccountProfile from '@/components/account/AccountProfile';
 import AccountOrders from '@/components/account/AccountOrders';
@@ -19,7 +18,7 @@ export default function AccountPage() {
   return (
     <>
       <Helmet>
-        <title>My Account | {APP_NAME}</title>
+        <title>My Account</title>
       </Helmet>
 
       <div className="container-custom py-8">

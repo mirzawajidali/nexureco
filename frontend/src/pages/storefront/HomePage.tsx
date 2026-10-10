@@ -11,8 +11,8 @@ import NewsletterSection from '@/components/home/NewsletterSection';
 import StillInterested from '@/components/home/StillInterested';
 import MarqueeStrip from '@/components/home/MarqueeStrip';
 import PromoStrip from '@/components/home/PromoStrip';
-import { APP_NAME } from '@/utils/constants';
 import { getHeroBanners } from '@/api/pages.api';
+import { HOME_DESCRIPTION, SITE_NAME } from '@/utils/constants';
 
 const fallbackSlides: HeroBannerSlide[] = [
   {
@@ -20,7 +20,7 @@ const fallbackSlides: HeroBannerSlide[] = [
     eyebrow: 'New Season',
     title: 'THE NEW\nCOLLECTION',
     subtitle: 'Discover the latest styles designed for those who dare to stand out.',
-    linkUrl: '/category/new-arrivals',
+    linkUrl: '/collections/new-arrivals',
     buttonText: 'Shop Now',
   },
 ];
@@ -48,9 +48,11 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title>{APP_NAME} | Premium Fashion & Apparel</title>
-        <meta name="description" content="Discover the latest in fashion and apparel at Nexure CO. Premium clothing, shoes, and accessories." />
+        <meta name="description" content={HOME_DESCRIPTION} />
       </Helmet>
+
+      {/* The page's single H1. The hero slides rotate (each headline is an h2), so the H1 names the store instead. */}
+      <h1 className="sr-only">{`${SITE_NAME} — Premium Cotton T-Shirts in Pakistan`}</h1>
 
       <HeroBanner slides={heroSlides} />
       <MarqueeStrip variant="dark" />

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # App
-    APP_NAME: str = "My Brand"
+    APP_NAME: str = "Nexure CO"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     # Site URL (used for sitemaps, emails, etc.)
     SITE_URL: str = "http://localhost:5173"
+
+    # The built storefront index.html, which storefront pages are rendered into (see app/api/storefront.py).
+    # Served by the frontend container on an internal-only port (frontend/nginx/shell.conf).
+    SPA_SHELL_URL: str = "http://frontend:8080/index.html"
 
     # Elasticsearch
     ELASTICSEARCH_URL: str = "http://localhost:9200"

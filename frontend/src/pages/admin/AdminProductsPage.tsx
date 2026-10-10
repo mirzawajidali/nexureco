@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 import { adminProductsApi, adminCategoriesApi } from '@/api/admin.api';
 import { formatPrice } from '@/utils/formatters';
 import { APP_NAME } from '@/utils/constants';
-import type { ProductListItem, Category } from '@/types/product';
+import type { AdminProductListItem as ProductListItem, Category } from '@/types/product';
 import type { PaginatedResponse } from '@/types/common';
 import Spinner from '@/components/ui/Spinner';
 

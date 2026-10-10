@@ -16,12 +16,11 @@ interface NavLink {
   children?: NavLink[];
 }
 
+// Only shown if the header menu can't be loaded; same links as Header.tsx
 const FALLBACK_NAV_LINKS: NavLink[] = [
-  { label: 'New Arrivals', href: '/category/new-arrivals' },
+  { label: 'New Arrivals', href: '/collections/new-arrivals' },
+  { label: 'Best Sellers', href: '/collections/best-sellers' },
   { label: 'Men', href: '/category/men' },
-  { label: 'Women', href: '/category/women' },
-  { label: 'Kids', href: '/category/kids' },
-  { label: 'Accessories', href: '/category/accessories' },
   { label: 'Sale', href: '/collections/sale', accent: true },
 ];
 

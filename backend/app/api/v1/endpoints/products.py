@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.db.redis import CacheService
-from app.schemas.product import ProductListItem, ProductDetail
+from app.schemas.product import PublicProductListItem, PublicProductDetail
 from app.schemas.common import PaginatedResponse
 from app.services import product_service
 from app.services import es_search_service
@@ -10,10 +10,10 @@ from app.services import es_search_service
 router = APIRouter(prefix="/products", tags=["Products"])
 
 
-@router.get("/", response_model=PaginatedResponse[ProductListItem])
+@router.get("/", response_model=PaginatedResponse[PublicProductListItem])
 async def list_products(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=50),  # capped to make bulk scraping slower
     category: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
@@ -69,9 +69,9 @@ async def list_products(
     return result
 
 
-@router.get("/featured", response_model=list[ProductListItem])
+@router.get("/featured", response_model=list[PublicProductListItem])
 async def featured_products(
-    limit: int = Query(8, ge=1, le=50),
+    limit: int = Query(8, ge=1, le=24),
     db: AsyncSession = Depends(get_db),
 ):
     cache_key = CacheService.product_list_key(endpoint="featured", limit=limit)
@@ -85,9 +85,9 @@ async def featured_products(
     return items
 
 
-@router.get("/new-arrivals", response_model=list[ProductListItem])
+@router.get("/new-arrivals", response_model=list[PublicProductListItem])
 async def new_arrivals(
-    limit: int = Query(8, ge=1, le=50),
+    limit: int = Query(8, ge=1, le=24),
     db: AsyncSession = Depends(get_db),
 ):
     cache_key = CacheService.product_list_key(endpoint="new-arrivals", limit=limit)
@@ -101,9 +101,9 @@ async def new_arrivals(
     return items
 
 
-@router.get("/best-sellers", response_model=list[ProductListItem])
+@router.get("/best-sellers", response_model=list[PublicProductListItem])
 async def best_sellers(
-    limit: int = Query(8, ge=1, le=50),
+    limit: int = Query(8, ge=1, le=24),
     db: AsyncSession = Depends(get_db),
 ):
     cache_key = CacheService.product_list_key(endpoint="best-sellers", limit=limit)
@@ -117,7 +117,7 @@ async def best_sellers(
     return items
 
 
-@router.get("/{slug}", response_model=ProductDetail)
+@router.get("/{slug}", response_model=PublicProductDetail)
 async def get_product(slug: str, db: AsyncSession = Depends(get_db)):
     cache_key = CacheService.product_detail_key(slug)
     cached = await CacheService.get(cache_key)

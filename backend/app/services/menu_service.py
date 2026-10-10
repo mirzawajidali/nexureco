@@ -3,6 +3,7 @@ from sqlalchemy import select, func
 from app.models.menu import Menu, MenuItem
 from app.schemas.menu import MenuCreate, MenuUpdate, MenuItemCreate, MenuItemUpdate
 from app.core.exceptions import NotFoundException, ConflictException
+from app.services.listing_service import get_listings_with_products, is_empty_listing_url
 
 
 def item_to_dict(item) -> dict:
@@ -110,11 +111,23 @@ async def get_menu_by_handle(db: AsyncSession, handle: str) -> dict | None:
     )
     items = items_result.scalars().all()
 
+    # Hide links to category/collection pages with no products until they're stocked
+    category_slugs, collection_slugs = await get_listings_with_products(db)
+
+    def prune(tree: list[dict]) -> list[dict]:
+        kept = []
+        for item in tree:
+            if is_empty_listing_url(item["url"], category_slugs, collection_slugs):
+                continue
+            item["children"] = prune(item["children"])
+            kept.append(item)
+        return kept
+
     return {
         "id": menu.id,
         "name": menu.name,
         "handle": menu.handle,
-        "items": _build_item_tree(items, active_only=True),
+        "items": prune(_build_item_tree(items, active_only=True)),
     }
 
 

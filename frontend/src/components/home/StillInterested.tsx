@@ -19,7 +19,8 @@ export default function StillInterested() {
   const products = (data?.data?.items ?? []).slice(0, 4);
   useViewItemList(products, STILL_INTERESTED_LIST);
 
-  if (products.length === 0) return null;
+  // A row with one or two cards looks broken, so wait until there are a few to show
+  if (products.length < 3) return null;
 
   return (
     <section className="section-padding">
@@ -42,6 +43,7 @@ export default function StillInterested() {
               categoryName={p.category_name}
               variantCount={p.variant_count}
               variantImages={p.variant_images}
+              variantColors={p.variant_colors}
             />
           ))}
         </div>

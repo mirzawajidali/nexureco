@@ -7,24 +7,22 @@ import { menusApi } from '@/api/pages.api';
 import BrandLogo from '@/components/ui/BrandLogo';
 
 const FALLBACK_FOOTER_LINKS = {
+  // Only shown if the footer menus can't be loaded; every link here must be a real page
   'PRODUCTS': [
+    { label: 'New Arrivals', href: '/collections/new-arrivals' },
+    { label: 'Best Sellers', href: '/collections/best-sellers' },
     { label: 'Men', href: '/category/men' },
-    { label: 'Women', href: '/category/women' },
-    { label: 'Kids', href: '/category/kids' },
-    { label: 'New Arrivals', href: '/category/new-arrivals' },
     { label: 'Sale', href: '/collections/sale' },
   ],
   'SUPPORT': [
-    { label: 'Help Center', href: '/page/help' },
+    { label: 'Help Center', href: '/page/faq' },
     { label: 'Track Order', href: '/track-order' },
-    { label: 'Shipping Info', href: '/page/shipping' },
-    { label: 'Returns & Exchange', href: '/page/returns' },
+    { label: 'Shipping & Returns', href: '/page/shipping' },
     { label: 'Size Guide', href: '/size-guide' },
   ],
   'COMPANY': [
     { label: 'About Us', href: '/about' },
     { label: 'Contact Us', href: '/contact' },
-    { label: 'Careers', href: '/page/careers' },
     { label: 'Privacy Policy', href: '/page/privacy' },
     { label: 'Terms of Service', href: '/page/terms' },
   ],
@@ -112,6 +110,8 @@ export default function Footer() {
                 <input
                   type="email"
                   required
+                  aria-label="Email address"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"

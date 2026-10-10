@@ -7,7 +7,6 @@ import { searchApi } from '@/api/products.api';
 import ProductGrid from '@/components/product/ProductGrid';
 import FilterSidebar from '@/components/filters/FilterSidebar';
 import Pagination from '@/components/ui/Pagination';
-import { APP_NAME } from '@/utils/constants';
 import { useTrackOnce } from '@/hooks/useAnalytics';
 import { trackFilters, trackSearch } from '@/utils/analytics';
 
@@ -64,7 +63,7 @@ export default function SearchPage() {
   return (
     <>
       <Helmet>
-        <title>Search: {q} | {APP_NAME}</title>
+        <title>{`Search: ${q}`}</title>
       </Helmet>
 
       <div className="container-custom py-8">

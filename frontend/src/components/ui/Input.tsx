@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import type { InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -8,12 +8,24 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className, ...props }, ref) => {
+  ({ label, error, className, id, ...props }, ref) => {
+    // Tie the label and error message to the input so screen readers announce them
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
+    const errorId = `${inputId}-error`;
+
     return (
       <div className="w-full">
-        {label && <label className="input-label">{label}</label>}
+        {label && (
+          <label htmlFor={inputId} className="input-label">
+            {label}
+          </label>
+        )}
         <input
           ref={ref}
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           className={clsx(
             'input-field',
             error && 'border-error focus:border-error',
@@ -21,7 +33,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
-        {error && <p className="mt-1 text-xs text-error">{error}</p>}
+        {error && (
+          <p id={errorId} className="mt-1 text-xs text-error">
+            {error}
+          </p>
+        )}
       </div>
     );
   }

@@ -13,11 +13,14 @@ interface ProductListItem {
   is_featured: boolean;
   avg_rating: number;
   review_count: number;
-  total_sold: number;
   primary_image: string | null;
   category_name: string | null;
   variant_count: number;
   variant_images: string[];
+  // Storefront API: colour name per variant image, stock and badge flags (sales/stock counts stay private)
+  variant_colors?: (string | null)[];
+  in_stock?: boolean;
+  is_best_seller?: boolean;
   tags: string[] | null;
   created_at: string;
 }

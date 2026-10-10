@@ -3,12 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import Button from '@/components/ui/Button';
-import { APP_NAME } from '@/utils/constants';
 
 const POPULAR_CATEGORIES = [
+  { label: 'New Arrivals', href: '/collections/new-arrivals' },
+  { label: 'Best Sellers', href: '/collections/best-sellers' },
   { label: 'Men', href: '/category/men' },
-  { label: 'Women', href: '/category/women' },
-  { label: 'New Arrivals', href: '/category/new-arrivals' },
   { label: 'Sale', href: '/collections/sale' },
 ];
 
@@ -26,7 +25,8 @@ export default function NotFoundPage() {
   return (
     <>
       <Helmet>
-        <title>404 - Page Not Found | {APP_NAME}</title>
+        <title>Page Not Found</title>
+        <meta name="robots" content="noindex" />
       </Helmet>
 
       <div className="min-h-[70vh] flex items-center justify-center py-12 px-4">
@@ -41,6 +41,7 @@ export default function NotFoundPage() {
           <form onSubmit={handleSearch} className="flex gap-0 max-w-md mx-auto mb-8">
             <input
               type="text"
+              aria-label="Search products"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search for products..."
@@ -48,9 +49,10 @@ export default function NotFoundPage() {
             />
             <button
               type="submit"
+              aria-label="Search"
               className="bg-brand-black text-white px-5 py-3 hover:bg-gray-800 transition-colors"
             >
-              <MagnifyingGlassIcon className="w-5 h-5" />
+              <MagnifyingGlassIcon className="w-5 h-5" aria-hidden="true" />
             </button>
           </form>
 

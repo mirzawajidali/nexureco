@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatters';
-import { APP_NAME, FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
+import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import { useTrackOnce } from '@/hooks/useAnalytics';
 import { cartLineToItem, trackEvent, trackRemoveFromCart, trackViewCart } from '@/utils/analytics';
@@ -136,7 +136,7 @@ export default function CartPage() {
   return (
     <>
       <Helmet>
-        <title>Shopping Bag | {APP_NAME}</title>
+        <title>Shopping Bag</title>
       </Helmet>
 
       <div className="container-custom py-8">
@@ -278,6 +278,8 @@ export default function CartPage() {
                       <div className="flex gap-0">
                         <input
                           type="text"
+                          aria-label="Promo code"
+                          autoComplete="off"
                           value={couponInput}
                           onChange={(e) => setCouponInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}

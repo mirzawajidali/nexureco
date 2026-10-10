@@ -23,6 +23,8 @@ interface ProductCardProps {
   categoryName?: string | null;
   variantCount?: number;
   variantImages?: string[];
+  // Colour name of each variant image, used as its alt text
+  variantColors?: (string | null)[];
   isNew?: boolean;
   isBestSeller?: boolean;
   /** GA4 list this card is shown in, and its position — reported on select_item */
@@ -40,6 +42,7 @@ export default function ProductCard({
   categoryName,
   variantCount = 0,
   variantImages = [],
+  variantColors = [],
   isNew = false,
   isBestSeller = false,
   list,
@@ -81,6 +84,8 @@ export default function ProductCard({
             src={displayImage}
             srcSet={imageSrcSet(displayImage, [320, 480, 640, 960, 1280])}
             alt={name}
+            width={600}
+            height={600}
             className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
             loading="lazy"
             sizes="(max-width: 640px) 50vw, 25vw"
@@ -134,7 +139,9 @@ export default function ProductCard({
               >
                 <img
                   src={resizedImage(vImg, 160)}
-                  alt=""
+                  alt={variantColors[idx] ?? ''}
+                  width={56}
+                  height={64}
                   className="w-14 h-16 object-cover bg-[#eceff1]"
                   loading="lazy"
                 />

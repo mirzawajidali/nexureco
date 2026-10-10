@@ -24,7 +24,7 @@ export default function TrendingProducts() {
         <div className="flex items-center justify-between mb-10">
           <h2 className="text-heading-xl font-heading uppercase">Trending Now</h2>
           <Link
-            to="/category/new-arrivals"
+            to="/collections/new-arrivals"
             className="text-xs font-heading font-bold uppercase tracking-wider border-b-2 border-brand-black pb-0.5 hover:text-gray-600 transition-colors"
           >
             View All
@@ -54,7 +54,8 @@ export default function TrendingProducts() {
                   categoryName={p.category_name}
                   variantCount={p.variant_count}
                   variantImages={p.variant_images}
-                  isBestSeller
+                  variantColors={p.variant_colors}
+                  isBestSeller={!!p.is_best_seller}
                 />
               ))}
         </div>

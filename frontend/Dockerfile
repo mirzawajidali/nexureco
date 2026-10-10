@@ -28,6 +28,12 @@ RUN mkdir -p /etc/nginx/templates /var/www/certbot
 COPY nginx.conf /etc/nginx/templates/nginx.conf
 COPY nginx-ssl.conf /etc/nginx/templates/nginx-ssl.conf
 
+# Storefront site config included by every nexureco.com server block (also production's
+# server-mounted config), and the internal listener the backend fetches index.html from
+COPY nginx/storefront.conf /etc/nginx/snippets/storefront.conf
+COPY nginx/shell.conf /etc/nginx/conf.d/shell.conf
+COPY nginx/security.conf /etc/nginx/conf.d/security.conf
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

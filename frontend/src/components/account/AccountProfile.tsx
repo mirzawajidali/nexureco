@@ -60,16 +60,18 @@ export default function AccountProfile() {
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="First Name"
+              autoComplete="given-name"
               {...register('first_name')}
               error={errors.first_name?.message}
             />
             <Input
               label="Last Name"
+              autoComplete="family-name"
               {...register('last_name')}
               error={errors.last_name?.message}
             />
           </div>
-          <Input label="Phone" {...register('phone')} />
+          <Input label="Phone" type="tel" autoComplete="tel" {...register('phone')} />
           <Button type="submit" isLoading={mutation.isPending}>
             Save Changes
           </Button>

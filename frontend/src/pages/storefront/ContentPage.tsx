@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import Spinner from '@/components/ui/Spinner';
 import { pagesApi } from '@/api/pages.api';
-import { APP_NAME } from '@/utils/constants';
+import { truncateText } from '@/utils/formatters';
+import { htmlToText } from '@/utils/seo';
 
 interface PageData {
   id: number;
@@ -35,6 +36,10 @@ export default function ContentPage() {
   if (isError || !data) {
     return (
       <div className="container-custom section-padding min-h-[60vh]">
+        <Helmet>
+          <title>Page Not Found</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
         <div className="text-center py-20">
           <h1 className="text-heading-sm font-heading uppercase mb-4">Page Not Found</h1>
           <p className="text-gray-500 text-sm mb-8">
@@ -53,10 +58,14 @@ export default function ContentPage() {
 
   return (
     <>
-      <Helmet>
-        <title>{data.meta_title || data.title} | {APP_NAME}</title>
-        {data.meta_description && (
-          <meta name="description" content={data.meta_description} />
+      {/* A custom meta title is used as-is (it usually already names the brand) */}
+      <Helmet {...(data.meta_title ? { titleTemplate: '%s' } : {})}>
+        <title>{data.meta_title || data.title}</title>
+        {(data.meta_description || data.content) && (
+          <meta
+            name="description"
+            content={data.meta_description || truncateText(htmlToText(data.content || ''), 160)}
+          />
         )}
       </Helmet>
 

@@ -18,7 +18,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { orderApi } from '@/api/cart.api';
 import { formatPrice, formatDate, formatDateTime } from '@/utils/formatters';
-import { APP_NAME } from '@/utils/constants';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import Spinner from '@/components/ui/Spinner';
 import { trackEvent } from '@/utils/analytics';
@@ -74,12 +73,14 @@ function TrackingLookupForm({
   return (
     <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-5">
       <div>
-        <label className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 mb-2 block">
+        <label htmlFor="track-order-number" className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 mb-2 block">
           Order Number
         </label>
         <input
+          id="track-order-number"
+          autoComplete="off"
           {...register('order_number', { required: 'Order number is required' })}
-          placeholder="e.g. MB-12345678"
+          placeholder="e.g. NX-12345678"
           className="w-full border border-gray-300 px-4 py-3.5 text-sm focus:outline-none focus:border-brand-black transition-colors"
         />
         {errors.order_number && (
@@ -87,11 +88,13 @@ function TrackingLookupForm({
         )}
       </div>
       <div>
-        <label className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 mb-2 block">
+        <label htmlFor="track-order-email" className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 mb-2 block">
           Email Address <span className="text-gray-400 font-normal normal-case">(optional)</span>
         </label>
         <input
+          id="track-order-email"
           type="email"
+          autoComplete="email"
           {...register('email')}
           placeholder="Email used when placing the order"
           className="w-full border border-gray-300 px-4 py-3.5 text-sm focus:outline-none focus:border-brand-black transition-colors"
@@ -452,7 +455,7 @@ export default function OrderTrackingPage() {
   return (
     <>
       <Helmet>
-        <title>Track Your Order | {APP_NAME}</title>
+        <title>Track Your Order</title>
       </Helmet>
 
       {/* Hero */}
@@ -502,7 +505,8 @@ export default function OrderTrackingPage() {
                   </h3>
                   <p className="text-sm text-gray-500 leading-relaxed">
                     Your order number was included in your order confirmation email.
-                    It starts with <span className="font-bold text-brand-black">MB-</span> followed by 8 digits.
+                    It starts with <span className="font-bold text-brand-black">NX-</span> followed by 8 digits
+                    (orders placed before October 2026 start with <span className="font-bold text-brand-black">MB-</span>).
                   </p>
                 </div>
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, users, products, categories, collections, search, media, cart, orders,
-    wishlist, reviews, newsletter, banners, pages, contact, menus, chat,
+    wishlist, reviews, newsletter, banners, pages, contact, menus, chat, csp,
 )
 from app.api.v1.endpoints.admin import (
     dashboard as admin_dashboard,
@@ -45,6 +45,7 @@ api_router.include_router(pages.router)
 api_router.include_router(contact.router)
 api_router.include_router(menus.router)
 api_router.include_router(chat.router)
+api_router.include_router(csp.router)
 
 # Admin
 api_router.include_router(admin_dashboard.router)

@@ -26,12 +26,11 @@ interface NavLink {
   children?: NavLink[];
 }
 
+// Only shown if the header menu can't be loaded; lists pages that have products
 const FALLBACK_NAV_LINKS: NavLink[] = [
-  { label: 'NEW ARRIVALS', href: '/category/new-arrivals' },
+  { label: 'NEW ARRIVALS', href: '/collections/new-arrivals' },
+  { label: 'BEST SELLERS', href: '/collections/best-sellers' },
   { label: 'MEN', href: '/category/men' },
-  { label: 'WOMEN', href: '/category/women' },
-  { label: 'KIDS', href: '/category/kids' },
-  { label: 'ACCESSORIES', href: '/category/accessories' },
   { label: 'SALE', href: '/collections/sale', accent: true },
 ];
 

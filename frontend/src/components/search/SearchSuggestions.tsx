@@ -48,6 +48,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
         <input
           ref={inputRef}
           type="text"
+          aria-label="Search products"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for products..."

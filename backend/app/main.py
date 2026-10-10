@@ -7,6 +7,8 @@ from app.core.middleware import setup_middleware
 from app.api.uploads import router as uploads_router, ImmutableStaticFiles
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.sitemaps import router as seo_router
+from app.api.v1.endpoints.feeds import router as feeds_router
+from app.api.storefront import router as storefront_router
 from app.db.database import engine, Base, AsyncSessionLocal
 from app.db.redis import init_redis, close_redis
 from app.db.elasticsearch import init_elasticsearch, close_elasticsearch
@@ -115,7 +117,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="My Brand - Fashion & Apparel Ecommerce Platform",
+    description="Nexure CO - Fashion & Apparel Ecommerce Platform",
     lifespan=lifespan,
 )
 
@@ -134,6 +136,10 @@ app.include_router(api_router)
 
 # SEO Routes (sitemap.xml at root level; robots.txt is a static file in frontend/public)
 app.include_router(seo_router)
+app.include_router(feeds_router)
+
+# Storefront page HTML with per-URL head tags and status (nginx proxies page requests here)
+app.include_router(storefront_router)
 
 
 @app.get("/")

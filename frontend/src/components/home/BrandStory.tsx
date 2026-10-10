@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import storyImage1000 from '@/assets/images/brand-story-1000.avif';
 import storyImage1600 from '@/assets/images/brand-story-1600.avif';
+import storyImageWebp1000 from '@/assets/images/brand-story-1000.webp';
+import storyImageWebp1600 from '@/assets/images/brand-story-1600.webp';
 
 export default function BrandStory() {
   return (
@@ -8,14 +10,24 @@ export default function BrandStory() {
       <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[520px] lg:min-h-[600px]">
         {/* Image side */}
         <div className="relative h-[360px] lg:h-auto overflow-hidden">
-          <img
-            src={storyImage1000}
-            srcSet={`${storyImage1000} 1000w, ${storyImage1600} 1600w`}
-            alt="Our Story"
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
+          {/* AVIF where supported, WebP for older browsers */}
+          <picture>
+            <source
+              type="image/avif"
+              srcSet={`${storyImage1000} 1000w, ${storyImage1600} 1600w`}
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+            <img
+              src={storyImageWebp1000}
+              srcSet={`${storyImageWebp1000} 1000w, ${storyImageWebp1600} 1600w`}
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              alt="Our Story"
+              width={1000}
+              height={667}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+          </picture>
           {/* Subtle fade into the black panel on desktop */}
           <div className="hidden lg:block absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-brand-black to-transparent" />
           {/* Bottom fade on mobile */}

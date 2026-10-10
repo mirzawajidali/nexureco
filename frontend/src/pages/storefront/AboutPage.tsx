@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import Breadcrumb from '@/components/ui/Breadcrumb';
-import { APP_NAME } from '@/utils/constants';
+import { SITE_NAME } from '@/utils/constants';
 
 /* ── Values data ── */
 const VALUES = [
@@ -49,10 +49,10 @@ export default function AboutPage() {
   return (
     <>
       <Helmet>
-        <title>About Us | {APP_NAME}</title>
+        <title>About Us</title>
         <meta
           name="description"
-          content={`Learn about ${APP_NAME} — our story, mission, and the values that drive everything we create.`}
+          content={`Learn about ${SITE_NAME} — our story, mission, and the values that drive everything we create.`}
         />
       </Helmet>
 

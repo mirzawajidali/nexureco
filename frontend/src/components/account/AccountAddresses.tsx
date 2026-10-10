@@ -128,16 +128,16 @@ export default function AccountAddresses() {
           >
             <Input label="Label (e.g. Home, Office)" {...register('label')} />
             <div className="grid grid-cols-2 gap-4">
-              <Input label="First Name" {...register('first_name')} error={errors.first_name?.message} />
-              <Input label="Last Name" {...register('last_name')} error={errors.last_name?.message} />
+              <Input label="First Name" autoComplete="given-name" {...register('first_name')} error={errors.first_name?.message} />
+              <Input label="Last Name" autoComplete="family-name" {...register('last_name')} error={errors.last_name?.message} />
             </div>
-            <Input label="Phone" {...register('phone')} />
-            <Input label="Address Line 1" {...register('address_line1')} error={errors.address_line1?.message} />
-            <Input label="Address Line 2" {...register('address_line2')} />
+            <Input label="Phone" type="tel" autoComplete="tel" {...register('phone')} />
+            <Input label="Address Line 1" autoComplete="address-line1" {...register('address_line1')} error={errors.address_line1?.message} />
+            <Input label="Address Line 2" autoComplete="address-line2" {...register('address_line2')} />
             <div className="grid grid-cols-3 gap-4">
-              <Input label="City" {...register('city')} error={errors.city?.message} />
-              <Input label="State" {...register('state')} error={errors.state?.message} />
-              <Input label="Postal Code" {...register('postal_code')} error={errors.postal_code?.message} />
+              <Input label="City" autoComplete="address-level2" {...register('city')} error={errors.city?.message} />
+              <Input label="State" autoComplete="address-level1" {...register('state')} error={errors.state?.message} />
+              <Input label="Postal Code" autoComplete="postal-code" {...register('postal_code')} error={errors.postal_code?.message} />
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" {...register('is_default')} className="accent-brand-black" />

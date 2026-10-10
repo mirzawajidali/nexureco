@@ -25,7 +25,8 @@ export default function RecentlyViewedSection({ excludeIds = [], limit = 8 }: Pr
   const products = (data?.data?.items ?? []).slice(0, limit);
   useViewItemList(products, RECENTLY_VIEWED_LIST);
 
-  if (products.length === 0) return null;
+  // A row with one or two cards looks broken, so wait until there are a few to show
+  if (products.length < 3) return null;
 
   return (
     <section className="mt-16 pt-12 border-t border-gray-200">
@@ -47,6 +48,7 @@ export default function RecentlyViewedSection({ excludeIds = [], limit = 8 }: Pr
             categoryName={p.category_name}
             variantCount={p.variant_count}
             variantImages={p.variant_images}
+            variantColors={p.variant_colors}
           />
         ))}
       </div>

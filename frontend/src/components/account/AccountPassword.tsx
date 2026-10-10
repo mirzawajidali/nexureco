@@ -59,18 +59,22 @@ export default function AccountPassword() {
           <Input
             label="Current Password"
             type="password"
+            autoComplete="current-password"
             {...register('current_password')}
             error={errors.current_password?.message}
           />
           <Input
             label="New Password"
             type="password"
+            autoComplete="new-password"
+            minLength={8}
             {...register('new_password')}
             error={errors.new_password?.message}
           />
           <Input
             label="Confirm New Password"
             type="password"
+            autoComplete="new-password"
             {...register('confirm_password')}
             error={errors.confirm_password?.message}
           />

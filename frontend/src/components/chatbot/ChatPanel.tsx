@@ -275,6 +275,7 @@ export default function ChatPanel() {
           <input
             ref={inputRef}
             type="text"
+            aria-label={placeholder || 'Message'}
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);

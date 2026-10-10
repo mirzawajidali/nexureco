@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import AdminLayout from '@/components/layout/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
@@ -116,6 +116,9 @@ export const router = createBrowserRouter([
       { path: '/about', element: <Lazy component={AboutPage} /> },
       { path: '/contact', element: <Lazy component={ContactPage} /> },
       { path: '/size-guide', element: <Lazy component={SizeGuidePage} /> },
+      // CMS copies of pages that have their own route would be duplicate content
+      { path: '/page/about', element: <Navigate to="/about" replace /> },
+      { path: '/page/contact', element: <Navigate to="/contact" replace /> },
       { path: '/page/:slug', element: <Lazy component={ContentPage} /> },
 
       { path: '*', element: <Lazy component={NotFoundPage} /> },

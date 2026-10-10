@@ -56,8 +56,9 @@ export default function ProductGrid({ products, isLoading = false, columns = 4, 
           categoryName={product.category_name}
           variantCount={product.variant_count}
           variantImages={product.variant_images}
+          variantColors={product.variant_colors}
           isNew={Date.now() - new Date(product.created_at).getTime() < 30 * 24 * 60 * 60 * 1000}
-          isBestSeller={product.total_sold >= 50}
+          isBestSeller={!!product.is_best_seller}
         />
       ))}
     </div>

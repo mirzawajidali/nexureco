@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ChevronRightIcon } from '@heroicons/react/20/solid';
 import Accordion from '@/components/ui/Accordion';
-import { APP_NAME } from '@/utils/constants';
 import { clsx } from 'clsx';
 
 /* ═══════════════════════════════════════════════════
@@ -266,7 +265,7 @@ export default function SizeGuidePage() {
   return (
     <>
       <Helmet>
-        <title>Size Guide | {APP_NAME}</title>
+        <title>Size Guide</title>
         <meta
           name="description"
           content="Find your perfect fit with our comprehensive size guide. Size charts for men's, women's, and kids' clothing and footwear."

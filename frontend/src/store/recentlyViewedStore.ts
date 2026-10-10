@@ -23,6 +23,6 @@ export const useRecentlyViewedStore = create<RecentlyViewedState>()(
       getExcluding: (productId) =>
         get().productIds.filter((id) => id !== productId),
     }),
-    { name: 'mybrand-recently-viewed' }
+    { name: 'nexure-recently-viewed' }
   )
 );

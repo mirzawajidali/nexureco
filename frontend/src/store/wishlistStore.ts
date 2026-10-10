@@ -37,6 +37,6 @@ export const useWishlistStore = create<WishlistState>()(
         }
       },
     }),
-    { name: 'mybrand-wishlist' }
+    { name: 'nexure-wishlist' }
   )
 );

@@ -5,7 +5,6 @@ import { Helmet } from 'react-helmet-async';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { orderApi } from '@/api/cart.api';
 import { formatPrice, formatDate } from '@/utils/formatters';
-import { APP_NAME } from '@/utils/constants';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import type { Order } from '@/types/order';
@@ -58,7 +57,7 @@ export default function OrderConfirmationPage() {
   return (
     <>
       <Helmet>
-        <title>Order Confirmed | {APP_NAME}</title>
+        <title>Order Confirmed</title>
       </Helmet>
 
       <div className="container-custom py-12">
