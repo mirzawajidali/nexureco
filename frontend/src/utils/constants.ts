@@ -50,6 +50,13 @@ export const PAGE_SEO = {
       'Find your T-shirt size with the Nexure CO size guide: chest and length charts for regular fit and oversized ' +
       'tees, plus easy tips for measuring at home.',
   },
+  // Same text as BLOG_TITLE / BLOG_DESCRIPTION in backend seo_service.py
+  blog: {
+    title: "Men's Style, Fit and T-Shirt Care Blog",
+    description:
+      "Read the Nexure CO blog for men's T-shirt styling ideas, size and fit advice, and cotton care tips " +
+      "made for Pakistan's weather and wardrobes.",
+  },
 };
 // Official social profiles (footer links and Organization structured data)
 export const SOCIAL_PROFILES = [

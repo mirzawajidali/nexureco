@@ -4,14 +4,13 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
-import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 import { imageSrcSet } from '@/utils/image';
 import { trackSelectPromotion, trackViewPromotion } from '@/utils/analytics';
 
 export interface HeroBannerSlide {
   id: string | number;
-  /** Small text above the headline (e.g. "NEW COLLECTION", "RUNNING") */
+  /** Small label above the headline (e.g. "NEW COLLECTION", "RUNNING") */
   eyebrow?: string;
   /** Main bold headline */
   title: string;
@@ -32,7 +31,7 @@ export interface HeroBannerSlide {
   /** Optional second CTA */
   secondaryButtonText?: string;
   secondaryLinkUrl?: string;
-  /** Text alignment: 'left' (default) or 'center' */
+  /** Copy position: 'left' (default, bottom-left like Adidas) or 'center' (bottom-centre) */
   textAlign?: 'left' | 'center';
 }
 
@@ -103,6 +102,20 @@ const toPromotion = (slide: HeroBannerSlide, index: number) => ({
   creative_slot: `hero_${index + 1}`,
 });
 
+function ArrowIcon() {
+  return (
+    <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+      <path strokeLinecap="square" d="M2 12h19m-5-5 5 5-5 5" />
+    </svg>
+  );
+}
+
+/** Entrance animation for one line of copy; steps in from below when its slide becomes active */
+const reveal = (isActive: boolean, delay: string) =>
+  `transition-all duration-500 ${delay} motion-reduce:transition-none ${
+    isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+  }`;
+
 function SlideContent({
   slide,
   isActive,
@@ -112,68 +125,43 @@ function SlideContent({
   isActive: boolean;
   onSelect: () => void;
 }) {
-  const centered = slide.textAlign !== 'left';
+  const centered = slide.textAlign === 'center';
+  // With the fade effect every slide stays in the page, so hidden slides' links are kept out of the tab order
+  const tabIndex = isActive ? undefined : -1;
 
   return (
-    // On phones the copy always sits at the bottom, over the darkest part of the gradient: centred
-    // over a portrait photo it lands on the model's face and the printed logo
-    <div className={`relative h-full flex z-10 ${centered ? 'items-end md:items-center' : 'items-end'}`}>
-      <div className={`container-custom w-full ${centered ? 'text-center pb-16 md:pb-0' : 'pb-16 md:pb-20 lg:pb-24'}`}>
-        <div className={`${centered ? 'max-w-3xl mx-auto' : 'max-w-2xl'}`}>
-          {/* Eyebrow */}
+    // Copy at the bottom, clear of the faces and chest logos in the photos; pb leaves room for the slider controls
+    <div className="relative h-full flex items-end z-10" aria-hidden={!isActive}>
+      <div className={`container-custom w-full pb-[4.75rem] md:pb-20 ${centered ? 'text-center' : ''}`}>
+        <div className={`max-w-[34rem] ${centered ? 'mx-auto' : ''}`}>
           {slide.eyebrow && (
-            <span
-              className={`inline-block text-xs md:text-sm font-heading font-bold uppercase tracking-[0.2em] text-white mb-3 md:mb-4 transition-all duration-500 delay-100 ${
-                isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
-              {slide.eyebrow}
-            </span>
-          )}
-
-          {/* Headline */}
-          <h2
-            className={`type-display text-white mb-4 md:mb-5 transition-all duration-600 delay-200 ${
-              isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-            }`}
-            style={{ whiteSpace: 'pre-line' }}
-          >
-            {slide.title}
-          </h2>
-
-          {/* Subtitle */}
-          {slide.subtitle && (
-            <p
-              className={`text-sm md:text-base text-white/85 mb-6 md:mb-8 max-w-md font-body leading-relaxed transition-all duration-500 delay-300 ${
-                centered ? 'mx-auto' : ''
-              } ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-            >
-              {slide.subtitle}
+            <p className={`hero-eyebrow mb-2 ${reveal(isActive, 'delay-100')}`}>
+              <span className="hero-label">{slide.eyebrow}</span>
             </p>
           )}
 
-          {/* CTA Buttons */}
-          <div
-            className={`flex gap-3 ${centered ? 'justify-center' : ''} transition-all duration-500 delay-[400ms] ${
-              isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}
-          >
-            <Link to={slide.linkUrl} onClick={onSelect} className="hero-btn hero-btn-primary group">
+          <h2 className={`hero-title ${reveal(isActive, 'delay-150')}`}>
+            <span className="hero-label" style={{ whiteSpace: 'pre-line' }}>
+              {slide.title}
+            </span>
+          </h2>
+
+          {slide.subtitle && (
+            <p className={`hero-subtitle mt-2 max-w-[30rem] ${centered ? 'mx-auto' : ''} ${reveal(isActive, 'delay-200')}`}>
+              <span className="hero-label">{slide.subtitle}</span>
+            </p>
+          )}
+
+          <div className={`flex flex-wrap gap-4 mt-6 md:mt-7 ${centered ? 'justify-center' : ''} ${reveal(isActive, 'delay-300')}`}>
+            <Link to={slide.linkUrl} onClick={onSelect} tabIndex={tabIndex} className="hero-cta">
               {slide.buttonText}
-              <svg
-                className="w-4 h-4 ml-2 transition-transform duration-200 group-hover:translate-x-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
+              <ArrowIcon />
             </Link>
 
             {slide.secondaryButtonText && slide.secondaryLinkUrl && (
-              <Link to={slide.secondaryLinkUrl} onClick={onSelect} className="hero-btn hero-btn-outline group">
+              <Link to={slide.secondaryLinkUrl} onClick={onSelect} tabIndex={tabIndex} className="hero-cta">
                 {slide.secondaryButtonText}
+                <ArrowIcon />
               </Link>
             )}
           </div>
@@ -182,6 +170,8 @@ function SlideContent({
     </div>
   );
 }
+
+const controlBtn = 'w-9 h-9 flex items-center justify-center hover:bg-gray-100 transition-colors';
 
 export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 5000 }: HeroBannerProps) {
   const swiperRef = useRef<SwiperType | null>(null);
@@ -229,7 +219,11 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
   const singleSlide = slides.length <= 1;
 
   return (
-    <section className="relative w-full h-[75vh] md:h-[85vh] lg:h-[92vh] bg-black overflow-hidden">
+    <section
+      className="relative w-full hero-height bg-gray-100 overflow-hidden"
+      aria-roledescription={singleSlide ? undefined : 'carousel'}
+      aria-label={singleSlide ? undefined : 'Featured'}
+    >
       <Swiper
         modules={[Autoplay, EffectFade]}
         effect="fade"
@@ -245,8 +239,12 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
         className="h-full"
       >
         {slides.map((slide, index) => (
-          <SwiperSlide key={slide.id} className="relative">
-            {/* Media (Video or Image) */}
+          <SwiperSlide
+            key={slide.id}
+            className="relative"
+            aria-roledescription={singleSlide ? undefined : 'slide'}
+            aria-label={singleSlide ? undefined : `${index + 1} of ${slides.length}`}
+          >
             {(index === 0 || showAllMedia) && (
               <SlideMedia
                 slide={slide}
@@ -255,10 +253,6 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
               />
             )}
 
-            {/* Gradient overlay — bottom-heavy like Adidas */}
-            <div className="absolute inset-0 hero-gradient" />
-
-            {/* Content */}
             <SlideContent
               slide={slide}
               isActive={index === activeIndex}
@@ -268,45 +262,67 @@ export default function HeroBanner({ slides = defaultSlides, autoplayDelay = 500
         ))}
       </Swiper>
 
-      {/* Slider controls — bottom right corner */}
+      {/* Slider controls: a white bar at the bottom centre, readable on any photo and clear of the
+          chat buttons fixed at the bottom right */}
       {!singleSlide && (
-        <div className="absolute bottom-5 right-5 md:bottom-6 md:right-6 lg:bottom-8 lg:right-8 z-20 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause slideshow' : 'Play slideshow'}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/40 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
-          >
-            {isPlaying ? (
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="5" width="4" height="14" rx="1" />
-                <rect x="14" y="5" width="4" height="14" rx="1" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
+        <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center bg-white text-black">
           <button
             type="button"
             onClick={() => swiperRef.current?.slidePrev()}
             aria-label="Previous slide"
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/40 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
+            className={controlBtn}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="square" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
+
+          {slides.map((slide, index) => (
+            <button
+              key={slide.id}
+              type="button"
+              onClick={() => swiperRef.current?.slideToLoop(index)}
+              aria-label={`Go to slide ${index + 1}`}
+              aria-current={index === activeIndex ? 'true' : undefined}
+              className="group w-7 h-9 flex items-center justify-center"
+            >
+              <span
+                className={`block h-0.5 w-5 transition-colors ${
+                  index === activeIndex ? 'bg-black' : 'bg-black/25 group-hover:bg-black/60'
+                }`}
+              />
+            </button>
+          ))}
+
           <button
             type="button"
             onClick={() => swiperRef.current?.slideNext()}
             aria-label="Next slide"
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/40 text-white flex items-center justify-center hover:bg-white hover:text-black transition-colors"
+            className={controlBtn}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="square" d="M9 5l7 7-7 7" />
             </svg>
+          </button>
+
+          <span className="w-px h-5 bg-gray-200" aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={togglePlay}
+            aria-label={isPlaying ? 'Pause slideshow' : 'Play slideshow'}
+            className={controlBtn}
+          >
+            {isPlaying ? (
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5" y="4" width="5" height="16" />
+                <rect x="14" y="4" width="5" height="16" />
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 4v16l14-8z" />
+              </svg>
+            )}
           </button>
         </div>
       )}

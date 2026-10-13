@@ -1,4 +1,5 @@
 import type { Product } from '@/types/product';
+import type { BlogPost } from '@/types/blog';
 import { APP_NAME, SITE_NAME, SITE_URL, TITLE_SUFFIX } from './constants';
 import { truncateText } from './formatters';
 
@@ -39,6 +40,32 @@ export function breadcrumbStructuredData(trail: [string, string][]) {
       name,
       item: `${SITE_URL}${path}`,
     })),
+  };
+}
+
+/** BlogPosting JSON-LD. Same as blog_posting_ld() in backend seo_service.py. */
+export function blogPostingStructuredData(post: BlogPost, description: string) {
+  const author = post.author_name || SITE_NAME;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description,
+    ...(post.published_at && { datePublished: post.published_at }),
+    ...((post.updated_at || post.published_at) && { dateModified: post.updated_at || post.published_at }),
+    author:
+      author === SITE_NAME
+        ? { '@type': 'Organization', name: SITE_NAME, url: `${SITE_URL}/` }
+        : { '@type': 'Person', name: author },
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/static/images/logo.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/blog/${post.slug}` },
+    inLanguage: 'en-PK',
+    ...(post.cover_image_url && { image: [absoluteUrl(post.cover_image_url)] }),
+    ...(post.category && { articleSection: post.category }),
   };
 }
 

@@ -87,6 +87,24 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
             priority="0.5",
         ))
 
+    # Blog: the index (only once there's a post) and every live post
+    if entries["blog_posts"]:
+        urls.append(_build_url_entry(
+            f"{base_url}/blog",
+            lastmod=max((p["updated_at"] for p in entries["blog_posts"] if p["updated_at"]), default=None),
+            changefreq="weekly",
+            priority="0.6",
+        ))
+    for post in entries["blog_posts"]:
+        image = post["image"]
+        urls.append(_build_url_entry(
+            f"{base_url}/blog/{post['slug']}",
+            lastmod=post["updated_at"],
+            changefreq="monthly",
+            priority="0.6",
+            images=[image if image.startswith("http") else f"{base_url}{image}"] if image else None,
+        ))
+
     xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml_content += (
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'

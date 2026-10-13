@@ -19,6 +19,7 @@ from app.models.media import MediaFile, InventoryLog
 from app.models.contact import ContactMessage
 from app.models.menu import Menu, MenuItem
 from app.models.abandoned_checkout import AbandonedCheckout
+from app.models.blog import BlogPost
 
 __all__ = [
     "Role",
@@ -40,5 +41,6 @@ __all__ = [
     "InventoryLog",
     "ContactMessage",
     "AbandonedCheckout",
+    "BlogPost",
     "Menu", "MenuItem",
 ]

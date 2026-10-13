@@ -4,6 +4,7 @@ from app.models.product import Product, ProductImage
 from app.models.category import Category
 from app.models.collection import Collection
 from app.models.page import Page
+from app.services import blog_service
 from app.services.listing_service import get_listings_with_products
 
 # /page/<slug> URLs that 301 elsewhere: CMS copies of the dedicated /about and /contact pages, and the
@@ -74,9 +75,16 @@ async def get_sitemap_entries(db: AsyncSession) -> dict:
     categories = [c for c in categories if c["slug"] in category_slugs]
     collections = [c for c in collections if c["slug"] in collection_slugs]
 
+    # Live blog posts, each with its cover image
+    blog_posts = [
+        {"slug": p.slug, "updated_at": p.updated_at or p.published_at, "image": p.cover_image_url}
+        for p in await blog_service.all_live(db)
+    ]
+
     return {
         "products": products,
         "categories": categories,
         "collections": collections,
         "pages": pages,
+        "blog_posts": blog_posts,
     }

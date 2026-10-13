@@ -8,6 +8,7 @@ import ShopByCollection from '@/components/home/ShopByCollection';
 import TrendingProducts from '@/components/home/TrendingProducts';
 import BrandStory from '@/components/home/BrandStory';
 import HomeSeoContent from '@/components/home/HomeSeoContent';
+import BlogStories from '@/components/home/BlogStories';
 import StillInterested from '@/components/home/StillInterested';
 import PromoStrip from '@/components/home/PromoStrip';
 import { getHeroBanners } from '@/api/pages.api';
@@ -69,6 +70,7 @@ export default function HomePage() {
       <StillInterested />
       <BrandStory />
       <FeaturedCollections />
+      <BlogStories />
       <HomeSeoContent />
     </>
   );

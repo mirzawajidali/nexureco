@@ -82,6 +82,7 @@ const ADMIN_NAV_SECONDARY: NavItem[] = [
     children: [
       { label: 'Banners', href: '/admin/banners', module: 'content' },
       { label: 'Menus', href: '/admin/menus', module: 'content' },
+      { label: 'Blog', href: '/admin/blog', module: 'content' },
       { label: 'Files', href: '/admin/media', module: 'media' },
     ],
   },

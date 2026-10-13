@@ -314,107 +314,259 @@
 
 /* ── Hero Banner (Adidas-style) ── */
 
-.hero-gradient {
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.75) 0%,
-    rgba(0, 0, 0, 0.35) 40%,
-    rgba(0, 0, 0, 0.05) 70%,
-    transparent 100%
-  );
-}
-
-/* Phones: the slide copy sits in the bottom ~40% (see SlideContent), so darken that part more */
-@media (max-width: 767px) {
-  .hero-gradient {
-    background: linear-gradient(
-      to top,
-      rgba(0, 0, 0, 0.85) 0%,
-      rgba(0, 0, 0, 0.6) 30%,
-      rgba(0, 0, 0, 0.15) 55%,
-      transparent 75%
-    );
-  }
-}
-
-
-/* CTA buttons */
-.hero-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* Bold UI label / button style */
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: var(--type-label-size);
-  line-height: var(--type-label-leading);
-  text-transform: uppercase;
-  letter-spacing: var(--type-label-tracking);
-  padding: 0.875rem 1.75rem;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.hero-btn-primary {
-  background: #fff;
-  color: #000;
-}
-
-.hero-btn-primary:hover {
-  background: #e5e5e5;
-}
-
-.hero-btn-outline {
-  background: transparent;
-  color: #fff;
-  border: 2px solid #fff;
-}
-
-.hero-btn-outline:hover {
-  background: #fff;
-  color: #000;
-}
-
-/* Navigation arrows */
-.hero-nav-btn {
-  display: none;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 20;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
-  transition: all 0.2s ease;
-}
-
-.hero-nav-btn:hover {
-  background: rgba(0, 0, 0, 0.6);
+/* Phones: 75% of the screen, so the next section peeks in. Tablets and up: the screen below the
+   TopBar + Header (~120px), capped at 4:3 so an upright tablet doesn't show a thin slice of the
+   landscape photo */
+.hero-height {
+  height: 75vh;
+  height: min(75svh, 150vw);
 }
 
 @media (min-width: 768px) {
-  .hero-nav-btn {
-    display: flex;
+  .hero-height {
+    height: max(480px, min(calc(100vh - 120px), 75vw));
+    height: max(480px, min(calc(100svh - 120px), 75vw));
   }
 }
 
-/* Swiper pagination bullets */
-.hero-pagination .swiper-pagination-bullet {
-  width: 28px;
-  height: 3px;
-  border-radius: 0;
-  background: rgba(255, 255, 255, 0.4);
-  opacity: 1;
-  transition: all 0.3s ease;
+/* Slide copy sits on white label boxes, readable on any photo without darkening it.
+   box-decoration-break gives every wrapped line its own box. */
+.hero-label {
+  background: #fff;
+  color: #000;
+  padding: 0.15em 0.45em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
-.hero-pagination .swiper-pagination-bullet-active {
-  width: 40px;
+.hero-title {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 32px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.hero-subtitle {
+  font-size: 14px;
+  line-height: 24px;
+  text-wrap: balance; /* even line lengths, no one-word last line */
+}
+
+.hero-eyebrow {
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 22px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 28px;
+    line-height: 40px;
+    letter-spacing: 2px;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+    line-height: 27px;
+  }
+}
+
+/* CTA: white button with an offset outline that it presses into */
+.hero-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  height: 3rem;
+  padding: 0 1rem 0 1.25rem;
   background: #fff;
+  color: #000;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.2s ease, transform 0.1s ease;
+}
+
+.hero-cta::after {
+  content: '';
+  position: absolute;
+  inset: 3px -3px -3px 3px;
+  border: 1px solid #fff;
+  pointer-events: none;
+  transition: inset 0.1s ease;
+}
+
+.hero-cta:hover {
+  color: #767677;
+}
+
+.hero-cta:active {
+  transform: translate(3px, 3px);
+}
+
+.hero-cta:active::after {
+  inset: 0;
+}
+
+/* Black ring with a white halo: visible on dark and light photos alike */
+.hero-cta:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-cta,
+  .hero-cta::after {
+    transition: none;
+  }
+}
+
+/* ── Blog articles (BlogPostPage; Adidas Stories style) ── */
+
+.blog-meta {
+  font-size: 12px;
+  line-height: 18px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Article headline: smaller than .type-display on phones, so long titles don't stack word by word */
+.blog-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight);
+  font-stretch: var(--font-display-stretch);
+  text-transform: uppercase;
+  font-size: 26px;
+  line-height: 32px;
+  letter-spacing: 1px;
+}
+
+@media (min-width: 768px) {
+  .blog-title {
+    font-size: 34px;
+    line-height: 40px;
+    letter-spacing: 1.5px;
+  }
+}
+
+.blog-lede {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.blog-content {
+  font-size: 16px;
+  line-height: 26px;
+  color: #000;
+}
+
+.blog-content > * + * {
+  margin-top: 1.1em;
+}
+
+.blog-content h2 {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight);
+  font-stretch: var(--font-display-stretch);
+  text-transform: uppercase;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.5px;
+  margin-top: 2.25em;
+}
+
+.blog-content h3 {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 17px;
+  line-height: 24px;
+  letter-spacing: 0.5px;
+  margin-top: 1.75em;
+}
+
+.blog-content h2 + *,
+.blog-content h3 + * {
+  margin-top: 0.6em;
+}
+
+.blog-content ul,
+.blog-content ol {
+  padding-left: 1.25em;
+}
+
+.blog-content ul {
+  list-style: disc;
+}
+
+.blog-content ol {
+  list-style: decimal;
+}
+
+.blog-content li + li {
+  margin-top: 0.4em;
+}
+
+.blog-content li::marker {
+  font-weight: 700;
+}
+
+.blog-content a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.blog-content a:hover {
+  color: #767677;
+}
+
+.blog-content blockquote {
+  border-left: 3px solid #000;
+  padding-left: 1em;
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.blog-content th,
+.blog-content td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e5e5;
+  text-align: left;
+  vertical-align: top;
+}
+
+.blog-content th {
+  background: #f5f5f5;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Wide tables scroll inside their own box on phones instead of widening the page */
+.blog-table-scroll {
+  overflow-x: auto;
 }
 
 /* Height of a sticky bar at the bottom of the screen (StickyAddToBag sets html.has-sticky-bar while it

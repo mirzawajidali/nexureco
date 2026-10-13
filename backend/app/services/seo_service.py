@@ -16,6 +16,7 @@ import html
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,10 +36,12 @@ from app.core.store import (
     format_price,
 )
 from app.models.banner import Banner
+from app.models.blog import BlogPost
 from app.models.category import Category
 from app.models.collection import Collection, CollectionProduct
 from app.models.page import Page
 from app.models.product import Product
+from app.services import blog_service
 from app.services.listing_service import get_listings_with_products
 from app.services.product_service import _product_eager_options
 from app.utils.image_variants import JPEG_PRESETS, jpeg_url
@@ -62,6 +65,11 @@ CONTACT_DESCRIPTION = (
 SIZE_GUIDE_DESCRIPTION = (
     "Find your T-shirt size with the Nexure CO size guide: chest and length charts for regular fit and oversized "
     "tees, plus easy tips for measuring at home."
+)
+BLOG_TITLE = "Men's Style, Fit and T-Shirt Care Blog"
+BLOG_DESCRIPTION = (
+    "Read the Nexure CO blog for men's T-shirt styling ideas, size and fit advice, and cotton care tips "
+    "made for Pakistan's weather and wardrobes."
 )
 DEFAULT_IMAGE = "/static/images/logo.png"
 LISTING_LIMIT = 48  # products listed in a category/collection's no-JS fallback
@@ -95,6 +103,7 @@ _PRIVATE_PREFIXES: list[tuple[str, str]] = [
 ]
 
 _DETAIL_PATH = re.compile(r"^/(category|collections|product|page)/([^/]+)$")
+_BLOG_POST_PATH = re.compile(r"^/blog/([^/]+)$")
 _BLOCK_TAG = re.compile(r"</?(p|div|br|li|ul|ol|h[1-6]|tr|td|th|blockquote)\b[^>]*>", re.I)
 _UNSAFE_BLOCK = re.compile(r"<(script|style|iframe|noscript)\b.*?</\1\s*>", re.I | re.S)
 
@@ -110,7 +119,7 @@ class PageHead:
     image: str | None = None  # share image: /uploads/... or site path
     image_size: tuple[int, int] | None = None
     image_alt: str | None = None
-    product_tags: dict[str, str] = field(default_factory=dict)  # product:* Open Graph tags
+    product_tags: dict[str, str] = field(default_factory=dict)  # product:* / article:* Open Graph tags
     # JSON-LD the client renders too (replaced on hydration) / only rendered here (kept)
     json_ld: list[dict] = field(default_factory=list)
     static_json_ld: list[dict] = field(default_factory=list)
@@ -251,6 +260,12 @@ async def build_page_head(db: AsyncSession, path: str, query: dict[str, str], ba
     for prefix, title in _PRIVATE_PREFIXES:
         if path == prefix or path.startswith(prefix + "/"):
             return PageHead(title=_branded(title), robots="noindex")
+
+    if path == "/blog":
+        return await _blog_index_head(db, base_url)
+    blog_match = _BLOG_POST_PATH.match(path)
+    if blog_match:
+        return await _blog_post_head(db, blog_match.group(1), base_url) or not_found_head(base_url, "Post Not Found")
 
     match = _DETAIL_PATH.match(path)
     if match:
@@ -560,6 +575,93 @@ async def _content_page_head(db: AsyncSession, slug: str, base_url: str) -> Page
         og_title=page.meta_title or page.title,
         json_ld=[_breadcrumbs(base_url, [(page.title, f"/page/{page.slug}")])],
         noscript=f"<h1>{_e(page.title)}</h1>{content}",
+    )
+
+
+def _iso_utc(value) -> str | None:
+    """Stored UTC timestamps as ISO 8601 with the zone (as the blog API returns them)."""
+    if value is None:
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
+
+
+def blog_posting_ld(post: BlogPost, base_url: str, description: str, image: str | None) -> dict:
+    """BlogPosting JSON-LD. Same as blogPostingStructuredData() in frontend/src/utils/seo.ts."""
+    author_name = post.author_name or SITE_NAME
+    data = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": post.title,
+        "description": description,
+        "datePublished": _iso_utc(post.published_at),
+        "dateModified": _iso_utc(post.updated_at or post.published_at),
+        "author": (
+            {"@type": "Organization", "name": SITE_NAME, "url": f"{base_url}/"}
+            if author_name == SITE_NAME
+            else {"@type": "Person", "name": author_name}
+        ),
+        "publisher": {
+            "@type": "Organization",
+            "name": SITE_NAME,
+            "logo": {"@type": "ImageObject", "url": f"{base_url}{DEFAULT_IMAGE}"},
+        },
+        "mainEntityOfPage": {"@type": "WebPage", "@id": f"{base_url}/blog/{post.slug}"},
+        "inLanguage": "en-PK",
+    }
+    if image:
+        data["image"] = [_absolute(base_url, image)]
+    if post.category:
+        data["articleSection"] = post.category
+    return {key: value for key, value in data.items() if value is not None}
+
+
+async def _blog_index_head(db: AsyncSession, base_url: str) -> PageHead:
+    """BlogPage.tsx."""
+    posts = await blog_service.all_live(db)
+    items = "".join(
+        f'<li><a href="{_e(base_url)}/blog/{_e(p.slug)}">{_e(p.title)}</a>'
+        + (f" – {_e(p.excerpt)}" if p.excerpt else "")
+        + "</li>"
+        for p in posts
+    )
+    return PageHead(
+        title=_branded(BLOG_TITLE),
+        description=BLOG_DESCRIPTION,
+        json_ld=[_breadcrumbs(base_url, [("Blog", "/blog")])],
+        noscript=f"<h1>{_e(BLOG_TITLE)}</h1><p>{_e(BLOG_DESCRIPTION)}</p>" + (f"<ul>{items}</ul>" if items else ""),
+    )
+
+
+async def _blog_post_head(db: AsyncSession, slug: str, base_url: str) -> PageHead | None:
+    """BlogPostPage.tsx."""
+    post = await blog_service.get_published(db, slug)
+    if not post:
+        return None
+
+    text = html_to_text(post.content or "")
+    description = post.meta_description or post.excerpt or (truncate_text(text, 160) if text else BLOG_DESCRIPTION)
+    image, image_size = _social_image(post.cover_image_url)
+    article_tags = {
+        "article:published_time": _iso_utc(post.published_at),
+        "article:modified_time": _iso_utc(post.updated_at or post.published_at),
+        "article:section": post.category,
+    }
+    # Admin-written rich text (sanitized on save); keep it from closing the <noscript>
+    content = _UNSAFE_BLOCK.sub("", post.content or "").replace("</noscript", "&lt;/noscript")
+    return PageHead(
+        title=_branded(post.meta_title or post.title),
+        description=description,
+        og_title=post.meta_title or post.title,
+        og_type="article",
+        image=image,
+        image_size=image_size,
+        image_alt=post.cover_image_alt,
+        product_tags={key: value for key, value in article_tags.items() if value},
+        json_ld=[
+            blog_posting_ld(post, base_url, description, post.cover_image_url),
+            _breadcrumbs(base_url, [("Blog", "/blog"), (post.title, f"/blog/{post.slug}")]),
+        ],
+        noscript=f"<h1>{_e(post.title)}</h1>{content}",
     )
 
 

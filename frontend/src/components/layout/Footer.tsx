@@ -23,6 +23,7 @@ const FALLBACK_FOOTER_LINKS = {
   'COMPANY': [
     { label: 'About Us', href: '/about' },
     { label: 'Contact Us', href: '/contact' },
+    { label: 'Blog', href: '/blog' },
     { label: 'Privacy Policy', href: '/page/privacy' },
     { label: 'Terms of Service', href: '/page/terms' },
   ],

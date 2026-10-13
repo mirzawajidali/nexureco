@@ -67,6 +67,8 @@ const ContactPage = lazy(() => import('@/pages/storefront/ContactPage'));
 const SizeGuidePage = lazy(() => import('@/pages/storefront/SizeGuidePage'));
 const AboutPage = lazy(() => import('@/pages/storefront/AboutPage'));
 const ContentPage = lazy(() => import('@/pages/storefront/ContentPage'));
+const BlogPage = lazy(() => import('@/pages/storefront/BlogPage'));
+const BlogPostPage = lazy(() => import('@/pages/storefront/BlogPostPage'));
 const NotFoundPage = lazy(() => import('@/pages/storefront/NotFoundPage'));
 
 // Admin Pages (lazy)
@@ -89,6 +91,8 @@ const AdminInventoryPage = lazy(() => import('@/pages/admin/AdminInventoryPage')
 const AdminReviewsPage = lazy(() => import('@/pages/admin/AdminReviewsPage'));
 const AdminBannersPage = lazy(() => import('@/pages/admin/AdminBannersPage'));
 const AdminPagesPage = lazy(() => import('@/pages/admin/AdminPagesPage'));
+const AdminBlogPostsPage = lazy(() => import('@/pages/admin/AdminBlogPostsPage'));
+const AdminBlogPostFormPage = lazy(() => import('@/pages/admin/AdminBlogPostFormPage'));
 const AdminAnalyticsPage = lazy(() => import('@/pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = lazy(() => import('@/pages/admin/AdminSettingsPage'));
 const AdminMediaPage = lazy(() => import('@/pages/admin/AdminMediaPage'));
@@ -139,6 +143,8 @@ export const router = createBrowserRouter([
         element: <Navigate to={to} replace />,
       })),
       { path: '/page/:slug', element: <Lazy component={ContentPage} /> },
+      { path: '/blog', element: <Lazy component={BlogPage} /> },
+      { path: '/blog/:slug', element: <Lazy component={BlogPostPage} /> },
 
       { path: '*', element: <Lazy component={NotFoundPage} /> },
     ],
@@ -187,6 +193,9 @@ export const router = createBrowserRouter([
       { path: 'banners', element: <M module="content" component={AdminBannersPage} /> },
       { path: 'menus', element: <M module="content" component={AdminMenusPage} /> },
       { path: 'pages', element: <M module="content" component={AdminPagesPage} /> },
+      { path: 'blog', element: <M module="content" component={AdminBlogPostsPage} /> },
+      { path: 'blog/new', element: <M module="content" component={AdminBlogPostFormPage} /> },
+      { path: 'blog/:id', element: <M module="content" component={AdminBlogPostFormPage} /> },
 
       // Contact Messages
       { path: 'contact-messages', element: <M module="contact_messages" component={AdminContactMessagesPage} /> },

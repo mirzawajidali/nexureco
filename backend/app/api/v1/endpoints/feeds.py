@@ -25,6 +25,7 @@ from app.core.store import (
 )
 from app.db.database import get_db
 from app.models.page import Page
+from app.services import blog_service
 from app.services.listing_service import get_listings_with_products
 from app.services.seo_service import (
     HOME_DESCRIPTION,
@@ -147,6 +148,15 @@ async def llms_txt(db: AsyncSession = Depends(get_db)):
         lines += ["", "## Shop", ""]
         lines += [f"- [{name}]({base_url}/category/{slug})" for slug, name in sorted(categories.items())]
         lines += [f"- [{slug.replace('-', ' ').title()}]({base_url}/collections/{slug})" for slug in sorted(collection_slugs)]
+
+    # Blog articles: style, fit, care and shopping guides
+    posts = await blog_service.all_live(db)
+    if posts:
+        lines += ["", "## Guides", ""]
+        lines += [
+            f"- [{p.title}]({base_url}/blog/{p.slug})" + (f": {p.excerpt}" if p.excerpt else "")
+            for p in posts
+        ]
 
     lines += [
         "",

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, users, products, categories, collections, search, media, cart, orders,
     wishlist, reviews, newsletter, banners, pages, contact, menus, chat, csp, coupons, checkout_drafts, payments,
+    blog,
 )
 from app.api.v1.endpoints.admin import (
     dashboard as admin_dashboard,
@@ -24,6 +25,7 @@ from app.api.v1.endpoints.admin import (
     contact as admin_contact,
     roles as admin_roles,
     staff as admin_staff,
+    blog as admin_blog,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -50,6 +52,7 @@ api_router.include_router(csp.router)
 api_router.include_router(coupons.router)
 api_router.include_router(checkout_drafts.router)
 api_router.include_router(payments.router)
+api_router.include_router(blog.router)
 
 # Admin
 api_router.include_router(admin_dashboard.router)
@@ -72,3 +75,4 @@ api_router.include_router(admin_search.router)
 api_router.include_router(admin_contact.router)
 api_router.include_router(admin_roles.router)
 api_router.include_router(admin_staff.router)
+api_router.include_router(admin_blog.router)
