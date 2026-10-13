@@ -3,7 +3,7 @@ import string
 from urllib.parse import quote
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update, case
 from sqlalchemy.orm import selectinload
 from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.models.cart import CartItem
@@ -14,7 +14,7 @@ from app.models.user import User
 from app.schemas.order import CheckoutRequest, TrackOrderRequest
 from app.services import coupon_service
 from app.core.exceptions import BadRequestException, NotFoundException
-from app.core.store import FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST
+from app.services import store_settings_service
 from app.services.abandoned_checkout_service import mark_recovered
 from app.services.bundle_service import BUNDLE_PRICE, BUNDLE_SIZE, bundle_discount, is_bundle_eligible
 from app.utils.image_variants import jpeg_url
@@ -208,7 +208,8 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
 
         if cart_item.variant_id:
             var_result = await db.execute(
-                select(ProductVariant).where(ProductVariant.id == cart_item.variant_id)
+                # Locked until the order is saved: two checkouts (or a restock) can't both read the same stock
+                select(ProductVariant).where(ProductVariant.id == cart_item.variant_id).with_for_update()
             )
             variant = var_result.scalar_one_or_none()
             if not variant or not variant.is_active:
@@ -278,8 +279,8 @@ async def place_order(db: AsyncSession, user: User | None, data: CheckoutRequest
         coupon_id = None
         coupon_code = f"Bundle: {bundle.sets} x {BUNDLE_SIZE} for Rs. {BUNDLE_PRICE:,}"
 
-    # Calculate totals (free shipping is judged on the subtotal before discounts)
-    shipping_cost = 0 if subtotal >= FREE_SHIPPING_THRESHOLD else STANDARD_SHIPPING_COST
+    # Calculate totals (free shipping is judged on the subtotal before discounts; rule set in Admin > Settings)
+    shipping_cost = store_settings_service.shipping_cost_for(subtotal, await store_settings_service.get_store_settings(db))
     total = subtotal - discount_amount + shipping_cost
 
     # Create order
@@ -391,35 +392,90 @@ async def get_order_by_number(db: AsyncSession, order_number: str, user_id: int 
     return order
 
 
+ORDER_STATUSES = ("pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned")
+
+# Where an order can go from each status. Moving forward may skip steps; moving back is allowed one step,
+# to undo a mistake. Cancelled and returned are final: their stock is already back on the shelf.
+ORDER_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "pending": ("confirmed", "processing", "shipped", "delivered", "cancelled"),
+    "confirmed": ("pending", "processing", "shipped", "delivered", "cancelled"),
+    "processing": ("confirmed", "shipped", "delivered", "cancelled"),
+    "shipped": ("processing", "delivered", "returned"),
+    "delivered": ("returned",),
+    "cancelled": (),
+    "returned": (),
+}
+
+
+async def _restock_order(db: AsyncSession, order: Order, reason: str, note: str) -> None:
+    """Put an order's items back in stock and take them off the products' sold counts."""
+    for item in order.items:
+        if item.variant_id:
+            await db.execute(
+                update(ProductVariant)
+                .where(ProductVariant.id == item.variant_id)
+                .values(stock_quantity=ProductVariant.stock_quantity + item.quantity)
+            )
+            db.add(InventoryLog(
+                variant_id=item.variant_id,
+                quantity_change=item.quantity,
+                reason=reason,
+                reference_id=order.id,
+                note=note,
+            ))
+        if item.product_id:
+            await db.execute(
+                update(Product)
+                .where(Product.id == item.product_id)
+                .values(total_sold=case(
+                    (Product.total_sold > item.quantity, Product.total_sold - item.quantity), else_=0,
+                ))
+            )
+
+
+async def change_order_status(
+    db: AsyncSession, order: Order, new_status: str, note: str | None = None, changed_by: int | None = None,
+) -> bool:
+    """Move an order (with its items loaded) to ``new_status``, with the stock and coupon effects.
+
+    Cancelling or returning puts the items back in stock; cancelling also gives the coupon use back.
+    The same status again only records the note. Returns whether the status changed, i.e. whether the
+    customer should get a status email.
+    """
+    old = order.status
+    if new_status == old:
+        if note:
+            db.add(OrderStatusHistory(order_id=order.id, status=old, note=note, created_by=changed_by))
+            await db.flush()
+        return False
+    if new_status not in ORDER_TRANSITIONS.get(old, ()):
+        raise BadRequestException(f"An order can't go from {old} to {new_status}")
+
+    now = datetime.now(timezone.utc)
+    order.status = new_status
+    if new_status == "cancelled":
+        order.cancelled_at = now
+        await _restock_order(db, order, "order_cancelled", f"Order {order.order_number} cancelled")
+        if order.coupon_id:
+            await coupon_service.release_coupon_usage(db, order.coupon_id, order.id)
+    elif new_status == "returned":
+        await _restock_order(db, order, "return", f"Order {order.order_number} returned")
+    if new_status in ("shipped", "delivered") and not order.shipped_at:
+        order.shipped_at = now
+    if new_status == "delivered" and not order.delivered_at:
+        order.delivered_at = now
+
+    db.add(OrderStatusHistory(order_id=order.id, status=new_status, note=note, created_by=changed_by))
+    await db.flush()
+    return True
+
+
 async def cancel_order(db: AsyncSession, order_number: str, user_id: int) -> Order:
     order = await get_order_by_number(db, order_number, user_id)
     if order.status not in ("pending", "confirmed"):
         raise BadRequestException("Order cannot be cancelled at this stage")
 
-    order.status = "cancelled"
-    order.cancelled_at = datetime.now(timezone.utc)
-
-    # Restore inventory
-    for item in order.items:
-        if item.variant_id:
-            var_result = await db.execute(
-                select(ProductVariant).where(ProductVariant.id == item.variant_id)
-            )
-            variant = var_result.scalar_one_or_none()
-            if variant:
-                variant.stock_quantity += item.quantity
-                db.add(InventoryLog(
-                    variant_id=variant.id,
-                    quantity_change=item.quantity,
-                    reason="order_cancelled",
-                    reference_id=order.id,
-                    note=f"Order {order.order_number} cancelled",
-                ))
-
-    db.add(OrderStatusHistory(
-        order_id=order.id, status="cancelled", note="Cancelled by customer"
-    ))
-    await db.flush()
+    await change_order_status(db, order, "cancelled", "Cancelled by customer")
 
     # Send cancellation email
     await _send_order_status_email(order, "cancelled", "Cancelled by customer")

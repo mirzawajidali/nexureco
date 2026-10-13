@@ -13,6 +13,10 @@ export interface OptionFormRow {
 
 export interface VariantFormRow {
   id: string;
+  /** The saved variant this row edits; null for a row added in the form */
+  variantId: number | null;
+  /** Stock when the form loaded; the save sends the change from this, not an absolute count */
+  stockLoaded: number | null;
   optionValueCombo: string[];
   price: number | null;
   sku: string;
@@ -71,6 +75,8 @@ function generateVariants(
 
     return {
       id: crypto.randomUUID(),
+      variantId: null,
+      stockLoaded: null,
       optionValueCombo: combo,
       price: basePrice,
       sku: '',
@@ -119,6 +125,8 @@ export default function VariantManager({
 
         return {
           id: crypto.randomUUID(),
+          variantId: v.id,
+          stockLoaded: v.stock_quantity,
           optionValueCombo: combo,
           price: v.price,
           sku: v.sku ?? '',

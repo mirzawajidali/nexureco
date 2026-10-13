@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
-import { FREE_SHIPPING_THRESHOLD } from '@/utils/constants';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { formatPrice } from '@/utils/formatters';
 
 const linkClass = 'text-brand-black underline underline-offset-2 hover:text-gray-600';
 
 /** Keyword-rich copy for search engines and shoppers, just above the footer (Adidas-style SEO block). */
 export default function HomeSeoContent() {
+  const { freeShippingThreshold } = useStoreSettings();
   return (
     <section className="section-padding border-t border-gray-200">
       <div className="container-custom">
@@ -35,8 +37,10 @@ export default function HomeSeoContent() {
             </p>
             <p className="text-sm leading-relaxed">
               Every order is cash on delivery: you pay when your parcel arrives. Delivery takes 3-5 business days
-              anywhere in Pakistan, and orders of Rs. {FREE_SHIPPING_THRESHOLD.toLocaleString('en-PK')} or more ship
-              free.
+              anywhere in Pakistan, and{' '}
+              {freeShippingThreshold > 0
+                ? `orders of ${formatPrice(freeShippingThreshold)} or more ship free.`
+                : 'every order ships free.'}
             </p>
           </div>
         </div>

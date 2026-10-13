@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import AdminLayout from '@/components/layout/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import ModuleRoute from './ModuleRoute';
@@ -45,6 +44,10 @@ function M({ module, component: C }: { module: string; component: React.Componen
     </ModuleRoute>
   );
 }
+
+// The admin shell (sidebar, search, notifications and the admin API) loads only when someone opens /admin,
+// so shop visitors don't download it
+const AdminLayout = lazy(() => import('@/components/layout/AdminLayout'));
 
 // Storefront Pages (lazy)
 const HomePage = lazy(() => import('@/pages/storefront/HomePage'));
@@ -153,7 +156,9 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: (
       <AdminRoute>
-        <AdminLayout />
+        <Suspense fallback={<PageLoader />}>
+          <AdminLayout />
+        </Suspense>
       </AdminRoute>
     ),
     children: [
@@ -206,8 +211,9 @@ export const router = createBrowserRouter([
       { path: 'newsletter', element: <M module="newsletter" component={AdminNewsletterPage} /> },
 
       // Staff Management (admin-only, no ModuleRoute needed — AdminRoute + backend handles it)
-      { path: 'roles', element: <Lazy component={AdminRolesPage} /> },
-      { path: 'staff', element: <Lazy component={AdminStaffPage} /> },
+      // Owner only (the server enforces it too): "owner" is no staff module, so only the owner passes
+      { path: 'roles', element: <M module="owner" component={AdminRolesPage} /> },
+      { path: 'staff', element: <M module="owner" component={AdminStaffPage} /> },
     ],
   },
 ]);

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
   MagnifyingGlassIcon,
@@ -12,6 +12,7 @@ import {
   ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { resizedImage } from '@/utils/image';
 import { adminOrdersApi, adminProductsApi, adminCustomersApi } from '@/api/admin.api';
 import { formatPrice } from '@/utils/formatters';
 
@@ -47,6 +48,7 @@ interface CustomerInfo {
 /* ─── Page ─── */
 
 export default function AdminCreateOrderPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   // Products
@@ -101,10 +103,18 @@ export default function AdminCreateOrderPage() {
     mutationFn: (payload: Record<string, unknown>) => adminOrdersApi.create(payload),
     onSuccess: (res) => {
       toast.success('Order created');
+      // The new order in the list, and the stock it used
+      queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
       const orderId = (res.data as { id: number }).id;
       navigate(`/admin/orders/${orderId}`);
     },
-    onError: () => toast.error('Failed to create order'),
+    onError: (err: unknown) => {
+      // Show the server's reason, e.g. "Only 3 of … available" or "Choose a size/colour for …"
+      const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Failed to create order');
+    },
   });
 
   const handleSave = () => {
@@ -246,7 +256,7 @@ export default function AdminCreateOrderPage() {
                       <div key={`${item.product_id}-${item.variant_id}`} className="py-3 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
                           {item.image_url ? (
-                            <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
+                            <img src={resizedImage(item.image_url, 160)} loading="lazy" alt={item.product_name} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full bg-gray-100" />
                           )}
@@ -833,7 +843,7 @@ function ProductBrowseRow({ product, isExpanded, onToggleExpand, selected, onTog
           <input type="checkbox" checked={isSelected} readOnly className="rounded text-gray-900 focus:ring-gray-900" />
           <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
             {product.primary_image ? (
-              <img src={product.primary_image} alt="" className="w-full h-full object-cover" />
+              <img src={resizedImage(product.primary_image, 160)} loading="lazy" alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gray-100" />
             )}
@@ -857,7 +867,7 @@ function ProductBrowseRow({ product, isExpanded, onToggleExpand, selected, onTog
           <input type="checkbox" checked={false} readOnly className="rounded opacity-30" />
           <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
             {product.primary_image ? (
-              <img src={product.primary_image} alt="" className="w-full h-full object-cover" />
+              <img src={resizedImage(product.primary_image, 160)} loading="lazy" alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gray-100" />
             )}

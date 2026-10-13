@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.database import get_db
-from app.core.dependencies import require_module
+from app.core.dependencies import admin_modules, require_module
 from app.models.user import User
 from app.models.order import Order
 from app.models.newsletter import NewsletterSubscriber
@@ -50,6 +50,14 @@ async def get_notifications(
             NewsletterSubscriber.subscribed_at >= last_24h,
         )
     )).scalar() or 0
+
+    # Orders and subscribers only for team members who may open those modules
+    modules = await admin_modules(db, admin)
+    if modules is not None:
+        if "orders" not in modules:
+            recent_orders, orders_today = [], 0
+        if "newsletter" not in modules:
+            recent_subs, subs_today = [], 0
 
     return {
         "orders": [

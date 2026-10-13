@@ -536,7 +536,11 @@ export default function RichTextEditor({
       {showHtml ? (
         <textarea
           value={htmlSource}
-          onChange={(e) => setHtmlSource(e.target.value)}
+          onChange={(e) => {
+            // Saved as typed, so Save works without switching back to the visual editor first
+            setHtmlSource(e.target.value);
+            onChange(e.target.value);
+          }}
           className="w-full px-3 py-3 text-sm font-mono text-gray-700 min-h-[160px] focus:outline-none resize-y bg-gray-50/30"
           spellCheck={false}
         />

@@ -93,6 +93,21 @@ export default function AdminCategoriesPage() {
   const flatList = flattenCategories(rawCategories);
   const allFlat = getAllFlat(rawCategories);
 
+  // The category being edited and everything under it: none of these can become its parent
+  const ownBranch = new Set<number>();
+  if (editingCategory) {
+    ownBranch.add(editingCategory.id);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const c of allFlat) {
+        if (c.parent_id != null && ownBranch.has(c.parent_id) && !ownBranch.has(c.id)) {
+          ownBranch.add(c.id);
+          grew = true;
+        }
+      }
+    }
+  }
+
   // Filter by search
   const filteredList = search
     ? flatList.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -162,8 +177,9 @@ export default function AdminCategoriesPage() {
     e.preventDefault();
     const payload: Record<string, unknown> = {
       name: form.name,
-      description: form.description || undefined,
-      image_url: form.image_url || undefined,
+      // null (not undefined) so clearing a field really clears it
+      description: form.description || null,
+      image_url: form.image_url || null,
       parent_id: form.parent_id ? Number(form.parent_id) : null,
       display_order: Number(form.display_order),
       is_active: form.is_active,
@@ -429,7 +445,8 @@ export default function AdminCategoriesPage() {
                   >
                     <option value="">None (Top Level)</option>
                     {allFlat
-                      .filter((c) => c.id !== editingCategory?.id)
+                      // Not itself or one of its own subcategories (that would make a loop)
+                      .filter((c) => !ownBranch.has(c.id))
                       .map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}

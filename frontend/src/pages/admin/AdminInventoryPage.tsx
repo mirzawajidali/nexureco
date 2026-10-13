@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { resizedImage } from '@/utils/image';
 import {
   MagnifyingGlassIcon,
   ChevronLeftIcon,
@@ -294,7 +295,7 @@ export default function AdminInventoryPage() {
                               <div className="h-10 w-10 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
                                 {item.primary_image ? (
                                   <img
-                                    src={item.primary_image}
+                                    src={resizedImage(item.primary_image, 160)} loading="lazy"
                                     alt=""
                                     className="h-full w-full object-cover"
                                   />

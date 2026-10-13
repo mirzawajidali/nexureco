@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.product import Product
 from app.models.review import Review
 from app.schemas.common import PaginatedResponse, MessageResponse
+from app.services import product_service
 from app.services.review_service import _update_product_rating
 from app.utils.file_upload import delete_upload_file
 from app.utils.pagination import paginate
@@ -91,6 +92,7 @@ async def approve_review(
 
     # Recalculate product rating
     await _update_product_rating(db, review.product_id)
+    await product_service.refresh_product(db, review.product_id)  # the new rating on the shop and in search
 
     return {"message": "Review approved successfully"}
 
@@ -111,6 +113,7 @@ async def reject_review(
 
     # Recalculate product rating
     await _update_product_rating(db, review.product_id)
+    await product_service.refresh_product(db, review.product_id)
 
     return {"message": "Review rejected successfully"}
 
@@ -133,6 +136,7 @@ async def delete_review(
 
     # Recalculate product rating after deletion
     await _update_product_rating(db, product_id)
+    await product_service.refresh_product(db, product_id)
     for url in photo_urls:
         delete_upload_file(url)
 

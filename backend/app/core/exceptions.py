@@ -25,6 +25,11 @@ class NotFoundException(HTTPException):
         super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
+class TooManyRequestsException(HTTPException):
+    def __init__(self, detail: str = "Too many requests"):
+        super().__init__(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail)
+
+
 class ConflictException(HTTPException):
     def __init__(self, detail: str = "Resource already exists"):
         super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)

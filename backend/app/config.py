@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -70,6 +71,14 @@ class Settings(BaseSettings):
     @property
     def trusted_hosts_list(self) -> list[str]:
         return [host.strip() for host in self.TRUSTED_HOSTS.split(",")]
+
+    @model_validator(mode="after")
+    def _require_real_secret_key(self) -> "Settings":
+        # Every login token is signed with SECRET_KEY: with the public default (or an empty/short key)
+        # anyone could sign their own admin token. Outside DEBUG, refuse to start instead.
+        if not self.DEBUG and (self.SECRET_KEY.startswith("your-super-secret") or len(self.SECRET_KEY) < 32):
+            raise ValueError("SECRET_KEY must be set to a long random value (32+ characters) in production")
+        return self
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

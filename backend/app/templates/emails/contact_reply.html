@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Re: {{ subject }}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding-bottom:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        Hi {{ first_name }},
+      </p>
+      {% for line in reply_lines %}
+      <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">{{ line }}</p>
+      {% endfor %}
+      <p style="margin:24px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#333333;line-height:1.6;">
+        {{ app_name }} Customer Care
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-top:24px;border-top:2px solid #f0f0f0;">
+      <p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#000000;text-transform:uppercase;letter-spacing:1px;">YOUR MESSAGE</p>
+      <p style="margin:0 0 4px;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#666666;line-height:1.5;"><strong>{{ subject }}</strong>{% if order_number %} &middot; Order {{ order_number }}{% endif %}</p>
+      {% for line in message_lines %}
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#666666;line-height:1.5;">{{ line }}</p>
+      {% endfor %}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-top:24px;">
+      <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#999999;line-height:1.5;">
+        Any other questions? Write to {{ store_email }} or call {{ store_phone }}.
+      </p>
+    </td>
+  </tr>
+</table>
+{% endblock %}

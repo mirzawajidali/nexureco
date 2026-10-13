@@ -1,13 +1,16 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_, text
+from sqlalchemy import select, func, or_, and_, text, delete as sa_delete
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 from app.models.product import (
     Product, ProductImage, ProductOption, ProductOptionValue,
     ProductVariant, VariantOptionValue,
 )
 from app.models.category import Category
 from app.models.collection import CollectionProduct
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.models.media import InventoryLog
+from app.models.order import OrderItem
+from app.schemas.product import OptionCreate, ProductCreate, ProductUpdate, VariantCreate
 from app.utils.slug import generate_unique_slug
 from app.utils.pagination import paginate
 from app.core.exceptions import NotFoundException
@@ -155,11 +158,24 @@ async def list_products(
     is_featured: bool | None = None,
     q: str | None = None,
     product_ids: list[int] | None = None,
+    category_ids: list[int] | None = None,
+    stock: str | None = None,
 ) -> dict:
     query = select(Product).options(*_product_eager_options())
 
     if product_ids:
         query = query.where(Product.id.in_(product_ids))
+    if category_ids is not None:
+        query = query.where(Product.category_id.in_(category_ids or [-1]))
+    if stock in ("in_stock", "out_of_stock"):
+        # Same as the list's "total_stock": all variants' stock added up
+        total_stock = (
+            select(func.coalesce(func.sum(ProductVariant.stock_quantity), 0))
+            .where(ProductVariant.product_id == Product.id)
+            .correlate(Product)
+            .scalar_subquery()
+        )
+        query = query.where(total_stock > 0 if stock == "in_stock" else total_stock <= 0)
     if status:
         query = query.where(Product.status == status)
     if is_featured is not None:
@@ -276,7 +292,8 @@ async def create_product(db: AsyncSession, data: ProductCreate) -> dict:
             compare_at_price=var_data.compare_at_price,
             cost_price=var_data.cost_price,
             stock_quantity=var_data.stock_quantity,
-            low_stock_threshold=var_data.low_stock_threshold,
+            low_stock_threshold=var_data.low_stock_threshold if var_data.low_stock_threshold is not None else 5,
+            is_active=var_data.is_active if var_data.is_active is not None else True,
             image_url=var_data.image_url,
         )
         db.add(variant)
@@ -299,6 +316,149 @@ async def create_product(db: AsyncSession, data: ProductCreate) -> dict:
     return _build_detail(product)
 
 
+def _norm(text_value: str) -> str:
+    return " ".join(text_value.split()).casefold()
+
+
+async def _sync_options_and_variants(
+    db: AsyncSession,
+    product_id: int,
+    options_in: list[OptionCreate],
+    variants_in: list[VariantCreate] | None,
+) -> None:
+    """Bring a product's options and variants in line with the admin form, in place.
+
+    Options and values are matched by name and variants by id (or, failing that, by their option values),
+    so a save keeps variant ids: order lines, carts and stock history stay linked. Stock changes apply as
+    the difference from what the form loaded (``stock_loaded``), so sales made while the form was open
+    aren't overwritten. Fields the form doesn't send (sale/cost price, low-stock threshold, active) keep
+    their values. Variants the form dropped are deleted, or deactivated if orders reference them.
+    """
+    options = (await db.execute(
+        select(ProductOption).where(ProductOption.product_id == product_id)
+        .options(selectinload(ProductOption.values))
+    )).scalars().all()
+    variants = (await db.execute(
+        select(ProductVariant).where(ProductVariant.product_id == product_id)
+        .options(
+            selectinload(ProductVariant.option_values)
+            .selectinload(VariantOptionValue.option_value)
+            .selectinload(ProductOptionValue.option)
+        )
+    )).scalars().all()
+
+    def combo(pairs) -> frozenset:
+        return frozenset((_norm(option_name), _norm(value)) for option_name, value in pairs)
+
+    existing_combo = {
+        v.id: combo((link.option_value.option.name, link.option_value.value) for link in v.option_values)
+        for v in variants
+    }
+
+    if variants_in is not None and variants:
+        # Option links are rewritten below for every variant the form keeps
+        await db.execute(sa_delete(VariantOptionValue).where(
+            VariantOptionValue.variant_id.in_([v.id for v in variants])
+        ))
+        for v in variants:
+            set_committed_value(v, "option_values", [])
+
+    # Options and their values, matched by name; `flat` follows the form's option_value_indices order
+    flat: list[tuple[str, ProductOptionValue]] = []
+    remaining_options = {_norm(o.name): o for o in options}
+    for idx, opt_in in enumerate(options_in):
+        option = remaining_options.pop(_norm(opt_in.name), None)
+        if option is None:
+            option = ProductOption(product_id=product_id, name=opt_in.name, display_order=idx)
+            db.add(option)
+            await db.flush()
+            remaining_values: dict[str, ProductOptionValue] = {}
+        else:
+            option.name = opt_in.name
+            option.display_order = idx
+            remaining_values = {_norm(v.value): v for v in option.values}
+        for val_idx, val_in in enumerate(opt_in.values):
+            value = remaining_values.pop(_norm(val_in.value), None)
+            if value is None:
+                value = ProductOptionValue(option_id=option.id, value=val_in.value, display_order=val_idx)
+                db.add(value)
+            else:
+                value.value = val_in.value
+                value.display_order = val_idx
+            flat.append((opt_in.name, value))
+        for gone in remaining_values.values():
+            await db.delete(gone)
+    for gone in remaining_options.values():
+        await db.delete(gone)
+    await db.flush()
+
+    if variants_in is None:
+        return
+
+    unmatched = {v.id: v for v in variants}
+    for var_in in variants_in:
+        picked = [flat[i] for i in dict.fromkeys(var_in.option_value_indices) if 0 <= i < len(flat)]
+        key = combo((option_name, value.value) for option_name, value in picked)
+        variant = unmatched.pop(var_in.id, None) if var_in.id is not None else None
+        if variant is None:
+            variant = next((v for vid, v in unmatched.items() if existing_combo[vid] == key), None)
+            if variant is not None:
+                del unmatched[variant.id]
+
+        if variant is None:
+            variant = ProductVariant(
+                product_id=product_id,
+                sku=var_in.sku,
+                price=var_in.price,
+                compare_at_price=var_in.compare_at_price,
+                cost_price=var_in.cost_price,
+                stock_quantity=var_in.stock_quantity,
+                low_stock_threshold=var_in.low_stock_threshold if var_in.low_stock_threshold is not None else 5,
+                is_active=var_in.is_active if var_in.is_active is not None else True,
+                image_url=var_in.image_url,
+            )
+            db.add(variant)
+            await db.flush()
+        else:
+            sent = var_in.model_fields_set
+            variant.sku = var_in.sku
+            variant.price = var_in.price
+            variant.image_url = var_in.image_url
+            if "compare_at_price" in sent:
+                variant.compare_at_price = var_in.compare_at_price
+            if "cost_price" in sent:
+                variant.cost_price = var_in.cost_price
+            if var_in.low_stock_threshold is not None:
+                variant.low_stock_threshold = var_in.low_stock_threshold
+            if var_in.is_active is not None:
+                variant.is_active = var_in.is_active
+            # The form's change in stock, applied to the live count (orders may have come in meanwhile)
+            if var_in.stock_loaded is not None:
+                change = var_in.stock_quantity - var_in.stock_loaded
+            else:
+                change = var_in.stock_quantity - variant.stock_quantity
+            if change:
+                variant.stock_quantity = ProductVariant.stock_quantity + change
+                db.add(InventoryLog(
+                    variant_id=variant.id, quantity_change=change, reason="manual_adjustment",
+                    note="Changed on the product page",
+                ))
+
+        for _, value in picked:
+            db.add(VariantOptionValue(variant_id=variant.id, option_value_id=value.id))
+
+    if unmatched:
+        ordered = set((await db.execute(
+            select(OrderItem.variant_id).where(OrderItem.variant_id.in_(list(unmatched))).distinct()
+        )).scalars())
+        for vid, variant in unmatched.items():
+            if vid in ordered:
+                variant.is_active = False  # keep for order history and restocking
+            else:
+                await db.delete(variant)
+    await db.flush()
+
+
 async def update_product(db: AsyncSession, product_id: int, data: ProductUpdate) -> dict:
     product = await get_product_by_id(db, product_id)
     update_data = data.model_dump(exclude_unset=True)
@@ -306,74 +466,18 @@ async def update_product(db: AsyncSession, product_id: int, data: ProductUpdate)
     if "name" in update_data and update_data["name"] != product.name:
         update_data["slug"] = await generate_unique_slug(db, Product, Product.slug, update_data["name"])
 
-    # Extract options/variants before updating basic fields
-    new_options_data = update_data.pop("options", None)
-    new_variants_data = update_data.pop("variants", None)
+    # Options/variants are synced separately, not set as plain fields
+    update_data.pop("options", None)
+    update_data.pop("variants", None)
 
     for key, value in update_data.items():
         setattr(product, key, value)
     await db.flush()
 
-    # If options were provided, delete-and-recreate options + variants
-    if new_options_data is not None:
-        # Delete existing variants first (they reference option values)
-        existing_variants = await db.execute(
-            select(ProductVariant).where(ProductVariant.product_id == product_id)
-        )
-        for variant in existing_variants.scalars().all():
-            await db.delete(variant)
-        await db.flush()
-
-        # Delete existing options (cascades to option_values)
-        existing_options = await db.execute(
-            select(ProductOption).where(ProductOption.product_id == product_id)
-        )
-        for option in existing_options.scalars().all():
-            await db.delete(option)
-        await db.flush()
-
-        # Recreate options and collect all option values in flat list
-        all_option_values = []
-        for idx, opt_data in enumerate(new_options_data):
-            option = ProductOption(
-                product_id=product_id,
-                name=opt_data["name"],
-                display_order=idx,
-            )
-            db.add(option)
-            await db.flush()
-            for val_idx, val_data in enumerate(opt_data["values"]):
-                ov = ProductOptionValue(
-                    option_id=option.id,
-                    value=val_data["value"],
-                    display_order=val_idx,
-                )
-                db.add(ov)
-                await db.flush()
-                all_option_values.append(ov)
-
-        # Recreate variants if provided
-        if new_variants_data is not None:
-            for var_data in new_variants_data:
-                variant = ProductVariant(
-                    product_id=product_id,
-                    sku=var_data.get("sku"),
-                    price=var_data.get("price"),
-                    compare_at_price=var_data.get("compare_at_price"),
-                    cost_price=var_data.get("cost_price"),
-                    stock_quantity=var_data.get("stock_quantity", 0),
-                    low_stock_threshold=var_data.get("low_stock_threshold", 5),
-                    image_url=var_data.get("image_url"),
-                )
-                db.add(variant)
-                await db.flush()
-                for idx in var_data.get("option_value_indices", []):
-                    if 0 <= idx < len(all_option_values):
-                        db.add(VariantOptionValue(
-                            variant_id=variant.id,
-                            option_value_id=all_option_values[idx].id,
-                        ))
-                await db.flush()
+    if data.options is not None:
+        await _sync_options_and_variants(db, product_id, data.options, data.variants)
+        # Kept variants had their option links rewritten with plain SQL: reload everything fresh
+        db.expire_all()
 
     product = await get_product_by_id(db, product_id)
 
@@ -382,6 +486,25 @@ async def update_product(db: AsyncSession, product_id: int, data: ProductUpdate)
     await index_product(product)
 
     return _build_detail(product)
+
+
+async def refresh_product(db: AsyncSession, product_id: int) -> None:
+    """After an admin change to a product (stock, photos, reviews, details): save it, then update the search
+    index and clear the shop's cached copies, so the shop and search show the change straight away.
+
+    Committing first matters: clearing the cache before the commit lets a shop visit in between cache the
+    old data again for the cache's lifetime.
+    """
+    await db.commit()
+    from app.db.redis import CacheService
+    from app.services.es_indexing_service import index_product
+    try:
+        product = await get_product_by_id(db, product_id)
+    except NotFoundException:
+        await CacheService.invalidate_product()
+        return
+    await index_product(product)
+    await CacheService.invalidate_product(slug=product.slug)
 
 
 async def delete_product(db: AsyncSession, product_id: int) -> None:

@@ -10,11 +10,13 @@ import { useAuthStore } from '@/store/authStore';
 import { usePageViews } from '@/hooks/useAnalytics';
 import { setAnalyticsUserId } from '@/utils/analytics';
 import { Helmet } from 'react-helmet-async';
-import { DEFAULT_DESCRIPTION, FREE_SHIPPING_MESSAGE, HOME_TITLE, SITE_URL, TITLE_SUFFIX } from '@/utils/constants';
+import { DEFAULT_DESCRIPTION, HOME_TITLE, SITE_URL, TITLE_SUFFIX } from '@/utils/constants';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
 
 export default function Layout() {
   const { pathname } = useLocation();
   const userId = useAuthStore((s) => s.user?.id);
+  const { freeShippingMessage } = useStoreSettings();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -59,7 +61,7 @@ export default function Layout() {
       <section className="bg-[#0e4d3c] text-white">
         <div className="container-custom py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="font-heading font-bold uppercase tracking-wide text-base sm:text-lg text-center sm:text-left">
-            {FREE_SHIPPING_MESSAGE}
+            {freeShippingMessage}
           </p>
           <Link
             to="/category/men"

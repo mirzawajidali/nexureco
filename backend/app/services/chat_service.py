@@ -5,12 +5,12 @@ from google.genai import types
 
 from app.config import get_settings
 from app.core.store import (
-    FREE_SHIPPING_THRESHOLD,
     RETURN_WINDOW_DAYS,
-    STANDARD_SHIPPING_COST,
     STORE_PHONE,
     format_price,
 )
+from app.db.database import AsyncSessionLocal
+from app.services import store_settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ STORE INFORMATION:
 - Business hours: Mon - Sat, 10am - 8pm PKT
 
 POLICIES:
-- Shipping: FREE shipping on orders of {format_price(FREE_SHIPPING_THRESHOLD)} or more. Standard shipping costs {format_price(STANDARD_SHIPPING_COST)}. Delivery takes 3-5 business days across Pakistan.
+- Shipping: __SHIPPING_POLICY__ Delivery takes 3-5 business days across Pakistan.
 - Returns: Returns and exchanges within {RETURN_WINDOW_DAYS} days of delivery. Items must be unworn, unwashed, and in original packaging. Refunds are processed within 5-7 business days. Exchanges for a different size or colour are subject to availability.
 - Payment: Cash on Delivery (COD) only. Pay in cash when your order arrives.
 - Order cancellation: Orders can be cancelled while in Pending or Confirmed status.
@@ -51,6 +51,16 @@ async def chat(message: str, history: list[dict]) -> str:
         )
 
     try:
+        # The shipping rule is set in Admin > Settings
+        async with AsyncSessionLocal() as db:
+            store = await store_settings_service.get_store_settings(db)
+        free_from = int(store["checkout_free_shipping_from"])
+        system_prompt = SYSTEM_PROMPT.replace(
+            "__SHIPPING_POLICY__",
+            f"FREE shipping on orders of {format_price(free_from)} or more. "
+            f"Standard shipping costs {format_price(int(store['checkout_shipping_charge']))}."
+            if free_from > 0 else "FREE shipping on all orders.",
+        )
         client = genai.Client(api_key=_settings.GEMINI_API_KEY)
 
         # Build conversation history for Gemini
@@ -71,11 +81,12 @@ async def chat(message: str, history: list[dict]) -> str:
             )
         )
 
-        response = client.models.generate_content(
+        # The async client: the blocking one would freeze this worker (every request on it) until Gemini answers
+        response = await client.aio.models.generate_content(
             model=_settings.GEMINI_MODEL,
             contents=contents,
             config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
+                system_instruction=system_prompt,
                 max_output_tokens=300,
                 temperature=0.7,
             ),

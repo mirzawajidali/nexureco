@@ -1,6 +1,6 @@
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from typing import Literal
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.database import get_db
@@ -8,8 +8,16 @@ from app.core.dependencies import require_module
 from app.models.user import User
 from app.models.order import Order, OrderItem
 from app.models.product import Product
+from app.utils.store_time import add_months, in_store_time, store_today, utc_range
 
 router = APIRouter(prefix="/admin/analytics", tags=["Admin Analytics"])
+
+# Sales headlines count orders that are still sales: not cancelled and not returned
+_NOT_SOLD = ("cancelled", "returned")
+
+
+def _placed_between(start, end):
+    return [Order.created_at >= start, Order.created_at < end]
 
 
 @router.get("/dashboard")
@@ -18,121 +26,95 @@ async def get_analytics_dashboard(
     admin: User = require_module("analytics"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Comprehensive analytics dashboard with date range support."""
-    today = date.today()
+    """Comprehensive analytics dashboard with date range support (days in Pakistan time)."""
+    today = store_today()
 
-    # Determine date ranges for current and previous period
+    # Current period and the same length just before it (never overlapping)
     if period == "today":
-        start_date = today
-        prev_start = today - timedelta(days=1)
-        prev_end = today - timedelta(days=1)
+        start_date, prev_start, prev_end = today, today - timedelta(days=1), today - timedelta(days=1)
         group_by = "hour"
-    elif period == "7d":
-        start_date = today - timedelta(days=6)
-        prev_start = today - timedelta(days=13)
-        prev_end = today - timedelta(days=7)
+    elif period in ("7d", "30d", "90d"):
+        days = {"7d": 7, "30d": 30, "90d": 90}[period]
+        start_date = today - timedelta(days=days - 1)
+        prev_start, prev_end = start_date - timedelta(days=days), start_date - timedelta(days=1)
         group_by = "day"
-    elif period == "30d":
-        start_date = today - timedelta(days=29)
-        prev_start = today - timedelta(days=59)
-        prev_end = today - timedelta(days=30)
-        group_by = "day"
-    elif period == "90d":
-        start_date = today - timedelta(days=89)
-        prev_start = today - timedelta(days=179)
-        prev_end = today - timedelta(days=90)
-        group_by = "day"
-    else:  # 12m
-        start_date = (today - timedelta(days=365)).replace(day=1)
-        prev_start = (today - timedelta(days=730)).replace(day=1)
-        prev_end = (today - timedelta(days=366)).replace(day=1)
+    else:  # 12m: this month and the 11 before it
+        start_date = add_months(today, -11)
+        prev_start, prev_end = add_months(start_date, -12), start_date - timedelta(days=1)
         group_by = "month"
 
-    # --- Key Metrics (current period) ---
-    current_filter = [
-        Order.status != "cancelled",
-        func.date(Order.created_at) >= start_date,
-    ]
-    result = await db.execute(
+    cur_start, cur_end = utc_range(start_date, today)
+    prv_start, prv_end = utc_range(prev_start, prev_end)
+
+    # --- Sales breakdown: every order placed in the period except cancelled ones (returns shown separately)
+    placed = [Order.status != "cancelled", *_placed_between(cur_start, cur_end)]
+    row = (await db.execute(
         select(
             func.coalesce(func.sum(Order.subtotal), 0).label("gross_sales"),
             func.coalesce(func.sum(Order.discount_amount), 0).label("discounts"),
             func.coalesce(func.sum(Order.shipping_cost), 0).label("shipping"),
             func.coalesce(func.sum(Order.tax_amount), 0).label("tax"),
-            func.coalesce(func.sum(Order.total), 0).label("total_sales"),
-            func.count(Order.id).label("total_orders"),
-        ).where(*current_filter)
-    )
-    row = result.one()
+        ).where(*placed)
+    )).one()
     gross_sales = float(row.gross_sales)
     discounts = float(row.discounts)
     shipping = float(row.shipping)
     tax = float(row.tax)
+
+    returns = float((await db.execute(
+        select(func.coalesce(func.sum(Order.total), 0))
+        .where(Order.status == "returned", *_placed_between(cur_start, cur_end))
+    )).scalar())
+    net_sales = gross_sales - discounts - returns
+
+    # --- Headlines: orders still counted as sales (not cancelled, not returned)
+    current_filter = [Order.status.notin_(_NOT_SOLD), *_placed_between(cur_start, cur_end)]
+    row = (await db.execute(
+        select(func.coalesce(func.sum(Order.total), 0).label("total_sales"), func.count(Order.id).label("total_orders"))
+        .where(*current_filter)
+    )).one()
     total_sales = float(row.total_sales)
     total_orders = int(row.total_orders)
     avg_order_value = round(total_sales / total_orders, 2) if total_orders > 0 else 0
 
-    # Returns in current period
-    returns_result = await db.execute(
-        select(func.coalesce(func.sum(Order.total), 0))
-        .where(Order.status == "returned")
-        .where(func.date(Order.created_at) >= start_date)
-    )
-    returns = float(returns_result.scalar())
-    net_sales = gross_sales - discounts - returns
+    fulfilled_orders = int((await db.execute(
+        select(func.count()).select_from(Order)
+        .where(Order.status.in_(["shipped", "delivered"]), *_placed_between(cur_start, cur_end))
+    )).scalar())
 
-    # Fulfilled orders in current period
-    fulfilled_result = await db.execute(
-        select(func.count())
-        .select_from(Order)
-        .where(Order.status.in_(["shipped", "delivered"]))
-        .where(func.date(Order.created_at) >= start_date)
-    )
-    fulfilled_orders = int(fulfilled_result.scalar())
-
-    # --- Previous period metrics for comparison ---
-    prev_filter = [
-        Order.status != "cancelled",
-        func.date(Order.created_at) >= prev_start,
-        func.date(Order.created_at) <= prev_end,
-    ]
-    prev_result = await db.execute(
-        select(
-            func.coalesce(func.sum(Order.total), 0).label("total_sales"),
-            func.count(Order.id).label("total_orders"),
-        ).where(*prev_filter)
-    )
-    prev_row = prev_result.one()
+    # --- Previous period, for the comparison arrows
+    prev_row = (await db.execute(
+        select(func.coalesce(func.sum(Order.total), 0).label("total_sales"), func.count(Order.id).label("total_orders"))
+        .where(Order.status.notin_(_NOT_SOLD), *_placed_between(prv_start, prv_end))
+    )).one()
     prev_total_sales = float(prev_row.total_sales)
     prev_total_orders = int(prev_row.total_orders)
     prev_avg = round(prev_total_sales / prev_total_orders, 2) if prev_total_orders > 0 else 0
 
-    prev_fulfilled = await db.execute(
-        select(func.count())
-        .select_from(Order)
-        .where(Order.status.in_(["shipped", "delivered"]))
-        .where(func.date(Order.created_at) >= prev_start)
-        .where(func.date(Order.created_at) <= prev_end)
-    )
-    prev_fulfilled_orders = int(prev_fulfilled.scalar())
+    prev_fulfilled_orders = int((await db.execute(
+        select(func.count()).select_from(Order)
+        .where(Order.status.in_(["shipped", "delivered"]), *_placed_between(prv_start, prv_end))
+    )).scalar())
 
     def pct_change(current: float, previous: float) -> float:
         if previous == 0:
             return 100.0 if current > 0 else 0.0
         return round(((current - previous) / previous) * 100, 1)
 
-    # --- Sales Over Time ---
+    # --- Sales over time, by Pakistan day / month / hour
+    local_time = in_store_time(Order.created_at)
     sales_over_time = []
     if group_by == "day":
+        local_day = func.date(local_time)
         result = await db.execute(
             select(
-                func.date(Order.created_at).label("d"),
+                local_day.label("d"),
                 func.coalesce(func.sum(Order.total), 0).label("sales"),
                 func.count(Order.id).label("orders"),
             )
             .where(*current_filter)
-            .group_by(func.date(Order.created_at))
-            .order_by(func.date(Order.created_at))
+            .group_by(local_day)
+            .order_by(local_day)
         )
         date_data = {
             str(r.d): {"sales": float(r.sales), "orders": int(r.orders)}
@@ -145,41 +127,40 @@ async def get_analytics_dashboard(
             sales_over_time.append({"date": ds, **entry})
             current_d += timedelta(days=1)
     elif group_by == "month":
+        year, month = func.extract("year", local_time), func.extract("month", local_time)
         result = await db.execute(
             select(
-                func.extract("year", Order.created_at).label("y"),
-                func.extract("month", Order.created_at).label("m"),
+                year.label("y"),
+                month.label("m"),
                 func.coalesce(func.sum(Order.total), 0).label("sales"),
                 func.count(Order.id).label("orders"),
             )
             .where(*current_filter)
-            .group_by(
-                func.extract("year", Order.created_at),
-                func.extract("month", Order.created_at),
-            )
-            .order_by(
-                func.extract("year", Order.created_at),
-                func.extract("month", Order.created_at),
-            )
+            .group_by(year, month)
+            .order_by(year, month)
         )
         month_names = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        for r in result.all():
-            sales_over_time.append({
-                "date": f"{month_names[int(r.m)]} {int(r.y)}",
-                "sales": float(r.sales),
-                "orders": int(r.orders),
-            })
+        month_data = {
+            (int(r.y), int(r.m)): {"sales": float(r.sales), "orders": int(r.orders)}
+            for r in result.all()
+        }
+        # All 12 months, including ones without orders (like the daily chart)
+        for i in range(12):
+            month_start = add_months(start_date, i)
+            entry = month_data.get((month_start.year, month_start.month), {"sales": 0, "orders": 0})
+            sales_over_time.append({"date": f"{month_names[month_start.month]} {month_start.year}", **entry})
     else:  # hour (today)
+        hour = func.extract("hour", local_time)
         result = await db.execute(
             select(
-                func.extract("hour", Order.created_at).label("h"),
+                hour.label("h"),
                 func.coalesce(func.sum(Order.total), 0).label("sales"),
                 func.count(Order.id).label("orders"),
             )
             .where(*current_filter)
-            .group_by(func.extract("hour", Order.created_at))
-            .order_by(func.extract("hour", Order.created_at))
+            .group_by(hour)
+            .order_by(hour)
         )
         hour_data = {
             int(r.h): {"sales": float(r.sales), "orders": int(r.orders)}
@@ -198,8 +179,7 @@ async def get_analytics_dashboard(
             func.max(OrderItem.image_url).label("image_url"),
         )
         .join(Order)
-        .where(Order.status != "cancelled")
-        .where(func.date(Order.created_at) >= start_date)
+        .where(*current_filter)
         .group_by(OrderItem.product_name)
         .order_by(func.sum(OrderItem.quantity).desc())
         .limit(5)
@@ -246,55 +226,38 @@ async def get_sales_analytics(
 ):
     """
     Sales analytics: total revenue, orders grouped by month (last 12 months),
-    today's revenue, and this month's revenue.
+    today's revenue, and this month's revenue (Pakistan time; cancelled and returned orders left out).
     """
-    today = date.today()
-    first_of_month = today.replace(day=1)
-    twelve_months_ago = (today - timedelta(days=365)).replace(day=1)
+    today = store_today()
+    sold = Order.status.notin_(_NOT_SOLD)
 
-    # Total revenue (all time, excluding cancelled)
-    result = await db.execute(
-        select(func.coalesce(func.sum(Order.total), 0))
-        .where(Order.status != "cancelled")
-    )
-    total_revenue = float(result.scalar())
+    total_revenue = float((await db.execute(select(func.coalesce(func.sum(Order.total), 0)).where(sold))).scalar())
 
-    # Today's revenue
-    result = await db.execute(
-        select(func.coalesce(func.sum(Order.total), 0))
-        .where(Order.status != "cancelled")
-        .where(func.date(Order.created_at) == today)
-    )
-    today_revenue = float(result.scalar())
+    day_start, day_end = utc_range(today, today)
+    today_revenue = float((await db.execute(
+        select(func.coalesce(func.sum(Order.total), 0)).where(sold, *_placed_between(day_start, day_end))
+    )).scalar())
 
-    # This month's revenue
-    result = await db.execute(
-        select(func.coalesce(func.sum(Order.total), 0))
-        .where(Order.status != "cancelled")
-        .where(Order.created_at >= first_of_month)
-    )
-    month_revenue = float(result.scalar())
+    month_start, _ = utc_range(today.replace(day=1), today)
+    month_revenue = float((await db.execute(
+        select(func.coalesce(func.sum(Order.total), 0)).where(sold, Order.created_at >= month_start)
+    )).scalar())
 
-    # Orders by month (last 12 months)
+    # Orders by month (this month and the 11 before it)
+    since, _ = utc_range(add_months(today, -11), today)
+    local_time = in_store_time(Order.created_at)
+    year, month = func.extract("year", local_time), func.extract("month", local_time)
     result = await db.execute(
         select(
-            func.extract("year", Order.created_at).label("year"),
-            func.extract("month", Order.created_at).label("month"),
+            year.label("year"),
+            month.label("month"),
             func.count(Order.id).label("order_count"),
             func.coalesce(func.sum(Order.total), 0).label("revenue"),
         )
-        .where(Order.created_at >= twelve_months_ago)
-        .where(Order.status != "cancelled")
-        .group_by(
-            func.extract("year", Order.created_at),
-            func.extract("month", Order.created_at),
-        )
-        .order_by(
-            func.extract("year", Order.created_at),
-            func.extract("month", Order.created_at),
-        )
+        .where(Order.created_at >= since, sold)
+        .group_by(year, month)
+        .order_by(year, month)
     )
-    rows = result.all()
     orders_by_month = [
         {
             "year": int(row.year),
@@ -302,7 +265,7 @@ async def get_sales_analytics(
             "order_count": row.order_count,
             "revenue": float(row.revenue),
         }
-        for row in rows
+        for row in result.all()
     ]
 
     return {
@@ -343,31 +306,19 @@ async def get_customer_analytics(
     admin: User = require_module("analytics"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Customer analytics: total customers, new this month, new today."""
-    today = date.today()
-    first_of_month = today.replace(day=1)
+    """Customer analytics: total customers, new this month, new today (Pakistan time)."""
+    today = store_today()
+    day_start, day_end = utc_range(today, today)
+    month_start, _ = utc_range(today.replace(day=1), today)
+    customer = User.role == "customer"
 
-    # Total customers
-    result = await db.execute(
-        select(func.count(User.id)).where(User.role == "customer")
-    )
-    total_customers = result.scalar()
-
-    # New customers this month
-    result = await db.execute(
-        select(func.count(User.id))
-        .where(User.role == "customer")
-        .where(User.created_at >= first_of_month)
-    )
-    new_this_month = result.scalar()
-
-    # New customers today
-    result = await db.execute(
-        select(func.count(User.id))
-        .where(User.role == "customer")
-        .where(func.date(User.created_at) == today)
-    )
-    new_today = result.scalar()
+    total_customers = (await db.execute(select(func.count(User.id)).where(customer))).scalar()
+    new_this_month = (await db.execute(
+        select(func.count(User.id)).where(customer, User.created_at >= month_start)
+    )).scalar()
+    new_today = (await db.execute(
+        select(func.count(User.id)).where(customer, User.created_at >= day_start, User.created_at < day_end)
+    )).scalar()
 
     return {
         "total_customers": total_customers,

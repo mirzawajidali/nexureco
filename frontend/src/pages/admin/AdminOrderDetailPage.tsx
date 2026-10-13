@@ -11,6 +11,7 @@ import {
   ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { resizedImage } from '@/utils/image';
 import { adminOrdersApi } from '@/api/admin.api';
 import Spinner from '@/components/ui/Spinner';
 import OrderWhatsAppCard from '@/components/admin/OrderWhatsAppCard';
@@ -18,6 +19,17 @@ import { formatPrice } from '@/utils/formatters';
 import type { Order, OrderStatusHistory as StatusEntry } from '@/types/order';
 
 /* ─── helpers ─── */
+
+// Where an order can go from each status: same as ORDER_TRANSITIONS in backend order_service.py
+const ORDER_TRANSITIONS: Record<string, string[]> = {
+  pending: ['confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+  confirmed: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+  processing: ['confirmed', 'shipped', 'delivered', 'cancelled'],
+  shipped: ['processing', 'delivered', 'returned'],
+  delivered: ['returned'],
+  cancelled: [],
+  returned: [],
+};
 
 function fulfillmentLabel(status: string) {
   if (['shipped', 'delivered'].includes(status)) return 'Fulfilled';
@@ -127,14 +139,22 @@ export default function AdminOrderDetailPage() {
   const statusMutation = useMutation({
     mutationFn: (payload: { status: string; note?: string }) =>
       adminOrdersApi.updateStatus(Number(id), payload),
-    onSuccess: () => {
-      toast.success('Order status updated');
+    onSuccess: (_res, payload) => {
+      toast.success(payload.status === order?.status ? 'Comment added' : 'Order status updated');
       queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      // Cancelling or returning puts stock back
+      if (['cancelled', 'returned'].includes(payload.status)) {
+        queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] });
+        queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+      }
       setNewStatus('');
       setStatusNote('');
       setShowStatusForm(false);
     },
-    onError: () => toast.error('Failed to update status'),
+    onError: (err: unknown) => {
+      const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Failed to update status');
+    },
   });
 
   const trackingMutation = useMutation({
@@ -151,8 +171,22 @@ export default function AdminOrderDetailPage() {
   });
 
   const handleStatusUpdate = () => {
-    if (!newStatus) return;
-    statusMutation.mutate({ status: newStatus, ...(statusNote && { note: statusNote }) });
+    if (!order) return;
+    const note = statusNote.trim();
+    // No new status: a comment on the timeline (no email to the customer)
+    const status = newStatus || order.status;
+    if (status === order.status && !note) return;
+    // Cancelling doesn't move money: a prepaid order is refunded by hand in the PayFast merchant portal
+    const refundHint = order.payment_status === 'paid'
+      ? '\n\nThis order was paid online: refund it in your PayFast merchant portal.'
+      : '';
+    if (status === 'cancelled' && !window.confirm(
+      `Cancel this order? Its items go back in stock, any discount code use is released, and the customer is emailed. This can’t be undone.${refundHint}`,
+    )) return;
+    if (status === 'returned' && !window.confirm(
+      `Mark this order as returned? Its items go back in stock. This can’t be undone.${refundHint}`,
+    )) return;
+    statusMutation.mutate({ status, ...(note && { note }) });
   };
 
   const handleMarkFulfilled = () => {
@@ -302,7 +336,7 @@ export default function AdminOrderDetailPage() {
                     <div className="w-11 h-11 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
                       {item.image_url ? (
                         <img
-                          src={item.image_url}
+                          src={resizedImage(item.image_url, 160)} loading="lazy"
                           alt={item.product_name}
                           className="w-full h-full object-cover"
                         />
@@ -529,8 +563,10 @@ export default function AdminOrderDetailPage() {
                           onChange={(e) => setNewStatus(e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         >
-                          <option value="">Select new status...</option>
-                          {['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'].map((s) => (
+                          <option value="">
+                            Keep as {order.status} (comment only)
+                          </option>
+                          {(ORDER_TRANSITIONS[order.status] ?? []).map((s) => (
                             <option key={s} value={s}>
                               {s.charAt(0).toUpperCase() + s.slice(1)}
                             </option>
@@ -552,7 +588,7 @@ export default function AdminOrderDetailPage() {
                           </button>
                           <button
                             onClick={handleStatusUpdate}
-                            disabled={!newStatus || statusMutation.isPending}
+                            disabled={(!newStatus && !statusNote.trim()) || statusMutation.isPending}
                             className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
                           >
                             {statusMutation.isPending ? 'Saving...' : 'Update'}

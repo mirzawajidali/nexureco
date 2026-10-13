@@ -6,6 +6,7 @@ import Spinner from '@/components/ui/Spinner';
 import { pagesApi } from '@/api/pages.api';
 import { truncateText } from '@/utils/formatters';
 import { breadcrumbStructuredData, htmlToText } from '@/utils/seo';
+import { cleanHtml } from '@/utils/sanitize';
 
 interface PageData {
   id: number;
@@ -91,7 +92,7 @@ export default function ContentPage() {
         {data.content ? (
           <div
             className="prose prose-sm max-w-none prose-headings:font-heading prose-headings:uppercase prose-headings:tracking-wider prose-a:text-brand-black prose-a:underline"
-            dangerouslySetInnerHTML={{ __html: data.content }}
+            dangerouslySetInnerHTML={{ __html: cleanHtml(data.content) }}
           />
         ) : (
           <p className="text-gray-500 text-sm">This page has no content yet.</p>

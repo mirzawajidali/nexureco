@@ -12,6 +12,8 @@ import {
 import { PhotoIcon, CalendarDaysIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
+import { resizedImage } from '@/utils/image';
+import { flattenCategories } from '@/utils/categories';
 import { adminProductsApi, adminCategoriesApi } from '@/api/admin.api';
 import { formatPrice } from '@/utils/formatters';
 import { APP_NAME } from '@/utils/constants';
@@ -74,24 +76,26 @@ export default function AdminProductsPage() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // Filter state
-  const [stockFilter, setStockFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-
-  // URL params
+  // URL params (filters are applied by the server, across every page)
   const page = Number(searchParams.get('page') ?? '1');
   const q = searchParams.get('q') ?? '';
   const status = searchParams.get('status') ?? '';
   const sort = searchParams.get('sort') ?? 'newest';
+  const stockFilter = searchParams.get('stock') ?? '';
+  const categoryFilter = searchParams.get('category') ?? '';
+  const setStockFilter = (value: string) => setParam('stock', value);
+  const setCategoryFilter = (value: string) => setParam('category', value);
 
   // --- Queries ---
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'products', { page, q, status, sort }],
+    queryKey: ['admin', 'products', { page, q, status, sort, stockFilter, categoryFilter }],
     queryFn: async () => {
       const params: Record<string, unknown> = { page, page_size: PAGE_SIZE, sort };
       if (q) params.q = q;
       if (status) params.status = status;
+      if (stockFilter) params.stock = stockFilter;
+      if (categoryFilter) params.category_id = Number(categoryFilter);
       const res = await adminProductsApi.list(params);
       return res.data as PaginatedResponse<ProductListItem>;
     },
@@ -106,7 +110,8 @@ export default function AdminProductsPage() {
     staleTime: 60000,
   });
 
-  const categories = categoriesData ?? [];
+  // Subcategories too, indented under their parent
+  const categoryOptions = flattenCategories(categoriesData ?? []);
 
   // --- Mutations ---
 
@@ -174,13 +179,13 @@ export default function AdminProductsPage() {
   const totalPages = data?.total_pages ?? 1;
   const total = data?.total ?? 0;
 
-  // Apply client-side filters
-  const products = allProducts.filter((p) => {
-    if (stockFilter === 'in_stock' && p.total_stock <= 0) return false;
-    if (stockFilter === 'out_of_stock' && p.total_stock > 0) return false;
-    if (categoryFilter && p.category_name !== categoryFilter) return false;
-    return true;
-  });
+  const products = allProducts;
+
+  // A selection only covers what's on screen: clear it when the page, search or filters change,
+  // so "Delete selected" can't remove products you can no longer see
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, q, status, sort, stockFilter, categoryFilter]);
 
   function toggleSelect(id: number) {
     setSelectedIds((prev) => {
@@ -224,9 +229,12 @@ export default function AdminProductsPage() {
   async function handleExport() {
     setExporting(true);
     try {
+      // The products the list shows (search, status and filters), every page
       const params: Record<string, unknown> = {};
       if (q) params.q = q;
       if (status) params.status = status;
+      if (stockFilter) params.stock = stockFilter;
+      if (categoryFilter) params.category_id = Number(categoryFilter);
       const res = await adminProductsApi.exportCsv(params);
       const blob = new Blob([res.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -452,15 +460,16 @@ export default function AdminProductsPage() {
               {filterOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-30 p-4 space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
+                    <label htmlFor="product-filter-category" className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
                     <select
+                      id="product-filter-category"
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
                     >
                       <option value="">All categories</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      {categoryOptions.map((cat) => (
+                        <option key={cat.id} value={String(cat.id)}>{cat.label}</option>
                       ))}
                     </select>
                   </div>
@@ -483,7 +492,13 @@ export default function AdminProductsPage() {
                   </div>
                   {hasActiveFilters && (
                     <button
-                      onClick={() => { setStockFilter(''); setCategoryFilter(''); }}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams);
+                        params.delete('stock');
+                        params.delete('category');
+                        params.set('page', '1');
+                        setSearchParams(params);
+                      }}
                       className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                     >
                       Clear all filters
@@ -548,7 +563,7 @@ export default function AdminProductsPage() {
               )}
               {categoryFilter && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-md text-xs text-gray-700">
-                  Category: {categoryFilter}
+                  Category: {categoryOptions.find((c) => String(c.id) === categoryFilter)?.name ?? categoryFilter}
                   <button onClick={() => setCategoryFilter('')} className="hover:text-gray-900">
                     <XMarkIcon className="h-3 w-3" />
                   </button>
@@ -659,7 +674,7 @@ export default function AdminProductsPage() {
                               <div className="h-10 w-10 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex-shrink-0">
                                 {product.primary_image ? (
                                   <img
-                                    src={product.primary_image}
+                                    src={resizedImage(product.primary_image, 160)} loading="lazy"
                                     alt={product.name}
                                     className="h-full w-full object-cover"
                                   />

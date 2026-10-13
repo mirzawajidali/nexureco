@@ -274,7 +274,7 @@ export default function AdminSearchModal({
               })}
               {results.products_count > 5 && (
                 <button
-                  onClick={() => goTo(`/admin/products?search=${encodeURIComponent(query)}`)}
+                  onClick={() => goTo(`/admin/products?q=${encodeURIComponent(query)}`)}
                   className="w-full px-4 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors text-left"
                 >
                   Show {results.products_count - 5} more products
@@ -338,7 +338,7 @@ export default function AdminSearchModal({
               })}
               {results.orders_count > 5 && (
                 <button
-                  onClick={() => goTo(`/admin/orders?search=${encodeURIComponent(query)}`)}
+                  onClick={() => goTo(`/admin/orders?q=${encodeURIComponent(query)}`)}
                   className="w-full px-4 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors text-left"
                 >
                   Show {results.orders_count - 5} more orders
@@ -375,7 +375,7 @@ export default function AdminSearchModal({
               ))}
               {results.customers_count > 5 && (
                 <button
-                  onClick={() => goTo(`/admin/customers?search=${encodeURIComponent(query)}`)}
+                  onClick={() => goTo(`/admin/customers?q=${encodeURIComponent(query)}`)}
                   className="w-full px-4 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors text-left"
                 >
                   Show {results.customers_count - 5} more customers

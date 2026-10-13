@@ -280,7 +280,7 @@ export default function AdminPagesPage() {
                         <div className="flex items-center justify-end gap-1">
                           {page.is_published && (
                             <a
-                              href={`/pages/${page.slug}`}
+                              href={`/page/${page.slug}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"

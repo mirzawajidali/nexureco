@@ -30,9 +30,13 @@ export const TITLE_SUFFIX = `${SITE_NAME} ${SITE_MARKET}`;
 export const HOME_TITLE = "Men's T-Shirts and Oversized Tees";
 // The homepage H1 (visually hidden: the hero headline is admin-managed banner copy)
 export const HOME_H1 = "Men's T-Shirts and Oversized Tees in Pakistan";
-export const HOME_DESCRIPTION =
+/** The homepage description, with the free-shipping amount set in Admin > Settings (0 = every order ships free) */
+export const homeDescription = (freeShippingFrom: number) =>
   "Explore men's T-shirts at Nexure CO: oversized, regular fit and embroidered tees in 100% cotton. " +
-  'Cash on delivery across Pakistan, free shipping from Rs. 5,000.';
+  `Cash on delivery across Pakistan, ${
+    freeShippingFrom > 0 ? `free shipping from Rs. ${freeShippingFrom.toLocaleString('en-PK')}` : 'free shipping on all orders'
+  }.`;
+export const HOME_DESCRIPTION = homeDescription(FREE_SHIPPING_THRESHOLD);
 export const PAGE_SEO = {
   about: {
     title: 'About Us and Our Story',

@@ -9,7 +9,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { goToPayFast, orderApi, paymentsApi } from '@/api/cart.api';
 import { formatPrice } from '@/utils/formatters';
-import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Breadcrumb from '@/components/ui/Breadcrumb';
@@ -71,8 +71,9 @@ export default function CheckoutPage() {
   const payOnline = canPayOnline && paymentMethod === 'payfast';
 
   const total = subtotal();
-  // Same rule as the server: free shipping goes by the subtotal before any discount
-  const shipping = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
+  // Same rule as the server (Admin > Settings): free shipping goes by the subtotal before any discount
+  const { shippingFor } = useStoreSettings();
+  const shipping = shippingFor(total);
   const grandTotal = total - discount + shipping;
 
   const {

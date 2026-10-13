@@ -22,6 +22,7 @@ import { APP_NAME } from '@/utils/constants';
 import type { Product, ProductImage, Category } from '@/types/product';
 import Spinner from '@/components/ui/Spinner';
 import RichTextEditor from '@/components/admin/RichTextEditor';
+import { flattenCategories } from '@/utils/categories';
 import VariantManager from '@/components/admin/VariantManager';
 import type { VariantFormData } from '@/components/admin/VariantManager';
 
@@ -126,7 +127,16 @@ function PriceInput({
 
 // --- Component ---
 
+/**
+ * A fresh form for each product: going from /admin/products/1 to /admin/products/2 (e.g. with Ctrl+K)
+ * remounts it, so nothing from the first product (size & fit, care, materials, variants...) carries over
+ */
 export default function AdminProductFormPage() {
+  const { id } = useParams<{ id: string }>();
+  return <ProductForm key={id ?? 'new'} />;
+}
+
+function ProductForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -145,6 +155,8 @@ export default function AdminProductFormPage() {
   const handleVariantChange = useCallback((data: VariantFormData) => {
     setVariantData(data);
   }, []);
+  // Bumped after a save so the variant editor reloads saved ids and stock (its next save sends changes from those)
+  const [variantFormVersion, setVariantFormVersion] = useState(0);
 
   // Collapsible sections
   const [showPriceExtras, setShowPriceExtras] = useState(false);
@@ -152,8 +164,9 @@ export default function AdminProductFormPage() {
   const [isPhysicalProduct, setIsPhysicalProduct] = useState(true);
   const [seoExpanded, setSeoExpanded] = useState(false);
 
-  // Stock for simple (non-variant) products
+  // Stock for simple (non-variant) products, and what it was when loaded (saves send the change)
   const [simpleStockQty, setSimpleStockQty] = useState(0);
+  const [simpleStockLoaded, setSimpleStockLoaded] = useState<number | null>(null);
 
   // Tags as chips
   const [tags, setTags] = useState<string[]>([]);
@@ -290,6 +303,7 @@ export default function AdminProductFormPage() {
       // If product has a default variant (no options), load its stock qty
       if (product.options.length === 0 && product.variants.length > 0) {
         setSimpleStockQty(product.variants[0].stock_quantity);
+        setSimpleStockLoaded(product.variants[0].stock_quantity);
       }
     }
   }, [product, reset]);
@@ -334,8 +348,11 @@ export default function AdminProductFormPage() {
   const updateMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       adminProductsApi.update(productId!, data),
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast.success('Product updated successfully');
+      // Start the next edit from what was saved: variant ids and current stock
+      if (res.data) queryClient.setQueryData(['admin', 'product', productId], res.data);
+      setVariantFormVersion((v) => v + 1);
       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'product', productId] });
       // Also invalidate storefront product queries so changes show immediately
@@ -451,13 +468,16 @@ export default function AdminProductFormPage() {
         },
       );
 
+      // Saved variants are updated in place by id. Stock goes with the value it was loaded at, so the
+      // server applies only the change (orders placed meanwhile aren't undone). Sale/cost price and the
+      // low-stock threshold aren't edited here, so they're left out and keep their saved values.
       payload.variants = variantData.variants.map((v) => ({
+        ...(v.variantId != null && { id: v.variantId }),
         sku: v.sku || null,
         price: v.price,
-        compare_at_price: null,
-        cost_price: null,
         stock_quantity: v.stockQuantity,
-        low_stock_threshold: 5,
+        ...(v.stockLoaded != null && { stock_loaded: v.stockLoaded }),
+        is_active: v.isActive,
         option_value_indices: v.optionValueCombo.map((comboValue, comboIdx) =>
           flatValues.findIndex(
             (fv) => fv.optionIdx === comboIdx && fv.value === comboValue,
@@ -467,15 +487,15 @@ export default function AdminProductFormPage() {
       }));
     } else {
       payload.options = [];
-      // Create a default variant for stock tracking
+      // One default variant for stock tracking (the saved one, if the product already had no options)
+      const savedDefault = product && product.options.length === 0 ? product.variants[0] : undefined;
       payload.variants = [
         {
+          ...(savedDefault && { id: savedDefault.id }),
           sku: formData.sku || null,
           price: null,
-          compare_at_price: null,
-          cost_price: null,
           stock_quantity: simpleStockQty,
-          low_stock_threshold: 5,
+          ...(savedDefault && simpleStockLoaded != null && { stock_loaded: simpleStockLoaded }),
           option_value_indices: [],
           image_url: null,
         },
@@ -894,18 +914,20 @@ export default function AdminProductFormPage() {
             {/* Category */}
             <Card title="Category">
               <select
+                aria-label="Category"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 bg-white"
                 {...register('category_id', { valueAsNumber: true })}
               >
                 <option value="">Choose a product category</option>
-                {categories.map((cat) => (
+                {/* Subcategories too, indented under their parent */}
+                {flattenCategories(categories).map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {cat.label}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-2">
-                Determines tax rates and adds metafields to improve search, filters, and cross-channel sales
+              <p className="text-xs text-gray-500 mt-2">
+                The category page the product appears on, and its breadcrumb on the product page
               </p>
             </Card>
 
@@ -1325,6 +1347,7 @@ export default function AdminProductFormPage() {
 
             {/* Variants */}
             <VariantManager
+              key={variantFormVersion}
               initialOptions={product?.options ?? []}
               initialVariants={product?.variants ?? []}
               basePrice={watchedBasePrice ?? 0}

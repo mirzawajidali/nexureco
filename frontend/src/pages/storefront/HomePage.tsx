@@ -12,7 +12,8 @@ import BlogStories from '@/components/home/BlogStories';
 import StillInterested from '@/components/home/StillInterested';
 import PromoStrip from '@/components/home/PromoStrip';
 import { getHeroBanners } from '@/api/pages.api';
-import { HOME_DESCRIPTION, HOME_H1 } from '@/utils/constants';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { homeDescription, HOME_H1 } from '@/utils/constants';
 
 const fallbackSlides: HeroBannerSlide[] = [
   {
@@ -26,6 +27,7 @@ const fallbackSlides: HeroBannerSlide[] = [
 ];
 
 export default function HomePage() {
+  const { freeShippingThreshold } = useStoreSettings();
   const { data: banners } = useQuery({
     queryKey: ['banners', 'hero'],
     queryFn: getHeroBanners,
@@ -49,7 +51,7 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <meta name="description" content={HOME_DESCRIPTION} />
+        <meta name="description" content={homeDescription(freeShippingThreshold)} />
       </Helmet>
 
       {/* The page's single H1. The hero slides rotate (each headline is an h2), so the H1 names the store instead. */}

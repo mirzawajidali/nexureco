@@ -129,6 +129,16 @@ export default function AdminCollectionsPage() {
     return filtered;
   })();
 
+  // A selection only covers what's shown: untick collections the search or filters now hide
+  const visibleKey = collections.map((c) => c.id).join(',');
+  useEffect(() => {
+    const visible = new Set(visibleKey ? visibleKey.split(',').map(Number) : []);
+    setSelectedIds((prev) => {
+      const kept = [...prev].filter((id) => visible.has(id));
+      return kept.length === prev.size ? prev : new Set(kept);
+    });
+  }, [visibleKey]);
+
   // --- Mutations ---
 
   const deleteMutation = useMutation({
@@ -431,18 +441,24 @@ export default function AdminCollectionsPage() {
               </span>
               <button
                 onClick={async () => {
-                  if (!confirm(`Delete ${selectedIds.size} collection${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
+                  // Only collections still shown: the search or filters may hide some that were ticked
+                  const ids = collections.filter((c) => selectedIds.has(c.id)).map((c) => c.id);
+                  if (!ids.length) return;
+                  if (!confirm(`Delete ${ids.length} collection${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
                   setBulkDeleting(true);
+                  let deleted = 0;
                   try {
-                    for (const cid of selectedIds) {
+                    for (const cid of ids) {
                       await adminCollectionsApi.delete(cid);
+                      deleted++;
                     }
-                    toast.success(`${selectedIds.size} collection${selectedIds.size > 1 ? 's' : ''} deleted`);
+                    toast.success(`${deleted} collection${deleted > 1 ? 's' : ''} deleted`);
+                  } catch {
+                    toast.error(`Deleted ${deleted} of ${ids.length}; the rest failed`);
+                  } finally {
+                    // Refresh even after a partial failure, so the list shows what's really left
                     queryClient.invalidateQueries({ queryKey: ['admin', 'collections'] });
                     setSelectedIds(new Set());
-                  } catch {
-                    toast.error('Failed to delete some collections');
-                  } finally {
                     setBulkDeleting(false);
                   }
                 }}

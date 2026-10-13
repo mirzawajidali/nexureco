@@ -35,6 +35,7 @@ from app.core.store import (
     TITLE_SUFFIX,
     format_price,
 )
+from app.services.store_settings_service import free_shipping_phrase, get_store_settings
 from app.models.banner import Banner
 from app.models.blog import BlogPost
 from app.models.category import Category
@@ -50,10 +51,16 @@ from app.utils.image_variants import JPEG_PRESETS, jpeg_url
 # starting with a verb. Same text as frontend/src/utils/constants.ts (HOME_*, PAGE_SEO) — keep them identical.
 HOME_TITLE = "Men's T-Shirts and Oversized Tees"
 HOME_H1 = "Men's T-Shirts and Oversized Tees in Pakistan"
-HOME_DESCRIPTION = (
-    "Explore men's T-shirts at Nexure CO: oversized, regular fit and embroidered tees in 100% cotton. "
-    "Cash on delivery across Pakistan, free shipping from Rs. 5,000."
-)
+def home_description(free_from: int) -> str:
+    """The homepage description, with the free-shipping amount set in Admin > Settings (0 = every order ships free)."""
+    shipping = f"free shipping from {format_price(free_from)}" if free_from > 0 else "free shipping on all orders"
+    return (
+        "Explore men's T-shirts at Nexure CO: oversized, regular fit and embroidered tees in 100% cotton. "
+        f"Cash on delivery across Pakistan, {shipping}."
+    )
+
+
+HOME_DESCRIPTION = home_description(FREE_SHIPPING_THRESHOLD)
 ABOUT_DESCRIPTION = (
     "Discover Nexure CO, a Lahore T-shirt brand making premium 100% cotton tees in oversized, regular fit and "
     "embroidered styles, delivered across Pakistan."
@@ -295,6 +302,10 @@ def not_found_head(base_url: str, title: str = "Page Not Found") -> PageHead:
     )
 
 
+async def current_home_description(db: AsyncSession) -> str:
+    return home_description(int((await get_store_settings(db))["checkout_free_shipping_from"]))
+
+
 async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
     banner_image = (await db.execute(
         select(Banner.image_url)
@@ -321,9 +332,10 @@ async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
     category_links = "".join(
         f'<li><a href="{_e(base_url)}/category/{_e(c.slug)}">{_e(c.name)}</a></li>' for c in categories
     )
+    description = await current_home_description(db)
     return PageHead(
         title=_branded(None),
-        description=HOME_DESCRIPTION,
+        description=description,
         og_title=HOME_TITLE,
         image=image,
         image_size=image_size,
@@ -362,7 +374,7 @@ async def _home_head(db: AsyncSession, base_url: str) -> PageHead:
             ],
         }],
         noscript=(
-            f"<h1>{_e(HOME_H1)}</h1><p>{_e(HOME_DESCRIPTION)}</p>"
+            f"<h1>{_e(HOME_H1)}</h1><p>{_e(description)}</p>"
             + (f"<h2>Shop by category</h2><ul>{category_links}</ul>" if category_links else "")
             + (f"<h2>Latest products</h2>{_product_list(products, base_url)}" if products else "")
         ),
@@ -432,12 +444,13 @@ async def _product_head(db: AsyncSession, slug: str, base_url: str) -> PageHead 
         if opt.values
     )
     crumb_links = " › ".join(f'<a href="{_e(c["url"])}">{_e(c["name"])}</a>' for c in breadcrumbs[:-1])
+    free_shipping = free_shipping_phrase(int((await get_store_settings(db))["checkout_free_shipping_from"]))
     noscript = (
         f"<nav>{crumb_links}</nav><h1>{_e(product.name)}</h1>"
         f"<p>{_e(format_price(price))}"
         + (f" <s>{_e(format_price(compare_at))}</s>" if compare_at and compare_at > price else "")
         + f" · {'In stock' if stocked else 'Out of stock'}"
-        + f" · Cash on delivery · Free shipping on orders of {_e(format_price(FREE_SHIPPING_THRESHOLD))} or more</p>"
+        + f" · Cash on delivery · {_e(free_shipping[:1].upper() + free_shipping[1:])}</p>"
         + (f"<ul>{options}</ul>" if options else "")
         + (f"<p>{_e(html_to_text(product.description))}</p>" if product.description else "")
     )

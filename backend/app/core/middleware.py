@@ -23,6 +23,8 @@ _RATE_RULES: list[tuple[str, str | None, int]] = [
     ("/api/v1/auth/verify-email",     "POST", 10),
     ("/api/v1/auth/resend-otp",       "POST", 3),
     ("/api/v1/auth/refresh",          "POST", 30),
+    # Loaded once per page load (and per open tab), so staff working fast across tabs stay within it
+    ("/api/v1/auth/me",               "GET",  120),
     # Auth catch-all
     ("/api/v1/auth/",                 None,   20),
 

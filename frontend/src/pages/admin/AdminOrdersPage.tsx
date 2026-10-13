@@ -197,9 +197,9 @@ export default function AdminOrdersPage() {
 
   async function handleExport() {
     try {
-      const res = await adminOrdersApi.exportCsv(
-        activeTab !== 'all' ? queryParams : undefined,
-      );
+      // Exactly what the list shows: the current tab and search, every page
+      const { page: _page, page_size: _pageSize, ...filters } = queryParams;
+      const res = await adminOrdersApi.exportCsv(filters);
       const blob = new Blob([res.data], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

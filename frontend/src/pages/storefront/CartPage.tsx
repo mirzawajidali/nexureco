@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/formatters';
-import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/utils/constants';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import CouponField from '@/components/cart/CouponField';
 import { useTrackOnce } from '@/hooks/useAnalytics';
@@ -116,8 +116,9 @@ export default function CartPage() {
   const { code: couponCode, discount, source, bundle, couponOutdone } = useBagDiscount();
   const total = subtotal();
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  // Same rule as the server: free shipping goes by the subtotal before any discount
-  const shipping = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_COST;
+  // Same rule as the server (Admin > Settings): free shipping goes by the subtotal before any discount
+  const { shippingFor, freeShippingMessage } = useStoreSettings();
+  const shipping = shippingFor(total);
   const grandTotal = total - discount + shipping;
 
   useTrackOnce(items.length ? 'view_cart' : '', () => trackViewCart(items.map((i) => cartLineToItem(i))));
@@ -265,7 +266,7 @@ export default function CartPage() {
                     <div className="flex items-center gap-3">
                       <TruckIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="text-xs text-gray-500">
-                        Free shipping on orders of {formatPrice(FREE_SHIPPING_THRESHOLD)} or more
+                        {freeShippingMessage}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">

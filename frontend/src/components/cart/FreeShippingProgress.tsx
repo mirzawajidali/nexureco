@@ -1,14 +1,15 @@
 import { TruckIcon } from '@heroicons/react/24/outline';
-import { FREE_SHIPPING_THRESHOLD } from '@/utils/constants';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { formatPrice } from '@/utils/formatters';
 
 /**
  * "Add Rs. X more for free delivery" with a progress bar. Uses the same rule as checkout
- * (order_service: free shipping when the subtotal reaches FREE_SHIPPING_THRESHOLD).
+ * (free shipping when the subtotal reaches the threshold set in Admin > Settings).
  */
 export default function FreeShippingProgress({ subtotal, className = '' }: { subtotal: number; className?: string }) {
-  const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
-  const percent = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
+  const { freeShippingThreshold } = useStoreSettings();
+  const remaining = freeShippingThreshold - subtotal;
+  const percent = freeShippingThreshold > 0 ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100)) : 100;
 
   return (
     <div className={className} role="status" aria-live="polite">

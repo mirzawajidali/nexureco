@@ -21,7 +21,13 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  // Where to go after signing in: the page that sent you here (router state, or ?next= after a session
+  // expired). Only paths on this site, so the link can't redirect elsewhere.
+  const requested =
+    (location.state as { from?: { pathname: string } })?.from?.pathname ||
+    new URLSearchParams(location.search).get('next') ||
+    '';
+  const from = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
 
   const {
     register,
@@ -36,7 +42,9 @@ export default function LoginPage() {
     try {
       const user = await login(data.email, data.password);
       toast.success(`Welcome back, ${user.first_name}!`);
-      navigate(user.role === 'admin' || user.role === 'staff' ? '/admin' : from, { replace: true });
+      const isTeam = user.role === 'admin' || user.role === 'staff';
+      // The team returns to the admin page they were on (else the dashboard); customers to where they were
+      navigate(isTeam ? (from.startsWith('/admin') ? from : '/admin') : from, { replace: true });
     } catch {
       toast.error('Invalid email or password');
     } finally {

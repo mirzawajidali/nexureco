@@ -1,5 +1,8 @@
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+from app.utils.html_sanitize import sanitize_html
 
 
 # --- Option & Variant Schemas ---
@@ -148,12 +151,21 @@ class OptionCreate(BaseModel):
 
 
 class VariantCreate(BaseModel):
+    # On update: the existing variant this row edits (new rows leave it out)
+    id: int | None = None
     sku: str | None = None
     price: float | None = None
+    # On update, sale and cost price change only when sent
     compare_at_price: float | None = None
     cost_price: float | None = None
-    stock_quantity: int = 0
-    low_stock_threshold: int = 5
+    stock_quantity: int = Field(0, ge=0)
+    # On update: the stock the form loaded. The difference to stock_quantity is applied to the live stock,
+    # so orders placed while the form was open aren't undone. Without it, stock_quantity is set as-is.
+    stock_loaded: int | None = None
+    # None: 5 for a new variant, unchanged on update
+    low_stock_threshold: int | None = None
+    # None: active for a new variant, unchanged on update
+    is_active: bool | None = None
     option_value_indices: list[int] = []  # indices into the flattened option_values list
     image_url: str | None = None
 
@@ -170,7 +182,7 @@ class ProductCreate(BaseModel):
     barcode: str | None = None
     weight: float | None = None
     requires_shipping: bool = True
-    status: str = "draft"
+    status: Literal["draft", "active", "archived"] = "draft"
     is_featured: bool = False
     tags: list[str] | None = None
     meta_title: str | None = None
@@ -180,6 +192,9 @@ class ProductCreate(BaseModel):
     material_info: dict | None = None
     options: list[OptionCreate] = []
     variants: list[VariantCreate] = []
+
+    # The storefront renders the description HTML as-is: strip anything that can run script
+    _clean_description = field_validator("description")(sanitize_html)
 
 
 class ProductUpdate(BaseModel):
@@ -194,7 +209,7 @@ class ProductUpdate(BaseModel):
     barcode: str | None = None
     weight: float | None = None
     requires_shipping: bool | None = None
-    status: str | None = None
+    status: Literal["draft", "active", "archived"] | None = None
     is_featured: bool | None = None
     tags: list[str] | None = None
     meta_title: str | None = None
@@ -204,3 +219,5 @@ class ProductUpdate(BaseModel):
     material_info: dict | None = None
     options: list[OptionCreate] | None = None
     variants: list[VariantCreate] | None = None
+
+    _clean_description = field_validator("description")(sanitize_html)

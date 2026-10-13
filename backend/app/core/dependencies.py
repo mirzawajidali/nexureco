@@ -42,6 +42,21 @@ async def get_current_admin(
     return current_user
 
 
+async def admin_modules(db: AsyncSession, user: User) -> set[str] | None:
+    """The admin modules a team member may use; None means all (the owner).
+
+    Read from the staff member's role on every request (not from their sign-in token), so removing a
+    permission, deactivating the role or moving them to another role applies straight away.
+    """
+    if user.role == "admin":
+        return None
+    if user.role != "staff" or not user.role_id:
+        return set()
+    from app.models.role import Role
+    role = (await db.execute(select(Role).where(Role.id == user.role_id))).scalar_one_or_none()
+    return set(role.permissions or []) if role and role.is_active else set()
+
+
 def require_module(module: str):
     """Dependency factory: allows admin (superadmin) or staff with the given module permission."""
 
@@ -70,20 +85,9 @@ def require_module(module: str):
         if user.role == "admin":
             return user
 
-        # Staff: check module permission from JWT, fallback to DB
+        # Staff: their role's current permissions
         if user.role == "staff":
-            permissions = payload.get("permissions")
-            if permissions is None:
-                # Fallback: load from DB
-                from app.models.role import Role
-                if user.role_id:
-                    role_result = await db.execute(select(Role).where(Role.id == user.role_id))
-                    role = role_result.scalar_one_or_none()
-                    permissions = role.permissions if role and role.is_active else []
-                else:
-                    permissions = []
-
-            if module in permissions:
+            if module in await admin_modules(db, user):
                 return user
 
             raise ForbiddenException(f"You don't have access to the {module} module")

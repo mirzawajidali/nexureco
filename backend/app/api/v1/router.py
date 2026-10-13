@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, users, products, categories, collections, search, media, cart, orders,
     wishlist, reviews, newsletter, banners, pages, contact, menus, chat, csp, coupons, checkout_drafts, payments,
+    store,
     blog,
 )
 from app.api.v1.endpoints.admin import (
@@ -52,6 +53,7 @@ api_router.include_router(csp.router)
 api_router.include_router(coupons.router)
 api_router.include_router(checkout_drafts.router)
 api_router.include_router(payments.router)
+api_router.include_router(store.router)
 api_router.include_router(blog.router)
 
 # Admin

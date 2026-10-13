@@ -115,7 +115,7 @@ def _send_sync(to: str, subject: str, html_body: str) -> None:
         logger.exception("Failed to send email to %s: %s", to, subject)
 
 
-_NO_RECOMMENDATIONS = {"password_reset.html", "verify_otp.html", "contact_alert_admin.html"}
+_NO_RECOMMENDATIONS = {"password_reset.html", "verify_otp.html", "contact_alert_admin.html", "contact_reply.html"}
 
 
 async def send_email_background(to: str, subject: str, template_name: str, context: dict) -> None:

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, UsersIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { adminCustomersApi } from '@/api/admin.api';
@@ -35,6 +35,7 @@ const INITIAL_FORM: FormData = {
 };
 
 export default function AdminCustomerFormPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [showAddress, setShowAddress] = useState(false);
@@ -43,6 +44,7 @@ export default function AdminCustomerFormPage() {
     mutationFn: (data: Record<string, unknown>) => adminCustomersApi.create(data),
     onSuccess: (res) => {
       toast.success('Customer created');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'customers'] });
       navigate(`/admin/customers/${res.data.id}`);
     },
     onError: (err: any) => {

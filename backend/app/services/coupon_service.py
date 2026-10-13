@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, update, delete
 from app.models.coupon import Coupon, CouponUsage
 from app.models.order import Order
 from app.core.exceptions import BadRequestException
@@ -136,3 +136,13 @@ async def record_coupon_usage(
     if coupon:
         coupon.used_count += 1
     await db.flush()
+
+
+async def release_coupon_usage(db: AsyncSession, coupon_id: int, order_id: int) -> None:
+    """Give back a cancelled order's coupon use: one off the usage count, and the customer can use it again
+    (the per-customer check already ignores cancelled orders)."""
+    await db.execute(delete(CouponUsage).where(CouponUsage.order_id == order_id))
+    await db.execute(
+        update(Coupon).where(Coupon.id == coupon_id, Coupon.used_count > 0)
+        .values(used_count=Coupon.used_count - 1)
+    )

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from app.db.database import get_db
-from app.core.dependencies import require_module
+from app.core.dependencies import admin_modules, require_module
 from app.models.user import User
 from app.models.product import Product, ProductImage, ProductVariant
 from app.models.order import Order
@@ -168,11 +168,14 @@ async def admin_search(
         for c in customers
     ]
 
+    # Each section only for team members who may open that module (the search itself needs only dashboard)
+    modules = await admin_modules(db, admin)
+    allowed = {m: modules is None or m in modules for m in ("products", "orders", "customers")}
     return {
-        "products": products_data,
-        "orders": orders_data,
-        "customers": customers_data,
-        "products_count": products_count,
-        "orders_count": orders_count,
-        "customers_count": customers_count,
+        "products": products_data if allowed["products"] else [],
+        "orders": orders_data if allowed["orders"] else [],
+        "customers": customers_data if allowed["customers"] else [],
+        "products_count": products_count if allowed["products"] else 0,
+        "orders_count": orders_count if allowed["orders"] else 0,
+        "customers_count": customers_count if allowed["customers"] else 0,
     }

@@ -11,6 +11,16 @@ from app.db.redis import CacheService
 router = APIRouter(prefix="/admin/categories", tags=["Admin Categories"])
 
 
+async def _after_category_change(db: AsyncSession) -> None:
+    """Save, then refresh what shows category names: the category menus, product lists (each product
+    carries its category name and slug) and the search index, which filters by category slug."""
+    await db.commit()
+    await CacheService.invalidate_categories()
+    await CacheService.invalidate_product()
+    from app.services.es_indexing_service import bulk_index_all_products
+    await bulk_index_all_products(db)
+
+
 @router.get("/", response_model=list[CategoryOut])
 async def list_categories(
     admin: User = require_module("categories"),
@@ -38,7 +48,7 @@ async def update_category(
     db: AsyncSession = Depends(get_db),
 ):
     result = await category_service.update_category(db, category_id, data)
-    await CacheService.invalidate_categories()
+    await _after_category_change(db)
     return result
 
 
@@ -49,5 +59,5 @@ async def delete_category(
     db: AsyncSession = Depends(get_db),
 ):
     await category_service.delete_category(db, category_id)
-    await CacheService.invalidate_categories()
+    await _after_category_change(db)
     return {"message": "Category deleted successfully"}

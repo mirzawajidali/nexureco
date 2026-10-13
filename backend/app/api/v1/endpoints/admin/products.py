@@ -1,22 +1,52 @@
 import csv
 import io
+from typing import Literal
 from fastapi import APIRouter, Depends, Query, UploadFile, File
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import require_module
+from app.core.exceptions import BadRequestException
 from app.schemas.product import ProductCreate, ProductUpdate, ProductDetail, ProductListItem, ImageOut
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services import product_service
 from app.utils.file_upload import save_upload_file_with_meta, delete_upload_file
+from app.utils.csv_export import csv_download
 from app.models.user import User
 from app.models.media import MediaFile
 from app.models.product import Product
+from app.models.category import Category
 from app.db.redis import CacheService
 
 router = APIRouter(prefix="/admin/products", tags=["Admin Products"])
+
+
+async def _category_and_children(db: AsyncSession, category_id: int | None) -> list[int] | None:
+    """The category and every category under it (None: no category filter)."""
+    if category_id is None:
+        return None
+    children: dict[int | None, list[int]] = {}
+    for cid, parent in (await db.execute(select(Category.id, Category.parent_id))).all():
+        children.setdefault(parent, []).append(cid)
+    found, todo = [], [category_id]
+    while todo:
+        current = todo.pop()
+        if current in found:
+            continue
+        found.append(current)
+        todo.extend(children.get(current, []))
+    return found
+
+
+async def _after_catalog_change(db: AsyncSession, slug: str | None = None) -> None:
+    """Save, then clear the shop's cached products and the category/collection counts and menus.
+    (Clearing before the commit would let a shop visit in between cache the old data again.)"""
+    await db.commit()
+    await CacheService.invalidate_product(slug=slug)
+    await CacheService.invalidate_categories()
+    await CacheService.invalidate_collections()
 
 
 @router.get("/", response_model=PaginatedResponse[ProductListItem])
@@ -26,11 +56,15 @@ async def list_products(
     status: str | None = None,
     q: str | None = None,
     sort: str = "newest",
+    category_id: int | None = Query(None, description="This category and its subcategories"),
+    stock: Literal["in_stock", "out_of_stock"] | None = None,
     admin: User = require_module("products"),
     db: AsyncSession = Depends(get_db),
 ):
+    category_ids = await _category_and_children(db, category_id)
     return await product_service.list_products(
         db, page=page, page_size=page_size, status=status, q=q, sort=sort,
+        category_ids=category_ids, stock=stock,
     )
 
 
@@ -41,7 +75,7 @@ async def create_product(
     db: AsyncSession = Depends(get_db),
 ):
     result = await product_service.create_product(db, data)
-    await CacheService.invalidate_product()
+    await _after_catalog_change(db, result.get("slug"))
     return result
 
 
@@ -49,31 +83,35 @@ async def create_product(
 async def export_products(
     status: str | None = None,
     q: str | None = None,
+    category_id: int | None = None,
+    stock: Literal["in_stock", "out_of_stock"] | None = None,
     admin: User = require_module("products"),
     db: AsyncSession = Depends(get_db),
 ):
-    data = await product_service.list_products(
-        db, page=1, page_size=10000, status=status, q=q, sort="newest",
-    )
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Name", "Status", "SKU", "Price", "Compare Price", "Stock", "Category", "Tags"])
-    for item in data["items"]:
-        writer.writerow([
-            item["name"],
-            item["status"],
-            item.get("sku") or "",
-            item["base_price"],
-            item.get("compare_at_price") or "",
-            item.get("total_stock", 0),
-            item.get("category_name") or "",
-            ", ".join(item.get("tags") or []),
-        ])
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=products.csv"},
+    category_ids = await _category_and_children(db, category_id)
+    # Every matching product: the list is paged (at most 100 per page), so walk all the pages
+    rows = []
+    page = 1
+    while True:
+        data = await product_service.list_products(
+            db, page=page, page_size=100, status=status, q=q, sort="newest", category_ids=category_ids, stock=stock,
+        )
+        for item in data["items"]:
+            rows.append([
+                item["name"],
+                item["status"],
+                item.get("sku") or "",
+                item["base_price"],
+                item.get("compare_at_price") or "",
+                item.get("total_stock", 0),
+                item.get("category_name") or "",
+                ", ".join(item.get("tags") or []),
+            ])
+        if page >= (data.get("total_pages") or 1):
+            break
+        page += 1
+    return csv_download(
+        "products.csv", ["Name", "Status", "SKU", "Price", "Compare Price", "Stock", "Category", "Tags"], rows,
     )
 
 
@@ -95,23 +133,40 @@ async def import_products(
             if not name or not price_str:
                 errors.append(f"Row {i}: Name and Price are required")
                 continue
-            price = float(price_str)
+            compare_str = (row.get("Compare Price") or "").strip()
+            try:
+                price = float(price_str.replace(",", ""))
+                compare_at = float(compare_str.replace(",", "")) if compare_str else None
+            except ValueError:
+                errors.append(f"Row {i}: Price and Compare Price must be numbers")
+                continue
+            sku = (row.get("SKU") or "").strip() or None
+            # Importing the same file twice mustn't add every product again
+            if sku and await db.scalar(select(Product.id).where(Product.sku == sku).limit(1)):
+                errors.append(f"Row {i}: a product with SKU {sku} already exists (skipped)")
+                continue
             tags_str = (row.get("Tags") or "").strip()
             tags = [t.strip() for t in tags_str.split(",") if t.strip()] if tags_str else None
             product_data = ProductCreate(
                 name=name,
                 status=(row.get("Status") or "draft").strip().lower(),
-                sku=(row.get("SKU") or "").strip() or None,
+                sku=sku,
                 base_price=price,
-                compare_at_price=float(row["Compare Price"]) if row.get("Compare Price", "").strip() else None,
+                compare_at_price=compare_at,
                 tags=tags,
             )
-            await product_service.create_product(db, product_data)
+            # Each row in its own savepoint: a bad row is skipped, the others are still saved
+            async with db.begin_nested():
+                await product_service.create_product(db, product_data)
             created += 1
+        except ValidationError as e:
+            errors.append(f"Row {i}: " + "; ".join(f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors()))
+        except IntegrityError:
+            errors.append(f"Row {i}: conflicts with an existing product (skipped)")
         except Exception as e:
-            errors.append(f"Row {i}: {str(e)}")
+            errors.append(f"Row {i}: {str(e).splitlines()[0][:150]}")
     if created > 0:
-        await CacheService.invalidate_product()
+        await _after_catalog_change(db)
     return {"created": created, "errors": errors}
 
 
@@ -155,7 +210,7 @@ async def update_product(
     db: AsyncSession = Depends(get_db),
 ):
     result = await product_service.update_product(db, product_id, data)
-    await CacheService.invalidate_product(slug=result.get("slug"))
+    await _after_catalog_change(db, result.get("slug"))
     return result
 
 
@@ -166,7 +221,7 @@ async def delete_product(
     db: AsyncSession = Depends(get_db),
 ):
     await product_service.delete_product(db, product_id)
-    await CacheService.invalidate_product()
+    await _after_catalog_change(db)
     return {"message": "Product deleted successfully"}
 
 
@@ -181,7 +236,10 @@ async def upload_product_image(
 ):
     # Name the file after the product for image search, e.g. essential-tee-3f9a1c2b7d4e.avif
     product_slug = await db.scalar(select(Product.slug).where(Product.id == product_id))
-    meta = await save_upload_file_with_meta(file, subfolder="products", name_hint=product_slug)
+    try:
+        meta = await save_upload_file_with_meta(file, subfolder="products", name_hint=product_slug)
+    except ValueError as exc:  # wrong type, too big, not an image: say so instead of a server error
+        raise BadRequestException(str(exc)) from None
 
     # Also track in media library
     media_file = MediaFile(
@@ -196,7 +254,7 @@ async def upload_product_image(
     db.add(media_file)
 
     image = await product_service.add_product_image(db, product_id, meta["url"], alt_text, is_primary)
-    await CacheService.invalidate_product()
+    await product_service.refresh_product(db, product_id)  # search shows the photo too
     return image
 
 
@@ -208,7 +266,7 @@ async def set_primary_image(
     db: AsyncSession = Depends(get_db),
 ):
     image = await product_service.set_primary_image(db, product_id, image_id)
-    await CacheService.invalidate_product()
+    await product_service.refresh_product(db, product_id)
     return image
 
 
@@ -221,7 +279,7 @@ async def reorder_product_images(
 ):
     image_ids = body.get("image_ids", [])
     await product_service.reorder_product_images(db, product_id, image_ids)
-    await CacheService.invalidate_product()
+    await product_service.refresh_product(db, product_id)
     return {"message": "Image order updated"}
 
 
@@ -233,5 +291,5 @@ async def delete_product_image(
     db: AsyncSession = Depends(get_db),
 ):
     await product_service.delete_product_image(db, product_id, image_id)
-    await CacheService.invalidate_product()
+    await product_service.refresh_product(db, product_id)
     return {"message": "Image deleted successfully"}

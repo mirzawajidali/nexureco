@@ -7,6 +7,7 @@ from app.models.contact import ContactMessage
 from app.schemas.contact import ContactCreate
 from app.core.exceptions import NotFoundException
 from app.utils.email import send_email_background
+from app.core.store import STORE_EMAIL, STORE_PHONE
 from app.config import get_settings
 
 _settings = get_settings()
@@ -109,7 +110,23 @@ async def reply_to_message(db: AsyncSession, message_id: int, reply_text: str) -
     msg.status = "replied"
     msg.replied_at = datetime.now(timezone.utc)
     await db.flush()
-    return {"message": "Reply saved successfully"}
+
+    # Email the reply to the customer, with their message quoted below it
+    await send_email_background(
+        to=msg.email,
+        subject=f"Re: {msg.subject}",
+        template_name="contact_reply.html",
+        context={
+            "first_name": msg.first_name,
+            "subject": msg.subject,
+            "order_number": msg.order_number,
+            "reply_lines": [line for line in reply_text.splitlines() if line.strip()],
+            "message_lines": [line for line in msg.message.splitlines() if line.strip()],
+            "store_email": STORE_EMAIL,
+            "store_phone": STORE_PHONE,
+        },
+    )
+    return {"message": f"Reply sent to {msg.email}"}
 
 
 async def delete_message(db: AsyncSession, message_id: int) -> None:

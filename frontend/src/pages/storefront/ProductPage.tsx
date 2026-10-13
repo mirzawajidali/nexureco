@@ -23,6 +23,7 @@ import { formatPrice, truncateText } from '@/utils/formatters';
 import { SITE_NAME, SITE_URL } from '@/utils/constants';
 import { htmlToText, productStructuredData, productTitle, shortProductName } from '@/utils/seo';
 import { resizedImage } from '@/utils/image';
+import { cleanHtml } from '@/utils/sanitize';
 import ReviewSection from '@/components/product/ReviewSection';
 import ProductCard from '@/components/product/ProductCard';
 import ProductImageCarousel from '@/components/product/ProductImageCarousel';
@@ -749,7 +750,7 @@ export default function ProductPage() {
                     )}
                     <div
                       className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: product.description }}
+                      dangerouslySetInnerHTML={{ __html: cleanHtml(product.description) }}
                     />
                   </div>
                   {allImages.length > 2 && (

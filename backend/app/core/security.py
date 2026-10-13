@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 import bcrypt
 from jose import JWTError, jwt
@@ -28,7 +29,9 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
-    to_encode.update({"exp": expire, "type": "refresh"})
+    # A unique id: two refreshes in the same second would otherwise mint identical tokens, which the
+    # unique refresh_tokens.token column rejects
+    to_encode.update({"exp": expire, "type": "refresh", "jti": uuid.uuid4().hex})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 

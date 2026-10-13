@@ -16,15 +16,13 @@ async def get_dashboard_stats(
     admin: User = require_module("dashboard"),
     db: AsyncSession = Depends(get_db),
 ):
-    # Total revenue
-    revenue = await db.execute(
-        select(func.coalesce(func.sum(Order.total), 0)).where(Order.status != "cancelled")
-    )
-    total_revenue = float(revenue.scalar())
-
-    # Total orders
-    orders_count = await db.execute(select(func.count(Order.id)))
-    total_orders = orders_count.scalar()
+    # Revenue and order count over the same orders: the ones still counted as sales
+    sold = Order.status.notin_(["cancelled", "returned"])
+    row = (await db.execute(
+        select(func.coalesce(func.sum(Order.total), 0), func.count(Order.id)).where(sold)
+    )).one()
+    total_revenue = float(row[0])
+    total_orders = int(row[1])
 
     # Total customers
     customers_count = await db.execute(
@@ -32,7 +30,7 @@ async def get_dashboard_stats(
     )
     total_customers = customers_count.scalar()
 
-    # Avg order value
+    # Avg order value (cancelled/returned orders are in neither the revenue nor the count)
     avg_order = total_revenue / total_orders if total_orders > 0 else 0
 
     return {

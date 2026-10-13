@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import require_module
-from app.core.exceptions import NotFoundException, ConflictException
+from app.core.exceptions import BadRequestException, NotFoundException, ConflictException
 from app.models.user import User
 from app.models.coupon import Coupon
 from app.schemas.coupon import CouponCreate, CouponUpdate, CouponOut
@@ -97,6 +97,12 @@ async def update_coupon(
 
     for key, value in update_data.items():
         setattr(coupon, key, value)
+
+    # The combined result must make sense, not just the fields sent
+    if coupon.type == "percentage" and float(coupon.value) > 100:
+        raise BadRequestException("A percentage discount can be at most 100%")
+    if coupon.starts_at and coupon.expires_at and coupon.expires_at <= coupon.starts_at:
+        raise BadRequestException("The end date must be after the start date")
 
     await db.flush()
     await db.refresh(coupon)

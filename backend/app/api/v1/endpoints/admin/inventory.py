@@ -1,5 +1,6 @@
+from typing import Literal
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,6 +13,7 @@ from app.models.product import (
     VariantOptionValue, ProductOptionValue,
 )
 from app.models.media import InventoryLog
+from app.services import product_service
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.utils.pagination import paginate
 from datetime import datetime
@@ -35,8 +37,8 @@ class InventoryItem(BaseModel):
 
 class StockAdjustment(BaseModel):
     quantity_change: int
-    reason: str
-    note: str | None = None
+    reason: Literal["manual_adjustment", "restock", "return", "order_placed", "order_cancelled"]
+    note: str | None = Field(None, max_length=500)
 
 
 class InventoryAdjusted(BaseModel):
@@ -122,8 +124,9 @@ async def adjust_stock(
     admin: User = require_module("inventory"),
     db: AsyncSession = Depends(get_db),
 ):
+    # Locked until saved: a checkout reducing the same stock waits, so neither change overwrites the other
     result = await db.execute(
-        select(ProductVariant).where(ProductVariant.id == variant_id)
+        select(ProductVariant).where(ProductVariant.id == variant_id).with_for_update()
     )
     variant = result.scalar_one_or_none()
     if not variant:
@@ -148,8 +151,7 @@ async def adjust_stock(
     )
     db.add(log)
     await db.flush()
-
-    return InventoryAdjusted(
+    adjusted = InventoryAdjusted(
         variant_id=variant.id,
         sku=variant.sku,
         previous_stock=previous_stock,
@@ -157,3 +159,6 @@ async def adjust_stock(
         quantity_change=data.quantity_change,
         reason=data.reason,
     )
+    # Save, then update the shop and search (in stock / sold out)
+    await product_service.refresh_product(db, variant.product_id)
+    return adjusted

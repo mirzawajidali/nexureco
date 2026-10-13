@@ -5,53 +5,28 @@ import toast from 'react-hot-toast';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 import Spinner from '@/components/ui/Spinner';
 import { adminSettingsApi } from '@/api/admin.api';
+import { apiErrorDetail } from '@/api/client';
+import { SITE_NAME, SOCIAL_PROFILES, STORE_ADDRESS, STORE_EMAIL, STORE_HOURS, STORE_PHONE } from '@/utils/constants';
+import { formatPrice } from '@/utils/formatters';
 
+// Only these settings exist: checkout, the cart and checkout totals, the top bar, the free-shipping bar
+// and the server-rendered pages all use them (backend store_settings_service.py)
 interface SettingsForm {
-  store_name: string;
-  store_email: string;
-  store_phone: string;
-  store_address: string;
-  shipping_free_threshold: string;
-  shipping_flat_rate: string;
-  tax_rate: string;
-  currency: string;
-  announcement_text: string;
-  social_facebook: string;
-  social_instagram: string;
-  social_twitter: string;
+  checkout_free_shipping_from: string;
+  checkout_shipping_charge: string;
+  top_bar_announcement: string;
 }
 
-const DEFAULT_SETTINGS: SettingsForm = {
-  store_name: '',
-  store_email: '',
-  store_phone: '',
-  store_address: '',
-  shipping_free_threshold: '0',
-  shipping_flat_rate: '0',
-  tax_rate: '0',
-  currency: 'PKR',
-  announcement_text: '',
-  social_facebook: '',
-  social_instagram: '',
-  social_twitter: '',
-};
+const EMPTY: SettingsForm = { checkout_free_shipping_from: '', checkout_shipping_charge: '', top_bar_announcement: '' };
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
       </label>
       {children}
-      {hint && <p className="text-xs text-gray-400 mt-1.5">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 mt-1.5">{hint}</p>}
     </div>
   );
 }
@@ -61,46 +36,43 @@ const inputClass =
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS);
+  const [form, setForm] = useState<SettingsForm>(EMPTY);
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin', 'settings'],
-    queryFn: () => adminSettingsApi.get().then((res) => res.data),
+    queryFn: () => adminSettingsApi.get().then((res) => res.data as Record<string, string | number>),
   });
 
   useEffect(() => {
     if (settings) {
-      if (Array.isArray(settings)) {
-        const mapped: Record<string, string> = {};
-        settings.forEach((s: { key: string; value: string }) => {
-          mapped[s.key] = s.value;
-        });
-        setForm({ ...DEFAULT_SETTINGS, ...mapped });
-      } else {
-        setForm({ ...DEFAULT_SETTINGS, ...settings });
-      }
+      setForm({
+        checkout_free_shipping_from: String(settings.checkout_free_shipping_from ?? ''),
+        checkout_shipping_charge: String(settings.checkout_shipping_charge ?? ''),
+        top_bar_announcement: String(settings.top_bar_announcement ?? ''),
+      });
     }
   }, [settings]);
 
   const updateMutation = useMutation({
     mutationFn: (data: Record<string, string>) => adminSettingsApi.update(data),
     onSuccess: () => {
-      toast.success('Settings saved');
+      toast.success('Settings saved. The shop uses them right away.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] });
+      queryClient.invalidateQueries({ queryKey: ['store', 'settings'] });
     },
-    onError: () => toast.error('Failed to save settings'),
+    onError: (err: unknown) => toast.error(apiErrorDetail(err) ?? 'Failed to save settings'),
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(form as unknown as Record<string, string>);
+    // Never save over the real values with an empty form (e.g. after a failed load)
+    if (!settings) return;
+    updateMutation.mutate({ ...form });
   };
 
   if (isLoading) {
@@ -111,10 +83,24 @@ export default function AdminSettingsPage() {
     );
   }
 
+  if (isError || !settings) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-center">
+        <p className="text-sm text-gray-700">Couldn’t load the settings, so nothing can be saved right now.</p>
+        <button onClick={() => refetch()} className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-gray-800">
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const threshold = Number(form.checkout_free_shipping_from) || 0;
+  const rate = Number(form.checkout_shipping_charge) || 0;
+
   return (
     <>
       <Helmet>
-        <title>Settings | Admin - My Brand</title>
+        <title>Settings | Nexure CO Admin</title>
       </Helmet>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -125,7 +111,7 @@ export default function AdminSettingsPage() {
               <Cog6ToothIcon className="h-5 w-5 text-gray-500" />
               Settings
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">Configure your store preferences</p>
+            <p className="text-sm text-gray-500 mt-0.5">Shipping and the announcement bar apply to the shop as soon as you save</p>
           </div>
           <button
             type="submit"
@@ -136,173 +122,96 @@ export default function AdminSettingsPage() {
           </button>
         </div>
 
-        {/* Store Information */}
+        {/* Shipping */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">
-            Store details
-          </h2>
+          <h2 className="text-[15px] font-semibold text-gray-900 mb-1">Shipping</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Checkout charges by these, and the cart, checkout, top bar and product pages show them. Currently:{' '}
+            {rate > 0 ? `${formatPrice(rate)} per order, ` : 'free on every order, '}
+            {rate > 0 && (threshold > 0 ? `free from ${formatPrice(threshold)}` : 'never free')}.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Store name">
-              <input
-                name="store_name"
-                value={form.store_name}
-                onChange={handleChange}
-                placeholder="My Brand"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Store email">
-              <input
-                name="store_email"
-                type="email"
-                value={form.store_email}
-                onChange={handleChange}
-                placeholder="support@nexureco.com"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Store phone">
-              <input
-                name="store_phone"
-                value={form.store_phone}
-                onChange={handleChange}
-                placeholder="+92 300 1234567"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Currency">
-              <input
-                name="currency"
-                value={form.currency}
-                onChange={handleChange}
-                placeholder="PKR"
-                className={inputClass}
-              />
-            </Field>
-          </div>
-          <div className="mt-4">
-            <Field label="Store address">
-              <textarea
-                name="store_address"
-                value={form.store_address}
-                onChange={handleChange}
-                rows={3}
-                className={inputClass + ' resize-none'}
-                placeholder="123 Main Street, Lahore, Pakistan"
-              />
-            </Field>
-          </div>
-        </div>
-
-        {/* Shipping & Tax */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">
-            Shipping and tax
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="Free shipping threshold" hint="Orders above this amount get free shipping">
+            <Field id="checkout_free_shipping_from" label="Free shipping from" hint="Order subtotal (before discounts) that ships free">
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">Rs.</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rs.</span>
                 <input
-                  name="shipping_free_threshold"
+                  id="checkout_free_shipping_from"
+                  name="checkout_free_shipping_from"
                   type="number"
-                  value={form.shipping_free_threshold}
+                  min={0}
+                  step={1}
+                  required
+                  value={form.checkout_free_shipping_from}
                   onChange={handleChange}
-                  placeholder="5000"
                   className={inputClass + ' pl-10'}
                 />
               </div>
             </Field>
-            <Field label="Flat rate shipping" hint="Default shipping cost per order">
+            <Field id="checkout_shipping_charge" label="Shipping charge" hint="Charged on orders below that amount (0 = always free)">
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">Rs.</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rs.</span>
                 <input
-                  name="shipping_flat_rate"
+                  id="checkout_shipping_charge"
+                  name="checkout_shipping_charge"
                   type="number"
-                  value={form.shipping_flat_rate}
+                  min={0}
+                  step={1}
+                  required
+                  value={form.checkout_shipping_charge}
                   onChange={handleChange}
-                  placeholder="200"
                   className={inputClass + ' pl-10'}
                 />
               </div>
             </Field>
-            <Field label="Tax rate" hint="Applied to all orders">
-              <div className="relative">
-                <input
-                  name="tax_rate"
-                  type="number"
-                  value={form.tax_rate}
-                  onChange={handleChange}
-                  placeholder="0"
-                  className={inputClass + ' pr-8'}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
-              </div>
-            </Field>
           </div>
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-4">
+            The Shipping &amp; Returns and FAQ pages state these amounts in their own text: update them in Content → Pages
+            when you change shipping.
+          </p>
         </div>
 
         {/* Announcement Bar */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">
-            Announcement bar
-          </h2>
-          <Field label="Announcement text" hint="Leave blank to hide the announcement bar on the storefront">
+          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">Announcement bar</h2>
+          <Field
+            id="top_bar_announcement"
+            label="Announcement text"
+            hint="The black bar at the top of every page. Leave blank to show the free-shipping message."
+          >
             <input
-              name="announcement_text"
-              value={form.announcement_text}
+              id="top_bar_announcement"
+              name="top_bar_announcement"
+              maxLength={200}
+              value={form.top_bar_announcement}
               onChange={handleChange}
-              placeholder="Free shipping on orders of Rs. 5,000 or more!"
+              placeholder={`Free shipping on orders of ${formatPrice(threshold || 0)} or more`}
               className={inputClass}
             />
           </Field>
         </div>
 
-        {/* Social Media */}
+        {/* Store details: shown for reference; they're part of the site's code */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-[15px] font-semibold text-gray-900 mb-4">
-            Social media
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label="Facebook">
-              <input
-                name="social_facebook"
-                value={form.social_facebook}
-                onChange={handleChange}
-                placeholder="https://facebook.com/nexure"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Instagram">
-              <input
-                name="social_instagram"
-                value={form.social_instagram}
-                onChange={handleChange}
-                placeholder="https://instagram.com/nexureco"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Twitter / X">
-              <input
-                name="social_twitter"
-                value={form.social_twitter}
-                onChange={handleChange}
-                placeholder="https://x.com/nexureco"
-                className={inputClass}
-              />
-            </Field>
-          </div>
-        </div>
-
-        {/* Bottom Save Bar */}
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            disabled={updateMutation.isPending}
-            className="px-5 py-2 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
-          >
-            {updateMutation.isPending ? 'Saving...' : 'Save'}
-          </button>
+          <h2 className="text-[15px] font-semibold text-gray-900 mb-1">Store details</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Shown in the footer, contact page, emails and search results. These are set in the site’s code
+            (frontend/src/utils/constants.ts and backend/app/core/store.py); ask your developer to change them.
+          </p>
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            {[
+              ['Store name', SITE_NAME],
+              ['Email', STORE_EMAIL],
+              ['Phone', STORE_PHONE],
+              ['Hours', STORE_HOURS],
+              ['Address', STORE_ADDRESS],
+              ['Social', SOCIAL_PROFILES.join(', ')],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs text-gray-500">{label}</dt>
+                <dd className="text-gray-900 break-words">{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </form>
     </>

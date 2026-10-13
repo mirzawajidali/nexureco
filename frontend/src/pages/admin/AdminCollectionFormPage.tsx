@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { resizedImage } from '@/utils/image';
 import {
   ArrowLeftIcon,
   MagnifyingGlassIcon,
@@ -134,8 +135,15 @@ export default function AdminCollectionFormPage() {
     enabled: isEdit,
   });
 
+  // Fill the form once per collection: later refetches (after adding or removing a product) only refresh
+  // the product list, so unsaved edits to the title, description or SEO fields aren't overwritten
+  const seededFor = useRef<number | null>(null);
   useEffect(() => {
-    if (collectionData) {
+    if (!collectionData) return;
+    setCollectionProducts(collectionData.products || []);
+    if (seededFor.current === collectionData.id) return;
+    seededFor.current = collectionData.id;
+    {
       setName(collectionData.name);
       setDescription(collectionData.description || '');
       setImageUrl(collectionData.image_url || '');
@@ -144,13 +152,13 @@ export default function AdminCollectionFormPage() {
       setIsFeatured(collectionData.is_featured);
       setMetaTitle(collectionData.meta_title || '');
       setMetaDescription(collectionData.meta_description || '');
-      setCollectionProducts(collectionData.products || []);
     }
   }, [collectionData]);
 
   // --- Browse products ---
   const { data: browseData } = useQuery({
-    queryKey: ['admin', 'products', 'browse', browseSearch],
+    // Its own key: the create-order page browses products too, with a differently shaped result
+    queryKey: ['admin', 'collection-form', 'browse', browseSearch],
     queryFn: () =>
       adminProductsApi.list({ q: browseSearch || undefined, page_size: 20 }).then((r) => r.data),
     enabled: showBrowse,
@@ -168,16 +176,18 @@ export default function AdminCollectionFormPage() {
   const createMutation = useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
       const res = await adminCollectionsApi.create(payload);
-      return res.data;
-    },
-    onSuccess: async (data: { id: number }) => {
-      // Add products to the new collection
+      const created = res.data as { id: number };
+      // Part of creating it: a failure here isn't reported as "failed to create" (a retry would make a duplicate)
       if (collectionProducts.length > 0) {
-        await adminCollectionsApi.addProducts(
-          data.id,
-          collectionProducts.map((p) => p.id),
-        );
+        try {
+          await adminCollectionsApi.addProducts(created.id, collectionProducts.map((p) => p.id));
+        } catch {
+          toast.error('Collection created, but adding its products failed. Add them on its page.');
+        }
       }
+      return created;
+    },
+    onSuccess: () => {
       toast.success('Collection created');
       queryClient.invalidateQueries({ queryKey: ['admin', 'collections'] });
       navigate('/admin/collections');
@@ -213,12 +223,20 @@ export default function AdminCollectionFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'collection', id] });
     },
+    onError: () => {
+      toast.error('Failed to add the product');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'collection', id] });  // back to what's saved
+    },
   });
 
   const removeProductMutation = useMutation({
     mutationFn: (productId: number) =>
       adminCollectionsApi.removeProduct(Number(id), productId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'collection', id] });
+    },
+    onError: () => {
+      toast.error('Failed to remove the product');
       queryClient.invalidateQueries({ queryKey: ['admin', 'collection', id] });
     },
   });
@@ -233,13 +251,14 @@ export default function AdminCollectionFormPage() {
 
     const payload: Record<string, unknown> = {
       name: name.trim(),
-      description: description.trim() || undefined,
-      image_url: imageUrl.trim() || undefined,
+      // null (not undefined) so clearing a field really clears it
+      description: description.trim() || null,
+      image_url: imageUrl.trim() || null,
       type: collectionType,
       is_active: isActive,
       is_featured: isFeatured,
-      meta_title: metaTitle.trim() || undefined,
-      meta_description: metaDescription.trim() || undefined,
+      meta_title: metaTitle.trim() || null,
+      meta_description: metaDescription.trim() || null,
     };
 
     if (isEdit) {
@@ -473,7 +492,7 @@ export default function AdminCollectionFormPage() {
                       >
                         {product.image_url ? (
                           <img
-                            src={product.image_url}
+                            src={resizedImage(product.image_url, 160)} loading="lazy"
                             alt={product.name}
                             className="w-10 h-10 rounded border border-gray-200 object-cover flex-shrink-0"
                           />
@@ -744,7 +763,7 @@ export default function AdminCollectionFormPage() {
                   >
                     {product.primary_image ? (
                       <img
-                        src={product.primary_image}
+                        src={resizedImage(product.primary_image, 160)} loading="lazy"
                         alt={product.name}
                         className="w-10 h-10 rounded border border-gray-200 object-cover flex-shrink-0"
                       />

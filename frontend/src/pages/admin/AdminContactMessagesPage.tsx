@@ -70,11 +70,11 @@ function MessageDetailModal({
   const replyMutation = useMutation({
     mutationFn: () => adminContactApi.reply(msg.id, replyText),
     onSuccess: () => {
-      toast.success('Reply saved');
+      toast.success(`Reply emailed to ${msg.email}`);
       queryClient.invalidateQueries({ queryKey: ['admin-contact'] });
       onClose();
     },
-    onError: () => toast.error('Failed to save reply'),
+    onError: () => toast.error('Failed to send reply'),
   });
 
   return (

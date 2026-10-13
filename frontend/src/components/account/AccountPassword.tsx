@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { userApi } from '@/api/user.api';
+import { useAuthStore } from '@/store/authStore';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -33,8 +34,11 @@ export default function AccountPassword() {
   const mutation = useMutation({
     mutationFn: (data: { current_password: string; new_password: string }) =>
       userApi.changePassword(data),
-    onSuccess: () => {
-      toast.success('Password changed successfully');
+    onSuccess: (res) => {
+      // Other devices are signed out; this one carries on with the fresh tokens
+      const { access_token, refresh_token } = res.data ?? {};
+      if (access_token && refresh_token) useAuthStore.getState().setTokens(access_token, refresh_token);
+      toast.success('Password changed. You’ve been signed out on other devices.');
       reset();
     },
     onError: (err: unknown) => {

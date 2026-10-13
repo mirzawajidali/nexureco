@@ -12,6 +12,7 @@ from app.schemas.user import (
 from app.schemas.auth import UserResponse
 from app.schemas.common import MessageResponse
 from app.models.user import User, Address
+from app.services import auth_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -38,7 +39,7 @@ async def update_profile(
     return current_user
 
 
-@router.put("/me/password", response_model=MessageResponse)
+@router.put("/me/password")
 async def change_password(
     request: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
@@ -47,8 +48,11 @@ async def change_password(
     if not verify_password(request.current_password, current_user.password_hash):
         raise BadRequestException("Current password is incorrect")
     current_user.password_hash = hash_password(request.new_password)
+    # Sign out every other device (a stolen session ends here); this one continues with the new tokens
+    await auth_service.revoke_all_sessions(db, current_user.id)
+    tokens = await auth_service.create_tokens(db, current_user)
     await db.flush()
-    return {"message": "Password changed successfully"}
+    return {"message": "Password changed successfully", **tokens}
 
 
 @router.get("/me/addresses", response_model=list[AddressResponse])

@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timedelta, timezone
 import secrets
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 from app.models.user import User, RefreshToken, PasswordResetToken, EmailOTP
 from app.models.role import Role
@@ -12,8 +12,11 @@ from app.core.security import (
 )
 from app.core.exceptions import (
     BadRequestException, UnauthorizedException, ConflictException, NotFoundException,
+    TooManyRequestsException,
 )
 from app.config import get_settings
+from app.db.redis import CacheService, get_redis
+from starlette.concurrency import run_in_threadpool
 from app.utils.email import send_email_background
 from app.services import coupon_service
 
@@ -129,24 +132,83 @@ async def resend_otp(db: AsyncSession, email: str) -> None:
     await _create_and_send_otp(db, user)
 
 
+# Too many wrong passwords for one email lock it for a while: counted in Redis, so the count is shared by
+# every server worker and every IP (the per-IP rate limits alone can be spread across many addresses).
+# Without Redis there's no lockout; the rate limits still apply.
+LOGIN_MAX_FAILURES = 8
+LOGIN_LOCK_SECONDS = 15 * 60
+# Checked when the email has no account, so a wrong email takes as long as a wrong password
+_UNKNOWN_USER_HASH = hash_password(secrets.token_urlsafe(16))
+
+
+def _login_failures_key(email: str) -> str:
+    return f"{CacheService.PREFIX}:login-failures:{email.strip().lower()}"
+
+
+async def clear_login_failures(email: str) -> None:
+    redis = get_redis()
+    if redis:
+        try:
+            await redis.delete(_login_failures_key(email))
+        except Exception:
+            pass
+
+
 async def authenticate_user(
     db: AsyncSession, email: str, password: str
 ) -> User:
+    redis = get_redis()
+    key = _login_failures_key(email)
+    if redis:
+        try:
+            locked = int(await redis.get(key) or 0) >= LOGIN_MAX_FAILURES
+        except Exception:
+            locked = False
+        if locked:
+            raise TooManyRequestsException(
+                "Too many failed sign-in attempts. Try again in 15 minutes, or reset your password."
+            )
+
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(password, user.password_hash):
+    # bcrypt takes ~0.25 s of CPU: run it off the event loop so sign-ins don't stall other requests
+    valid = await run_in_threadpool(verify_password, password, user.password_hash if user else _UNKNOWN_USER_HASH)
+    if not user or not valid:
+        if redis:
+            try:
+                failures = await redis.incr(key)
+                if failures == 1:
+                    await redis.expire(key, LOGIN_LOCK_SECONDS)
+            except Exception:
+                pass
         raise UnauthorizedException("Invalid email or password")
 
     if not user.is_active:
         raise UnauthorizedException("Account is disabled")
 
+    await clear_login_failures(email)
     user.last_login_at = datetime.now(timezone.utc)
     await db.flush()
     return user
 
 
-async def create_tokens(db: AsyncSession, user: User) -> dict:
+# A sign-in lasts at most this long: refreshing the access token keeps it going until then, but not beyond
+# (otherwise a stolen refresh token could be kept alive forever by refreshing it weekly)
+SESSION_MAX_AGE = timedelta(days=30)
+
+
+async def revoke_all_sessions(db: AsyncSession, user_id: int) -> None:
+    """Sign the account out everywhere: every refresh token stops working (access tokens lapse within minutes)."""
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+
+
+async def create_tokens(db: AsyncSession, user: User, auth_time: int | None = None) -> dict:
+    """Access + refresh token. ``auth_time`` is when the user signed in (kept across refreshes)."""
     token_data = {"sub": str(user.id), "role": user.role}
 
     # Embed permissions in JWT for staff users
@@ -159,7 +221,10 @@ async def create_tokens(db: AsyncSession, user: User) -> dict:
             token_data["permissions"] = []
 
     access_token = create_access_token(data=token_data)
-    refresh_token_str = create_refresh_token(data={"sub": str(user.id)})
+    refresh_token_str = create_refresh_token(data={
+        "sub": str(user.id),
+        "auth_time": auth_time or int(datetime.now(timezone.utc).timestamp()),
+    })
 
     refresh_token = RefreshToken(
         user_id=user.id,
@@ -191,11 +256,17 @@ async def refresh_access_token(db: AsyncSession, refresh_token_str: str) -> dict
     if not stored_token:
         raise UnauthorizedException("Refresh token not found or revoked")
 
-    if stored_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    now = datetime.now(timezone.utc)
+    if stored_token.expires_at.replace(tzinfo=timezone.utc) < now:
         raise UnauthorizedException("Refresh token expired")
 
+    # Sessions from before auth_time existed count from now
+    auth_time = int(payload.get("auth_time") or now.timestamp())
+    if now - datetime.fromtimestamp(auth_time, timezone.utc) > SESSION_MAX_AGE:
+        raise UnauthorizedException("Your session has expired. Please sign in again.")
+
     # Revoke old token
-    stored_token.revoked_at = datetime.now(timezone.utc)
+    stored_token.revoked_at = now
 
     user_id = int(payload["sub"])
     result = await db.execute(select(User).where(User.id == user_id))
@@ -203,7 +274,7 @@ async def refresh_access_token(db: AsyncSession, refresh_token_str: str) -> dict
     if not user or not user.is_active:
         raise UnauthorizedException("User not found or disabled")
 
-    return await create_tokens(db, user)
+    return await create_tokens(db, user, auth_time=auth_time)
 
 
 async def revoke_refresh_token(db: AsyncSession, refresh_token_str: str) -> None:
@@ -263,4 +334,7 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Non
 
     user.password_hash = hash_password(new_password)
     reset_token.used_at = datetime.now(timezone.utc)
+    # A reset often follows a lost or stolen password: end every existing session, and lift a lockout
+    await revoke_all_sessions(db, user.id)
+    await clear_login_failures(user.email)
     await db.flush()

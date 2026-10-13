@@ -15,9 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.store import (
     CURRENCY,
-    FREE_SHIPPING_THRESHOLD,
     SITE_NAME,
-    STANDARD_SHIPPING_COST,
     STORE_EMAIL,
     STORE_HOURS,
     STORE_PHONE,
@@ -26,10 +24,11 @@ from app.core.store import (
 from app.db.database import get_db
 from app.models.page import Page
 from app.services import blog_service
+from app.services import store_settings_service
 from app.services.listing_service import get_listings_with_products
 from app.services.seo_service import (
-    HOME_DESCRIPTION,
     active_products,
+    home_description,
     html_to_text,
     in_stock,
     sorted_images,
@@ -51,6 +50,7 @@ def _money(amount: float) -> str:
 async def product_feed(db: AsyncSession = Depends(get_db)):
     """All active products, one item each, in Google Merchant Center's RSS format."""
     base_url = settings.SITE_URL.rstrip("/")
+    store = await store_settings_service.get_store_settings(db)
     items = []
     for product in await active_products(db):
         images = [_absolute_jpeg(base_url, img.url) for img in sorted_images(product)]
@@ -64,7 +64,7 @@ async def product_feed(db: AsyncSession = Depends(get_db)):
         description = (
             product.short_description or html_to_text(product.description or "") or product.name
         )
-        shipping = 0 if price >= FREE_SHIPPING_THRESHOLD else STANDARD_SHIPPING_COST
+        shipping = store_settings_service.shipping_cost_for(price, store)
         fields = [
             ("g:id", str(product.id)),
             ("g:title", truncate_text(product.name, 150)),
@@ -93,7 +93,7 @@ async def product_feed(db: AsyncSession = Depends(get_db)):
         "  <channel>\n"
         f"    <title>{escape(SITE_NAME)}</title>\n"
         f"    <link>{escape(base_url)}/</link>\n"
-        f"    <description>{escape(HOME_DESCRIPTION)}</description>\n"
+        f"    <description>{escape(home_description(int(store['checkout_free_shipping_from'])))}</description>\n"
         + "\n".join(items)
         + "\n  </channel>\n</rss>\n"
     )
@@ -118,14 +118,19 @@ async def llms_txt(db: AsyncSession = Depends(get_db)):
     categories = {
         p.category.slug: p.category.name for p in products if p.category and p.category.slug in category_slugs
     }
+    store = await store_settings_service.get_store_settings(db)
+    free_from = int(store["checkout_free_shipping_from"])
     lines = [
         f"# {SITE_NAME}",
         "",
-        f"> {HOME_DESCRIPTION}",
+        f"> {home_description(free_from)}",
         "",
         "Online clothing store in Pakistan. Prices are in Pakistani rupees (PKR). Payment is cash on delivery. "
-        f"Shipping is {format_price(STANDARD_SHIPPING_COST)} nationwide, free on orders of "
-        f"{format_price(FREE_SHIPPING_THRESHOLD)} or more.",
+        + (
+            f"Shipping is {format_price(int(store['checkout_shipping_charge']))} nationwide, "
+            f"{store_settings_service.free_shipping_phrase(free_from)}."
+            if free_from > 0 else "Shipping is free on all orders nationwide."
+        ),
         f"Customer support: {STORE_PHONE}, {STORE_EMAIL} ({STORE_HOURS}).",
         "",
         "## Products",

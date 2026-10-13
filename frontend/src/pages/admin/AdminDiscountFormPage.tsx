@@ -5,8 +5,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, TicketIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { adminCouponsApi } from '@/api/admin.api';
+import { apiErrorDetail } from '@/api/client';
 import { APP_NAME } from '@/utils/constants';
 import type { Coupon } from '@/types/coupon';
+
+// --- Helpers ---
+
+/** A saved UTC time as the value of a datetime-local input, in this computer's time (Pakistan for the store) */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // --- Component ---
 
@@ -57,8 +69,8 @@ export default function AdminDiscountFormPage() {
       setUsageLimit(coupon.usage_limit ? String(coupon.usage_limit) : '');
       setUsagePerCustomer(String(coupon.usage_per_customer));
       setIsActive(coupon.is_active);
-      setStartsAt(coupon.starts_at ? coupon.starts_at.slice(0, 16) : '');
-      setExpiresAt(coupon.expires_at ? coupon.expires_at.slice(0, 16) : '');
+      setStartsAt(toLocalInput(coupon.starts_at));
+      setExpiresAt(toLocalInput(coupon.expires_at));
     }
   }, [coupon]);
 
@@ -82,7 +94,7 @@ export default function AdminDiscountFormPage() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
       navigate('/admin/coupons');
     },
-    onError: () => toast.error('Failed to create discount'),
+    onError: (err: unknown) => toast.error(apiErrorDetail(err) ?? 'Failed to create discount'),
   });
 
   const updateMutation = useMutation({
@@ -94,7 +106,7 @@ export default function AdminDiscountFormPage() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'coupon', id] });
       navigate('/admin/coupons');
     },
-    onError: () => toast.error('Failed to update discount'),
+    onError: (err: unknown) => toast.error(apiErrorDetail(err) ?? 'Failed to update discount'),
   });
 
   const deleteMutation = useMutation({
@@ -118,6 +130,14 @@ export default function AdminDiscountFormPage() {
       toast.error('Discount value is required');
       return;
     }
+    if (type === 'percentage' && parseFloat(value) > 100) {
+      toast.error('A percentage discount can be at most 100%');
+      return;
+    }
+    if (startsAt && expiresAt && new Date(expiresAt) <= new Date(startsAt)) {
+      toast.error('The end date must be after the start date');
+      return;
+    }
 
     const payload: Record<string, unknown> = {
       code: code.toUpperCase().trim(),
@@ -129,8 +149,9 @@ export default function AdminDiscountFormPage() {
       usage_limit: usageLimit ? parseInt(usageLimit, 10) : null,
       usage_per_customer: parseInt(usagePerCustomer, 10) || 1,
       is_active: isActive,
-      starts_at: startsAt || null,
-      expires_at: expiresAt || null,
+      // The exact moment (with its timezone), so "31 Oct 23:59" means 23:59 where you are
+      starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
     };
 
     if (isEdit) {

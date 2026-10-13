@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -16,7 +16,9 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { resizedImage } from '@/utils/image';
 import { adminMediaApi } from '@/api/admin.api';
+import { apiErrorDetail } from '@/api/client';
 import { formatDate } from '@/utils/formatters';
 
 // --- Types ---
@@ -125,20 +127,40 @@ export default function AdminMediaPage() {
       setDeletingId(null);
       if (selectedFile?.id === deletingId) setSelectedFile(null);
     },
-    onError: () => toast.error('Failed to delete file'),
+    // e.g. "photo.jpg is in use (Product: …). Remove it there first."
+    onError: (err: unknown) => {
+      toast.error(apiErrorDetail(err) ?? 'Failed to delete file', { duration: 6000 });
+      setDeletingId(null);
+    },
   });
 
+  // Deletes one by one; files in use on the site are refused by the server and reported, the rest go
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      for (const id of ids) await adminMediaApi.delete(id);
+      const refused: string[] = [];
+      for (const id of ids) {
+        try {
+          await adminMediaApi.delete(id);
+        } catch (err) {
+          refused.push(apiErrorDetail(err) ?? `File #${id} couldn't be deleted`);
+        }
+      }
+      return { deleted: ids.length - refused.length, refused };
     },
-    onSuccess: () => {
-      toast.success('Files deleted');
+    onSuccess: ({ deleted, refused }) => {
+      if (deleted) toast.success(`${deleted} file${deleted === 1 ? '' : 's'} deleted`);
+      if (refused.length) toast.error(`${refused.length} not deleted: ${refused.join(' ')}`, { duration: 8000 });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'media'] });
       setSelectedIds(new Set());
     },
-    onError: () => toast.error('Failed to delete some files'),
   });
+
+  // A selection only covers what's on screen: clear it when the page or search changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, search]);
 
   // --- Data ---
 
@@ -261,7 +283,11 @@ export default function AdminMediaPage() {
             </form>
             {selectedIds.size > 0 && (
               <button
-                onClick={() => bulkDeleteMutation.mutate([...selectedIds])}
+                onClick={() => {
+                  if (window.confirm(
+                    `Delete ${selectedIds.size} file${selectedIds.size === 1 ? '' : 's'}? This can’t be undone. Files shown on the site are skipped.`,
+                  )) bulkDeleteMutation.mutate([...selectedIds]);
+                }}
                 disabled={bulkDeleteMutation.isPending}
                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
@@ -360,7 +386,7 @@ export default function AdminMediaPage() {
                         >
                           <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0 bg-gray-100">
                             <img
-                              src={item.url}
+                              src={resizedImage(item.url, 320)} loading="lazy"
                               alt={item.alt_text ?? item.original_filename}
                               className="w-full h-full object-cover"
                             />

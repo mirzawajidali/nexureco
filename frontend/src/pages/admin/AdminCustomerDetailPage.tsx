@@ -68,6 +68,7 @@ export default function AdminCustomerDetailPage() {
     onSuccess: () => {
       toast.success('Customer status updated');
       queryClient.invalidateQueries({ queryKey: ['admin', 'customer', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'customers'] });
     },
     onError: () => toast.error('Failed to update status'),
   });
@@ -78,6 +79,7 @@ export default function AdminCustomerDetailPage() {
       toast.success('Customer updated');
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['admin', 'customer', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'customers'] });
     },
     onError: () => toast.error('Failed to update customer'),
   });

@@ -4,7 +4,7 @@ from app.models.category import Category
 from app.models.product import Product
 from app.schemas.category import CategoryCreate, CategoryUpdate
 from app.utils.slug import generate_unique_slug
-from app.core.exceptions import NotFoundException, ConflictException
+from app.core.exceptions import BadRequestException, NotFoundException, ConflictException
 
 
 def cat_to_dict(cat, product_count: int = 0) -> dict:
@@ -85,6 +85,17 @@ async def create_category(db: AsyncSession, data: CategoryCreate) -> dict:
 async def update_category(db: AsyncSession, category_id: int, data: CategoryUpdate) -> dict:
     category = await get_category_by_id(db, category_id)
     update_data = data.model_dump(exclude_unset=True)
+    # A category can't sit inside itself or one of its own subcategories: the loop would hide the
+    # whole branch from the shop and from the admin tree
+    new_parent = update_data.get("parent_id")
+    if new_parent is not None:
+        parents = dict((await db.execute(select(Category.id, Category.parent_id))).all())
+        ancestor, seen = new_parent, set()
+        while ancestor is not None and ancestor not in seen:
+            if ancestor == category_id:
+                raise BadRequestException("A category can't be placed inside itself or one of its subcategories")
+            seen.add(ancestor)
+            ancestor = parents.get(ancestor)
     if "name" in update_data and update_data["name"] != category.name:
         update_data["slug"] = await generate_unique_slug(db, Category, Category.slug, update_data["name"])
     for key, value in update_data.items():

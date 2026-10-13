@@ -3,25 +3,52 @@ import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/api/auth.api';
 import { trackLogin, trackSignUp } from '@/utils/analytics';
 
-export function useAuth() {
-  const { user, isAuthenticated, isLoading, setUser, setTokens, logout, setLoading } = useAuthStore();
+// The signed-in account is loaded once per page load and shared by every component using this hook
+// (header, route guards, admin layout, ...), instead of one /auth/me request per component.
+let accountLoad: Promise<void> | null = null;
 
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setLoading(false);
+async function loadAccount(): Promise<void> {
+  const store = useAuthStore.getState();
+  if (!localStorage.getItem('access_token')) {
+    store.setLoading(false);
+    return;
+  }
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const { data } = await authApi.getMe();
+      store.setUser(data);
+      return;
+    } catch (err) {
+      // Only "not signed in" (the API client has already tried refreshing the token) ends the session.
+      // A rate limit, server error or dropped connection is retried, then reported with the session kept.
+      if ((err as { response?: { status?: number } }).response?.status === 401) {
+        store.logout();
         return;
       }
-      try {
-        const { data } = await authApi.getMe();
-        setUser(data);
-      } catch {
-        logout();
+      if (attempt >= 3) {
+        store.setAuthError(true);
+        store.setLoading(false);
+        return;
       }
-    };
-    initAuth();
-  }, [setUser, logout, setLoading]);
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+}
+
+/** Try loading the account again after a failure (the "Retry" button on the error screen) */
+export function retryAccountLoad() {
+  const store = useAuthStore.getState();
+  store.setAuthError(false);
+  store.setLoading(true);
+  accountLoad = loadAccount();
+}
+
+export function useAuth() {
+  const { user, isAuthenticated, isLoading, authError, setUser, setTokens, logout } = useAuthStore();
+
+  useEffect(() => {
+    accountLoad ??= loadAccount();
+  }, []);
 
   const login = async (email: string, password: string) => {
     const { data } = await authApi.login({ email, password });
@@ -80,6 +107,7 @@ export function useAuth() {
     user,
     isAuthenticated,
     isLoading,
+    authError,
     login,
     register,
     logout: handleLogout,

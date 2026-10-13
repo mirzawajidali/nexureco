@@ -1,7 +1,9 @@
 import io
 import os
+import re
 import uuid
 from fastapi import UploadFile
+from starlette.concurrency import run_in_threadpool
 from PIL import Image, ImageOps
 from slugify import slugify
 from app.config import get_settings
@@ -52,19 +54,40 @@ async def save_upload_file_with_meta(
     if len(content) > settings.MAX_FILE_SIZE:
         raise ValueError(f"File size exceeds {settings.MAX_FILE_SIZE // (1024*1024)}MB limit")
 
+    # A plain folder name only: "../" or a path could otherwise write outside the uploads folder
+    subfolder = re.sub(r"[^a-z0-9_-]", "", subfolder.lower()) or "misc"
     stem = slugify(name_hint, max_length=60) if name_hint else ""
     filename = f"{stem}-{uuid.uuid4().hex[:12]}{ext}" if stem else f"{uuid.uuid4().hex}{ext}"
     folder_path = os.path.join(settings.UPLOAD_DIR, subfolder)
     os.makedirs(folder_path, exist_ok=True)
     file_path = os.path.join(folder_path, filename)
 
-    # Optimize image. exif_transpose applies a phone photo's rotation flag, which is lost on save
+    # Decoding, resizing and encoding (AVIF especially) take 0.5-2 s of CPU: off the event loop, so the
+    # rest of the site keeps answering while an image uploads
+    width, height = await run_in_threadpool(_optimise_and_save, content, ext, file_path, max_width)
+
+    # Get saved file size
+    saved_size = os.path.getsize(file_path)
+    content_type = MIME_MAP.get(ext, file.content_type or "application/octet-stream")
+
+    return {
+        "url": f"/uploads/{subfolder}/{filename}",
+        "original_filename": original_filename,
+        "file_size": saved_size,
+        "content_type": content_type,
+        "width": width,
+        "height": height,
+    }
+
+
+def _optimise_and_save(content: bytes, ext: str, file_path: str, max_width: int) -> tuple[int, int]:
+    """Resize to at most ``max_width``, re-encode and save; returns the saved width and height."""
+    # exif_transpose applies a phone photo's rotation flag, which is lost on save
     # (along with the rest of the EXIF data, GPS location included)
     try:
         img = ImageOps.exif_transpose(Image.open(io.BytesIO(content)))
     except Exception as exc:
         raise ValueError("The file isn't a readable image") from exc
-    original_width, original_height = img.width, img.height
 
     if img.width > max_width:
         ratio = max_width / img.width
@@ -81,19 +104,7 @@ async def save_upload_file_with_meta(
     # AVIF is more efficient — quality 50 gives similar visual quality to JPEG 85
     save_quality = 50 if ext == ".avif" else 85
     img.save(file_path, quality=save_quality, optimize=True)
-
-    # Get saved file size
-    saved_size = os.path.getsize(file_path)
-    content_type = MIME_MAP.get(ext, file.content_type or "application/octet-stream")
-
-    return {
-        "url": f"/uploads/{subfolder}/{filename}",
-        "original_filename": original_filename,
-        "file_size": saved_size,
-        "content_type": content_type,
-        "width": img.width,
-        "height": img.height,
-    }
+    return img.width, img.height
 
 
 def delete_upload_file(url: str) -> None:

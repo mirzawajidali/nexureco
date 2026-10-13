@@ -4,10 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from app.db.database import get_db
 from app.core.dependencies import require_module
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.models.user import User
 from app.models.media import MediaFile
-from app.models.product import Product, ProductImage
+from app.models.product import Product, ProductImage, ProductVariant
+from app.models.banner import Banner
+from app.models.category import Category
+from app.models.collection import Collection
+from app.models.page import Page
 from app.utils.file_upload import save_upload_file_with_meta, delete_upload_file
 from app.utils.pagination import paginate
 from app.schemas.common import MessageResponse
@@ -78,9 +82,12 @@ async def upload_media(
     db: AsyncSession = Depends(get_db),
 ):
     # Keep the uploaded file's own name (slugified) for image search
-    meta = await save_upload_file_with_meta(
-        file, subfolder="media", name_hint=os.path.splitext(file.filename or "")[0] or None
-    )
+    try:
+        meta = await save_upload_file_with_meta(
+            file, subfolder="media", name_hint=os.path.splitext(file.filename or "")[0] or None
+        )
+    except ValueError as exc:  # wrong type, too big, not an image: say so instead of a server error
+        raise BadRequestException(str(exc)) from None
     media_file = MediaFile(
         url=meta["url"],
         original_filename=meta["original_filename"],
@@ -164,9 +171,36 @@ async def update_media(
     return {"id": mf.id, "alt_text": mf.alt_text}
 
 
+async def _file_usages(db: AsyncSession, url: str) -> list[str]:
+    """Where an uploaded file is shown on the site (product photos, banners, rich text, ...)."""
+    used: list[str] = []
+
+    def names(kind: str, rows) -> None:
+        used.extend(f"{kind}: {name}" for name in dict.fromkeys(rows))
+
+    names("Product", (await db.execute(
+        select(Product.name).join(ProductImage, ProductImage.product_id == Product.id).where(ProductImage.url == url)
+    )).scalars())
+    names("Product option", (await db.execute(
+        select(Product.name).join(ProductVariant, ProductVariant.product_id == Product.id)
+        .where(ProductVariant.image_url == url)
+    )).scalars())
+    names("Banner", (await db.execute(
+        select(Banner.title).where(or_(Banner.image_url == url, Banner.mobile_image_url == url))
+    )).scalars())
+    names("Category", (await db.execute(select(Category.name).where(Category.image_url == url))).scalars())
+    names("Collection", (await db.execute(select(Collection.name).where(Collection.image_url == url))).scalars())
+    names("Product description", (await db.execute(
+        select(Product.name).where(Product.description.contains(url))
+    )).scalars())
+    names("Page", (await db.execute(select(Page.title).where(Page.content.contains(url)))).scalars())
+    return used
+
+
 @router.delete("/{media_id}", response_model=MessageResponse)
 async def delete_media(
     media_id: int,
+    force: bool = Query(False, description="Delete even though the file is shown somewhere on the site"),
     admin: User = require_module("media"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -176,6 +210,12 @@ async def delete_media(
     mf = result.scalar_one_or_none()
     if not mf:
         raise NotFoundException("Media file not found")
+
+    # Deleting a file that's in use leaves a broken image on the live site
+    usages = await _file_usages(db, mf.url)
+    if usages and not force:
+        shown = "; ".join(usages[:5]) + (f" and {len(usages) - 5} more" if len(usages) > 5 else "")
+        raise ConflictException(f"{mf.original_filename or 'This file'} is in use ({shown}). Remove it there first.")
 
     delete_upload_file(mf.url)
     await db.delete(mf)

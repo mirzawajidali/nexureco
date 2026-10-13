@@ -9,6 +9,7 @@ from app.core.dependencies import require_module
 from app.models.user import User
 from app.models.newsletter import NewsletterSubscriber
 from app.utils.pagination import paginate
+from app.utils.csv_export import safe_cell
 
 router = APIRouter(prefix="/admin/newsletter", tags=["Admin Newsletter"])
 
@@ -63,7 +64,7 @@ async def export_subscribers_csv(
     writer.writerow(["email", "subscribed_at"])
     for sub in subscribers:
         writer.writerow([
-            sub.email,
+            safe_cell(sub.email),  # an address can start with "=": never let it run as a spreadsheet formula
             sub.subscribed_at.isoformat() if sub.subscribed_at else "",
         ])
 

@@ -1,9 +1,7 @@
-import csv
-import io
-from datetime import datetime, timedelta, timezone
+import re
+from typing import Literal
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,6 +16,9 @@ from app.models.media import InventoryLog
 from app.schemas.order import OrderOut, OrderListItem
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.utils.pagination import paginate
+from app.utils.csv_export import csv_download
+from app.utils.store_time import store_today, utc_range
+from app.services import order_service
 from app.services.order_service import _generate_order_number, _send_order_status_email
 from app.services.customer_messages import order_messages
 
@@ -25,13 +26,22 @@ router = APIRouter(prefix="/admin/orders", tags=["Admin Orders"])
 
 
 class OrderStatusUpdate(BaseModel):
-    status: str
-    note: str | None = None
+    status: Literal["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned"]
+    note: str | None = Field(None, max_length=2000)
 
 
 class OrderTrackingUpdate(BaseModel):
-    tracking_number: str
-    tracking_url: str | None = None
+    tracking_number: str = Field(min_length=1, max_length=100)
+    tracking_url: str | None = Field(None, max_length=500)
+
+    @field_validator("tracking_url")
+    @classmethod
+    def _web_link_only(cls, value: str | None) -> str | None:
+        # Shown as a link to the admin and the customer: only http(s), never javascript: and the like
+        value = (value or "").strip() or None
+        if value and not re.match(r"https?://", value, re.IGNORECASE):
+            raise ValueError("The tracking link must start with http:// or https://")
+        return value
 
 
 class OrderNoteUpdate(BaseModel):
@@ -44,7 +54,7 @@ class AdminOrderItemCreate(BaseModel):
     quantity: int = Field(ge=1)
     # For custom items (no product_id)
     custom_name: str | None = None
-    custom_price: float | None = None
+    custom_price: float | None = Field(None, ge=0)
 
 
 class AdminOrderCreate(BaseModel):
@@ -60,8 +70,8 @@ class AdminOrderCreate(BaseModel):
     shipping_postal_code: str | None = None
     shipping_country: str = "Pakistan"
     admin_note: str | None = None
-    discount_amount: float = 0
-    shipping_cost: float = 0
+    discount_amount: float = Field(0, ge=0)
+    shipping_cost: float = Field(0, ge=0)
 
 
 def _build_customer_name(order: Order) -> str | None:
@@ -101,16 +111,31 @@ async def admin_create_order(
                 primary_img = product.images[0].url
             image_url = primary_img
 
+            variant = None
             if item_data.variant_id:
                 var_result = await db.execute(
-                    select(ProductVariant).where(ProductVariant.id == item_data.variant_id)
+                    select(ProductVariant).where(ProductVariant.id == item_data.variant_id).with_for_update()
                 )
                 variant = var_result.scalar_one_or_none()
-                if not variant:
-                    raise BadRequestException(f"Variant #{item_data.variant_id} not found")
+                if not variant or variant.product_id != product.id:
+                    raise BadRequestException(f"Variant #{item_data.variant_id} isn't one of {product.name}'s options")
+                if not variant.is_active:
+                    raise BadRequestException(f"That option of {product.name} is no longer sold")
+            else:
+                # No option picked: a product with a single variant (no sizes/colours) uses it, so its stock
+                # is checked and reduced like any other order; one with several must say which
+                active = (await db.execute(
+                    select(ProductVariant).where(ProductVariant.product_id == product.id, ProductVariant.is_active == True).with_for_update()
+                )).scalars().all()
+                if len(active) == 1:
+                    variant = active[0]
+                elif len(active) > 1:
+                    raise BadRequestException(f"Choose a size/colour for {product.name}")
+
+            if variant is not None:
                 if variant.stock_quantity < item_data.quantity:
                     raise BadRequestException(
-                        f"Only {variant.stock_quantity} units available for variant #{item_data.variant_id}"
+                        f"Only {variant.stock_quantity} of {product.name} available"
                     )
                 if variant.price is not None:
                     unit_price = float(variant.price)
@@ -136,7 +161,7 @@ async def admin_create_order(
 
             order_items.append({
                 "product_id": product.id,
-                "variant_id": item_data.variant_id,
+                "variant_id": variant.id if variant is not None else None,
                 "product_name": product.name,
                 "variant_info": variant_info,
                 "sku": sku,
@@ -175,6 +200,8 @@ async def admin_create_order(
     if data.customer_id:
         cust_result = await db.execute(select(User).where(User.id == data.customer_id))
         customer = cust_result.scalar_one_or_none()
+        if not customer:
+            raise NotFoundException("Customer not found")
         if customer:
             if not shipping_first_name:
                 shipping_first_name = customer.first_name
@@ -232,8 +259,8 @@ async def order_stats(
     admin: User = require_module("orders"),
     db: AsyncSession = Depends(get_db),
 ):
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # "Today" is the store's day (Pakistan time), not the UTC day
+    today_start, _ = utc_range(store_today(), store_today())
 
     # Today's orders
     today_count = await db.execute(
@@ -276,69 +303,8 @@ async def order_stats(
     }
 
 
-@router.get("/export")
-async def export_orders(
-    status: str | None = None,
-    payment_status: str | None = None,
-    q: str | None = None,
-    admin: User = require_module("orders"),
-    db: AsyncSession = Depends(get_db),
-):
-    query = select(Order).options(selectinload(Order.items)).order_by(Order.created_at.desc())
-    if status:
-        query = query.where(Order.status == status)
-    if payment_status:
-        query = query.where(Order.payment_status == payment_status)
-    if q:
-        search_term = f"%{q}%"
-        query = query.where(
-            or_(
-                Order.order_number.ilike(search_term),
-                Order.shipping_first_name.ilike(search_term),
-                Order.shipping_last_name.ilike(search_term),
-            )
-        )
-
-    result = await db.execute(query)
-    orders = result.scalars().all()
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Order", "Date", "Customer", "Total", "Payment Status", "Fulfillment Status", "Items", "Delivery Method"])
-    for order in orders:
-        name = _build_customer_name(order)
-        item_count = len(order.items)
-        writer.writerow([
-            order.order_number,
-            order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
-            name or "",
-            float(order.total),
-            order.payment_status,
-            order.status,
-            f"{item_count} item{'s' if item_count != 1 else ''}",
-            "Standard",
-        ])
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=orders.csv"},
-    )
-
-
-@router.get("/", response_model=PaginatedResponse[OrderListItem])
-async def list_orders(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    status: str | None = None,
-    payment_status: str | None = None,
-    fulfillment: str | None = None,
-    q: str | None = None,
-    admin: User = require_module("orders"),
-    db: AsyncSession = Depends(get_db),
-):
-    query = select(Order).order_by(Order.created_at.desc())
-
+def _filter_orders(query, status: str | None, payment_status: str | None, fulfillment: str | None, q: str | None):
+    """The orders list's filters (tabs and search), shared with the CSV export so it downloads what's shown."""
     if status:
         query = query.where(Order.status == status)
     if payment_status:
@@ -356,6 +322,69 @@ async def list_orders(
                 Order.shipping_last_name.ilike(search_term),
             )
         )
+    return query
+
+
+@router.get("/export")
+async def export_orders(
+    status: str | None = None,
+    payment_status: str | None = None,
+    fulfillment: str | None = None,
+    q: str | None = None,
+    admin: User = require_module("orders"),
+    db: AsyncSession = Depends(get_db),
+):
+    query = _filter_orders(select(Order).order_by(Order.created_at.desc(), Order.id.desc()),
+                           status, payment_status, fulfillment, q)
+
+    # In batches, with item counts from one query per batch (not every order with all its items at once)
+    rows = []
+    batch, offset = 500, 0
+    while True:
+        orders = (await db.execute(query.offset(offset).limit(batch))).scalars().all()
+        if not orders:
+            break
+        counts = dict((await db.execute(
+            select(OrderItem.order_id, func.count(OrderItem.id))
+            .where(OrderItem.order_id.in_([o.id for o in orders]))
+            .group_by(OrderItem.order_id)
+        )).all())
+        for order in orders:
+            item_count = counts.get(order.id, 0)
+            rows.append([
+                order.order_number,
+                order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
+                _build_customer_name(order) or "",
+                order.shipping_phone or "",
+                order.guest_email or "",
+                order.shipping_city or "",
+                float(order.total),
+                order.payment_status,
+                order.status,
+                f"{item_count} item{'s' if item_count != 1 else ''}",
+            ])
+        if len(orders) < batch:
+            break
+        offset += batch
+    return csv_download(
+        "orders.csv",
+        ["Order", "Date", "Customer", "Phone", "Email", "City", "Total", "Payment Status", "Status", "Items"],
+        rows,
+    )
+
+
+@router.get("/", response_model=PaginatedResponse[OrderListItem])
+async def list_orders(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    status: str | None = None,
+    payment_status: str | None = None,
+    fulfillment: str | None = None,
+    q: str | None = None,
+    admin: User = require_module("orders"),
+    db: AsyncSession = Depends(get_db),
+):
+    query = _filter_orders(select(Order).order_by(Order.created_at.desc()), status, payment_status, fulfillment, q)
 
     result = await paginate(db, query, page=page, page_size=page_size)
 
@@ -446,20 +475,12 @@ async def update_order_status(
     if not order:
         raise NotFoundException("Order not found")
 
-    order.status = data.status
+    # Checks the move is allowed and restocks on cancel/return; the same status again just adds the note
+    changed = await order_service.change_order_status(db, order, data.status, data.note, admin.id)
 
-    # Record status history
-    history = OrderStatusHistory(
-        order_id=order.id,
-        status=data.status,
-        note=data.note,
-        created_by=admin.id,
-    )
-    db.add(history)
-    await db.flush()
-
-    # Send status update email to customer
-    await _send_order_status_email(order, data.status, data.note)
+    # Email the customer only when the status really changed
+    if changed:
+        await _send_order_status_email(order, data.status, data.note)
 
     # Refresh to include the new history entry
     await db.refresh(order, attribute_names=["status_history", "items"])

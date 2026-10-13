@@ -484,8 +484,9 @@ export default function AdminLayout() {
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 lg:ml-[260px]">
+      {/* Main Content. min-w-0: without it this flex column grows to its widest table, and the page
+          scrolls sideways instead of the table's own scroll box (seen at 1024px on Orders, Inventory...) */}
+      <div className="flex-1 min-w-0 lg:ml-[260px]">
         {/* Top Bar */}
         <header className="bg-[#1a1a1a] h-14 flex items-center px-4 sticky top-0 z-20">
           {/* Mobile menu button */}
